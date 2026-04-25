@@ -187,7 +187,7 @@ async function importProductos(
         }
       }
 
-      const doc: Record<string, unknown> = {
+      const doc: { _id: string; _type: "producto"; [key: string]: unknown } = {
         _id: prod._id,
         _type: "producto",
         nombre: prod.nombre,

@@ -190,6 +190,12 @@ const s: Record<string, React.CSSProperties> = {
 
 type Step = "upload" | "preview" | "importing" | "done";
 
+type SummaryRow = ImportSummary["categorias"] | ImportSummary["subcategorias"] | ImportSummary["productos"];
+
+function hasImageWarnings(data: SummaryRow): data is ImportSummary["productos"] {
+  return "imageWarnings" in data;
+}
+
 export function ImportCatalogTool() {
   const client = useClient({ apiVersion: "2026-04-24" });
 
@@ -527,7 +533,7 @@ export function ImportCatalogTool() {
                   <Row label="✅ Creados" value={data.created} color="#059669" />
                   <Row label="🔄 Actualizados" value={data.updated} color="#2563eb" />
                   <Row label="❌ Errores" value={data.errors} color="#dc2626" />
-                  {"imageWarnings" in data && data.imageWarnings > 0 && (
+                  {hasImageWarnings(data) && data.imageWarnings > 0 && (
                     <Row label="⚠️ Imág. sin subir" value={data.imageWarnings} color="#d97706" />
                   )}
                 </div>

@@ -1,24 +1,20 @@
 // parseCsv.ts
 // Lee archivos .csv usando papaparse
 
+import Papa from "papaparse";
 import type { RawRow } from "./normalizeCatalogRows";
 
 export async function parseCsv(file: File): Promise<RawRow[]> {
-  const Papa = await import("papaparse");
-
   return new Promise((resolve, reject) => {
-    Papa.default.parse(file, {
+    Papa.parse<Record<string, unknown>>(file, {
       header: true,
       skipEmptyLines: true,
-      trimHeaders: true,
+      transformHeader: (header: string) => header.trim(),
       transform: (value: string) => value.trim(),
       complete: (results) => {
         if (results.errors && results.errors.length > 0) {
-          const criticalErrors = results.errors.filter((e) => e.type === "Abort");
-          if (criticalErrors.length > 0) {
-            reject(new Error(`Error parseando CSV: ${criticalErrors[0].message}`));
-            return;
-          }
+          reject(new Error(`Error parseando CSV: ${results.errors[0].message}`));
+          return;
         }
 
         // Normalizar keys a lowercase con underscore
