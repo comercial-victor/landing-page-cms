@@ -181,9 +181,10 @@ function EditDrawer({ prod, client, subcats, allTags, onClose, onSaved }: {
   const fileRef = useRef<HTMLInputElement>(null);
 
   const isModified = JSON.stringify(draft) !== original;
-  const changed = (field: string) => {
-    const o = JSON.parse(original);
-    return JSON.stringify((draft as Record<string,unknown>)[field]) !== JSON.stringify((o as Record<string,unknown>)[field]);
+const changed = (field: string) => {
+    const o = JSON.parse(original) as Record<string, unknown>;
+    const d = draft as unknown as Record<string, unknown>;
+    return JSON.stringify(d[field]) !== JSON.stringify(o[field]);
   };
 
   const set = <K extends keyof SProd>(field: K, val: SProd[K]) => setDraft(d => ({ ...d, [field]: val }));
