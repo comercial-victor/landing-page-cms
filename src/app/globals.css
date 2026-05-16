@@ -53,7 +53,7 @@ body {
 
 /* ---------- Confetti ---------- */
 .confetti-layer { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; opacity: 0.35; }
-nav.nav, section.section, footer.footer { position: relative; z-index: 2; }
+section.section, footer.footer { position: relative; z-index: 2; }
 .pica { position: absolute; top: -24px; will-change: transform, opacity; animation: pica-fall linear infinite; opacity: 0; }
 .pica-rect { width: 8px; height: 14px; border-radius: 2px; }
 .pica-circle { width: 8px; height: 8px; border-radius: 50%; }
