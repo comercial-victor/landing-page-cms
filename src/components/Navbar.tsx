@@ -2,11 +2,12 @@
 import { useState, useRef, useMemo, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import type { ProductoFlat } from "@/types";
-import { waLink, fmtSoles } from "@/lib/utils";
+import { fmtSoles } from "@/lib/utils";
 import { ProductImage } from "./ProductHelpers";
 import ProductModal from "./ProductModal";
+import { ContactIcon, getContactHref, type ContactLink } from "@/lib/social";
 
-interface Brand { nombre: string; whatsapp: string; whatsappDisplay?: string; }
+interface Brand { nombre: string; whatsapp: string; whatsappDisplay?: string; primaryContact?: ContactLink; }
 
 export default function Navbar({ brand, productos }: { brand: Brand; productos: ProductoFlat[] }) {
   const [q, setQ] = useState("");
@@ -16,6 +17,14 @@ export default function Navbar({ brand, productos }: { brand: Brand; productos: 
   const [scrolled, setScrolled] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const pathname = usePathname();
+  const primaryContact = brand.primaryContact || {
+    platform: "whatsapp" as const,
+    phone: brand.whatsapp,
+    label: "WhatsApp",
+    active: true,
+    showInFooter: true,
+    isPrimaryCta: true,
+  };
 
   useEffect(() => {
     const fn = () => setScrolled(window.scrollY > 60);
@@ -93,7 +102,8 @@ export default function Navbar({ brand, productos }: { brand: Brand; productos: 
           </div>
 
           {/* Desktop CTA */}
-          <a className="btn btn-wa nf-cta-desktop" href={waLink(brand.whatsapp, "Hola! Quisiera cotizar.")} target="_blank" rel="noopener noreferrer">
+          <a className={`btn ${primaryContact.platform === "whatsapp" ? "btn-wa" : "btn-plum"} nf-cta-desktop`} href={getContactHref(primaryContact, "Hola! Quisiera cotizar.")} target="_blank" rel="noopener noreferrer">
+            <ContactIcon platform={primaryContact.platform} size={16} />
             Cotizar
           </a>
 
@@ -133,13 +143,14 @@ export default function Navbar({ brand, productos }: { brand: Brand; productos: 
             </button>
           ))}
           <div style={{ height: 1, background: "var(--line-strong)", margin: "12px 0" }} />
-          <a className="btn btn-wa btn-lg" style={{ width: "100%", justifyContent: "center" }} href={waLink(brand.whatsapp, "Hola!")} target="_blank" rel="noopener noreferrer" onClick={() => setMobileOpen(false)}>
-            Cotizar por WhatsApp
+          <a className={`btn ${primaryContact.platform === "whatsapp" ? "btn-wa" : "btn-plum"} btn-lg`} style={{ width: "100%", justifyContent: "center" }} href={getContactHref(primaryContact, "Hola!")} target="_blank" rel="noopener noreferrer" onClick={() => setMobileOpen(false)}>
+            <ContactIcon platform={primaryContact.platform} size={18} />
+            Cotizar por {primaryContact.label}
           </a>
         </div>
       </div>
 
-      <ProductModal producto={openProduct} onClose={() => setOpenProduct(null)} whatsapp={brand.whatsapp} />
+      <ProductModal producto={openProduct} onClose={() => setOpenProduct(null)} whatsapp={brand.whatsapp} contact={primaryContact} />
     </>
   );
 }

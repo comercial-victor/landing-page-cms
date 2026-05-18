@@ -4,10 +4,12 @@ import { useState } from "react";
 import type { ProductoFlat } from "@/types";
 import { ProductImage, Badges, PriceDisplay } from "./ProductHelpers";
 import ProductModal from "./ProductModal";
+import type { ContactLink } from "@/lib/social";
 
 interface ShowcaseProps {
   productos: ProductoFlat[];
   whatsapp?: string;
+  contact?: ContactLink;
 }
 
 function ProductCard({ producto, onOpen }: { producto: ProductoFlat; onOpen: (p: ProductoFlat) => void }) {
@@ -46,7 +48,7 @@ function ProductCard({ producto, onOpen }: { producto: ProductoFlat; onOpen: (p:
 
 export { ProductCard };
 
-export default function Showcase({ productos, whatsapp = "51987654321" }: ShowcaseProps) {
+export default function Showcase({ productos, whatsapp = "51987654321", contact }: ShowcaseProps) {
   const [openProduct, setOpenProduct] = useState<ProductoFlat | null>(null);
 
   if (!productos.length) return null;
@@ -78,6 +80,7 @@ export default function Showcase({ productos, whatsapp = "51987654321" }: Showca
         producto={openProduct}
         onClose={() => setOpenProduct(null)}
         whatsapp={whatsapp}
+        contact={contact}
       />
     </>
   );

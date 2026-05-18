@@ -1,21 +1,27 @@
+import { ContactIcon, getContactHref, type ContactLink } from "@/lib/social";
+
 interface Brand {
   whatsapp: string;
   whatsappDisplay?: string;
+  primaryContact?: ContactLink;
   direccion?: string;
   googleMapsUrl?: string;
   googleMapsEmbedUrl?: string;
   horarios?: { dia: string; hora: string; cerrado?: boolean }[];
 }
 
-function waLink(numero: string, mensaje?: string) {
-  const base = `https://wa.me/${numero.replace(/\D/g, "")}`;
-  return mensaje ? `${base}?text=${encodeURIComponent(mensaje)}` : base;
-}
-
 export default function HorariosUbicacion({ brand }: { brand: Brand }) {
   const hoy = new Date().getDay(); // 0=dom
   const horarioIdx = hoy === 0 ? 2 : hoy === 6 ? 1 : 0;
   const horarios = brand.horarios || [];
+  const primaryContact = brand.primaryContact || {
+    platform: "whatsapp" as const,
+    phone: brand.whatsapp,
+    label: brand.whatsappDisplay || "WhatsApp",
+    active: true,
+    showInFooter: true,
+    isPrimaryCta: true,
+  };
 
   return (
     <section className="section">
@@ -24,7 +30,7 @@ export default function HorariosUbicacion({ brand }: { brand: Brand }) {
           {/* Horarios */}
           <div className="info-card" id="horarios">
             <h3>Horarios</h3>
-            <p style={{ color: "var(--ink-soft)", fontSize: 14, margin: "0 0 16px" }}>
+            <p className="info-card-lede">
               Atendemos presencial y pedidos por WhatsApp.
             </p>
             {horarios.map((h, i) => (
@@ -33,7 +39,7 @@ export default function HorariosUbicacion({ brand }: { brand: Brand }) {
                   {i === horarioIdx && <span className="dot-open" aria-hidden="true" />}
                   {h.dia}
                 </span>
-                <span className="mono" style={{ fontSize: 13 }}>
+                <span className="mono schedule-time">
                   {h.cerrado ? "Cerrado" : h.hora}
                 </span>
               </div>
@@ -71,15 +77,21 @@ export default function HorariosUbicacion({ brand }: { brand: Brand }) {
                 />
               </div>
             ) : (
-              <div className="map-placeholder">
-                <div className="map-pin" aria-hidden="true" />
-                <span style={{ position: "relative", zIndex: 1, background: "rgba(255,255,255,0.9)", padding: "4px 10px", borderRadius: 6, marginTop: 56 }}>
-                  {brand.direccion || "Miraflores, Lima"}
-                </span>
+              <div className="map-fallback">
+                <div className="map-fallback-icon" aria-hidden="true">
+                  <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M9 18l-6 3V6l6-3 6 3 6-3v15l-6 3-6-3Z" />
+                    <path d="M9 3v15M15 6v15" />
+                  </svg>
+                </div>
+                <div>
+                  <strong>Mapa no disponible</strong>
+                  <span>{brand.direccion || "Comercial Victor, Lima"}</span>
+                </div>
               </div>
             )}
 
-            <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
+            <div className="info-actions">
               <a
                 className="btn btn-plum"
                 href={brand.googleMapsUrl || `https://maps.google.com/?q=${encodeURIComponent(brand.direccion || "Miraflores Lima")}`}
@@ -90,11 +102,12 @@ export default function HorariosUbicacion({ brand }: { brand: Brand }) {
               </a>
               <a
                 className="btn btn-ghost"
-                href={waLink(brand.whatsapp, "Hola! Quisiera visitar la tienda.")}
+                href={getContactHref(primaryContact, "Hola! Quisiera visitar la tienda.")}
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                WhatsApp
+                <ContactIcon platform={primaryContact.platform} size={17} />
+                {primaryContact.label}
               </a>
             </div>
           </div>

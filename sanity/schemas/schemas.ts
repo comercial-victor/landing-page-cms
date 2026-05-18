@@ -40,6 +40,12 @@ export const featuredGallerySchema = defineType({
             type: "image",
             options: { hotspot: true },
             hidden: ({ parent }) => parent?.mediaType === "youtube",
+            validation: (Rule) =>
+              Rule.custom((value, context) => {
+                const parent = context.parent as { mediaType?: string };
+                if (parent?.mediaType === "image" && !value) return "Sube una imagen o cambia el tipo de media.";
+                return true;
+              }),
           }),
           defineField({
             name: "alt",
@@ -60,8 +66,31 @@ export const featuredGallerySchema = defineType({
             title: "Link de YouTube",
             type: "url",
             hidden: ({ parent }) => parent?.mediaType !== "youtube",
+            validation: (Rule) =>
+              Rule.custom((value, context) => {
+                const parent = context.parent as { mediaType?: string };
+                if (parent?.mediaType !== "youtube") return true;
+                if (!value) return "Agrega un link de YouTube.";
+                try {
+                  const parsed = new URL(value);
+                  const host = parsed.hostname.replace(/^www\./, "");
+                  const isYouTube = ["youtube.com", "m.youtube.com", "music.youtube.com", "youtu.be"].includes(host);
+                  return isYouTube || "Solo se aceptan links de YouTube.";
+                } catch {
+                  return "Ingresa un link válido de YouTube.";
+                }
+              }),
           }),
+          defineField({
+            name: "youtubeThumbnail",
+            title: "Thumbnail opcional para YouTube",
+            type: "image",
+            options: { hotspot: true },
+            hidden: ({ parent }) => parent?.mediaType !== "youtube",
+          }),
+          defineField({ name: "meta", title: "Etiqueta / meta opcional", type: "string", description: "Ej: Nuevo, Video, Campaña escolar" }),
           defineField({ name: "ctaText", title: "Texto del botón CTA", type: "string", initialValue: "Cotizar ahora" }),
+          defineField({ name: "ctaHref", title: "URL opcional del CTA", type: "url", description: "Si se completa, el botón abre este enlace." }),
           defineField({
             name: "ctaAction",
             title: "Acción del CTA",
@@ -97,6 +126,7 @@ export const featuredGallerySchema = defineType({
             hidden: ({ parent }) => parent?.ctaAction !== "scroll",
           }),
           defineField({ name: "active", title: "Card activa", type: "boolean", initialValue: true }),
+          defineField({ name: "orden", title: "Orden", type: "number", initialValue: 0 }),
         ],
         preview: {
           select: { title: "titulo", mediaType: "mediaType", active: "active", media: "imagen" },
@@ -132,6 +162,48 @@ export const heroSchema = defineType({
       title: "Indicadores de confianza (badges)",
       type: "array",
       of: [{ type: "string" }],
+    }),
+    defineField({
+      name: "floatingCards",
+      title: "Cards / imágenes flotantes",
+      description: "Aparecen desde el centro y se acomodan alrededor del Hero. En mobile se muestran menos para mantener rendimiento.",
+      type: "array",
+      of: [{
+        type: "object",
+        name: "heroFloatingCard",
+        fields: [
+          defineField({ name: "label", title: "Etiqueta opcional", type: "string" }),
+          defineField({ name: "title", title: "Título corto opcional", type: "string" }),
+          defineField({ name: "image", title: "Imagen", type: "image", options: { hotspot: true } }),
+          defineField({
+            name: "position",
+            title: "Posición aproximada",
+            type: "string",
+            options: {
+              list: [
+                { title: "Izquierda arriba", value: "leftTop" },
+                { title: "Derecha arriba", value: "rightTop" },
+                { title: "Izquierda medio", value: "leftMid" },
+                { title: "Derecha medio", value: "rightMid" },
+                { title: "Izquierda abajo", value: "leftBottom" },
+                { title: "Derecha abajo", value: "rightBottom" },
+              ],
+            },
+            initialValue: "leftTop",
+          }),
+          defineField({ name: "rotation", title: "Rotación en grados", type: "number", initialValue: 0 }),
+          defineField({ name: "order", title: "Orden", type: "number", initialValue: 0 }),
+          defineField({ name: "visible", title: "Visible", type: "boolean", initialValue: true }),
+        ],
+        preview: {
+          select: { title: "title", subtitle: "label", media: "image", visible: "visible" },
+          prepare: ({ title, subtitle, media, visible }) => ({
+            title: title || subtitle || "Card flotante",
+            subtitle: visible ? subtitle : "Oculta",
+            media,
+          }),
+        },
+      }],
     }),
     defineField({ name: "active", title: "Activo", type: "boolean", initialValue: true }),
   ],

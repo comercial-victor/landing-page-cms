@@ -6,14 +6,16 @@ import { waLink } from "@/lib/utils";
 import { urlFor } from "@/lib/sanity";
 import Image from "next/image";
 import { ProductImage, Badges, PriceDisplay, PresentacionesList } from "./ProductHelpers";
+import { ContactIcon, getContactHref, type ContactLink } from "@/lib/social";
 
 interface ProductModalProps {
   producto: ProductoFlat | null;
   onClose: () => void;
   whatsapp: string;
+  contact?: ContactLink;
 }
 
-export default function ProductModal({ producto, onClose, whatsapp }: ProductModalProps) {
+export default function ProductModal({ producto, onClose, whatsapp, contact }: ProductModalProps) {
   const [selectedVariant, setSelectedVariant] = useState<string | null>(null);
   const [activeImgIdx, setActiveImgIdx] = useState(0);
   const [zoomed, setZoomed] = useState(false);
@@ -43,7 +45,16 @@ export default function ProductModal({ producto, onClose, whatsapp }: ProductMod
   if (!producto) return null;
 
   const waMsg = producto.whatsappMensaje || `Hola! Me interesa: ${producto.nombre}`;
-  const waUrl = waLink(whatsapp, waMsg);
+  const fallbackContact = {
+    platform: "whatsapp" as const,
+    phone: whatsapp,
+    label: "WhatsApp",
+    active: true,
+    showInFooter: true,
+    isPrimaryCta: true,
+  };
+  const activeContact = contact || fallbackContact;
+  const contactUrl = contact ? getContactHref(activeContact, waMsg) : waLink(whatsapp, waMsg);
 
   // Variantes
   const visibleVariantes = producto.variantes?.filter(v => v.visible) || [];
@@ -175,11 +186,9 @@ export default function ProductModal({ producto, onClose, whatsapp }: ProductMod
             {producto.observaciones && <p style={{ fontSize: 13, color: "#7c6f8a", fontStyle: "italic", margin: "0 0 16px" }}>{producto.observaciones}</p>}
 
             <div className="modal-cta">
-              <a className="btn btn-wa btn-lg" href={waUrl} target="_blank" rel="noopener noreferrer">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.92C21.95 6.45 17.5 2 12.04 2z" />
-                </svg>
-                Pedir por WhatsApp
+              <a className={`btn ${activeContact.platform === "whatsapp" ? "btn-wa" : "btn-plum"} btn-lg`} href={contactUrl} target="_blank" rel="noopener noreferrer">
+                <ContactIcon platform={activeContact.platform} size={18} />
+                Pedir por {activeContact.label}
               </a>
               <button className="btn btn-ghost" onClick={onClose}>Seguir viendo</button>
             </div>

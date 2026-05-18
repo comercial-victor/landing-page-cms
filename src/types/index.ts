@@ -7,11 +7,25 @@ export interface SanityImage {
 // ─── Site Settings ───────────────────────────────────────
 export interface Horario { dia: string; hora: string; cerrado?: boolean; }
 
+export type SocialPlatform = "whatsapp" | "instagram" | "facebook" | "messenger" | "tiktok" | "other";
+
+export interface SocialLink {
+  _key?: string;
+  platform: SocialPlatform;
+  label?: string;
+  url?: string;
+  phone?: string;
+  active?: boolean;
+  showInFooter?: boolean;
+  isPrimaryCta?: boolean;
+}
+
 export interface SiteSettings {
   _id: string; nombre: string; tagline?: string; logo?: SanityImage;
   whatsapp: string; whatsappDisplay?: string; telefono?: string; email?: string;
   direccion?: string; googleMapsUrl?: string; googleMapsEmbedUrl?: string;
   instagramUrl?: string; facebookUrl?: string; tiktokUrl?: string;
+  socialLinks?: SocialLink[];
   horarios?: Horario[]; seoTitle?: string; seoDescription?: string; seoImage?: SanityImage;
 }
 
@@ -20,6 +34,18 @@ export interface Hero {
   _id: string; titulo: string; subtitulo?: string; eyebrow?: string;
   ctaPrincipalTexto?: string; ctaPrincipalMensaje?: string;
   ctaSecundarioTexto?: string; trustItems?: string[]; active: boolean;
+  floatingCards?: HeroFloatingCard[];
+}
+
+export interface HeroFloatingCard {
+  _key: string;
+  label?: string;
+  title?: string;
+  image?: SanityImage;
+  position?: "leftTop" | "rightTop" | "leftBottom" | "rightBottom" | "leftMid" | "rightMid";
+  rotation?: number;
+  order?: number;
+  visible?: boolean;
 }
 
 // ─── Galería destacada ─────────────────────────────────────────────
@@ -35,7 +61,10 @@ export interface FeaturedGalleryItem {
   alt?: string;
   focalPosition?: string;
   youtubeUrl?: string;
+  youtubeThumbnail?: SanityImage;
+  meta?: string;
   ctaText?: string;
+  ctaHref?: string;
   ctaAction?: FeaturedGalleryCtaAction;
   whatsappMessage?: string;
   targetSection?: string;

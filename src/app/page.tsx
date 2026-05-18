@@ -9,6 +9,7 @@ import HorariosUbicacion from "@/components/HorariosUbicacion";
 import Footer from "@/components/Footer";
 import FabWhatsApp from "@/components/FabWhatsApp";
 import ScrollToTop from "@/components/ScrollToTop";
+import { getPrimaryContact, normalizeSocialLinks } from "@/lib/social";
 
 export default async function HomePage() {
   const [settings, hero, featuredGallery, productos, destacados, categorias] = await Promise.all([
@@ -20,11 +21,15 @@ export default async function HomePage() {
     getCategorias(),
   ]);
 
+  const socialLinks = normalizeSocialLinks(settings);
+  const primaryContact = getPrimaryContact(socialLinks, settings?.whatsapp);
   const brand = {
     nombre: settings?.nombre || "Comercial Victor",
     tagline: settings?.tagline || "Todo para que tu fiesta brille",
-    whatsapp: settings?.whatsapp || "51987654321",
-    whatsappDisplay: settings?.whatsappDisplay || "+51 987 654 321",
+    whatsapp: primaryContact.platform === "whatsapp" ? (primaryContact.phone || settings?.whatsapp || "51987654321") : (settings?.whatsapp || "51987654321"),
+    whatsappDisplay: settings?.whatsappDisplay || primaryContact.label || "+51 987 654 321",
+    socialLinks,
+    primaryContact,
     direccion: settings?.direccion || "Miraflores, Lima",
     horarios: settings?.horarios || [
       { dia: "Lunes a Viernes", hora: "9:00 a.m. – 8:00 p.m." },
@@ -47,13 +52,13 @@ export default async function HomePage() {
         items={featuredGallery?.items || []}
         title={featuredGallery?.titulo}
         subtitle={featuredGallery?.subtitulo}
-        whatsapp={brand.whatsapp}
+        primaryContact={brand.primaryContact}
       />
-      <Showcase productos={destacados} whatsapp={brand.whatsapp} />
-      <CatalogPreview productos={productos} categorias={categorias} whatsapp={brand.whatsapp} />
+      <Showcase productos={destacados} whatsapp={brand.whatsapp} contact={brand.primaryContact} />
+      <CatalogPreview productos={productos} categorias={categorias} whatsapp={brand.whatsapp} contact={brand.primaryContact} />
       <HorariosUbicacion brand={brand} />
       <Footer brand={brand} />
-      <FabWhatsApp whatsapp={brand.whatsapp} />
+      <FabWhatsApp contact={brand.primaryContact} />
       <ScrollToTop />
     </>
   );

@@ -6,6 +6,7 @@ export async function getSiteSettings(): Promise<SiteSettings | null> {
     `*[_type == "siteSettings"][0]{
       _id, nombre, tagline, logo, whatsapp, whatsappDisplay, telefono, email,
       direccion, googleMapsUrl, googleMapsEmbedUrl, instagramUrl, facebookUrl, tiktokUrl,
+      socialLinks[]{ _key, platform, label, url, phone, active, showInFooter, isPrimaryCta },
       horarios[]{ dia, hora, cerrado }, seoTitle, seoDescription, seoImage
     }`, {}, { next: { tags: ["siteSettings"] } }
   );
@@ -15,7 +16,10 @@ export async function getHero(): Promise<Hero | null> {
   return sanityClient.fetch(
     `*[_type == "hero" && active == true][0]{
       _id, titulo, subtitulo, eyebrow, ctaPrincipalTexto, ctaPrincipalMensaje,
-      ctaSecundarioTexto, trustItems, active
+      ctaSecundarioTexto, trustItems, active,
+      "floatingCards": floatingCards[visible != false] | order(order asc){
+        _key, label, title, image, position, rotation, order, visible
+      }
     }`, {}, { next: { tags: ["hero"] } }
   );
 }
@@ -26,8 +30,8 @@ export async function getFeaturedGallery(): Promise<FeaturedGallery | null> {
       _id, titulo, subtitulo, active,
       "items": items[active == true]{
         _key, titulo, descripcion, mediaType, imagen, alt, focalPosition,
-        youtubeUrl, ctaText, ctaAction, whatsappMessage, targetSection, active
-      }
+        youtubeUrl, youtubeThumbnail, meta, ctaText, ctaHref, ctaAction, whatsappMessage, targetSection, active, orden
+      } | order(orden asc)
     }`,
     {},
     { next: { tags: ["featuredGallery"] } }

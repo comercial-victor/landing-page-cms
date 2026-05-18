@@ -5,20 +5,58 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import type { FeaturedGalleryItem } from "@/types";
 import { urlFor } from "@/lib/sanity";
-import { waLink } from "@/lib/utils";
 import { getYouTubeEmbed } from "@/lib/youtube";
+import { ContactIcon, getContactHref, type ContactLink } from "@/lib/social";
 
 interface FeaturedGalleryProps {
   items: FeaturedGalleryItem[];
-  whatsapp: string;
+  primaryContact: ContactLink;
   title?: string;
   subtitle?: string;
 }
 
+const fallbackItems: FeaturedGalleryItem[] = [
+  {
+    _key: "fallback-featured-1",
+    titulo: "Globos con helio",
+    descripcion: "Composiciones listas para cumpleaños, aniversarios y sorpresas especiales.",
+    mediaType: "image",
+    meta: "Favorito",
+    ctaText: "Cotizar globos",
+    ctaAction: "whatsapp",
+    active: true,
+  },
+  {
+    _key: "fallback-featured-2",
+    titulo: "Piñatas artesanales",
+    descripcion: "Diseños coloridos para fiestas infantiles y celebraciones temáticas.",
+    mediaType: "image",
+    meta: "Artesanal",
+    ctaText: "Ver catálogo",
+    ctaAction: "scroll",
+    targetSection: "catalogo",
+    active: true,
+  },
+  {
+    _key: "fallback-featured-3",
+    titulo: "Packs de fiesta",
+    descripcion: "Menaje, decoración y detalles coordinados para resolver todo en un solo pedido.",
+    mediaType: "image",
+    meta: "Pack completo",
+    ctaText: "Armar pack",
+    ctaAction: "whatsapp",
+    active: true,
+  },
+];
+
 function getItemMedia(item: FeaturedGalleryItem) {
   if (item.mediaType === "youtube") {
     const video = getYouTubeEmbed(item.youtubeUrl);
-    return video ? { type: "youtube" as const, ...video } : null;
+    if (!video) return null;
+    const thumbnailUrl = item.youtubeThumbnail
+      ? urlFor(item.youtubeThumbnail).width(1200).height(900).fit("crop").url()
+      : video.thumbnailUrl;
+    return { type: "youtube" as const, ...video, thumbnailUrl };
   }
 
   if (!item.imagen) return null;
@@ -31,9 +69,9 @@ function getItemMedia(item: FeaturedGalleryItem) {
   };
 }
 
-function getCtaLabel(item: FeaturedGalleryItem) {
+function getCtaLabel(item: FeaturedGalleryItem, contactLabel: string) {
   if (item.ctaText) return item.ctaText;
-  return item.ctaAction === "scroll" ? "Ver sección" : "Cotizar por WhatsApp";
+  return item.ctaAction === "scroll" ? "Ver sección" : `Cotizar por ${contactLabel}`;
 }
 
 function FeaturedMedia({
@@ -57,7 +95,7 @@ function FeaturedMedia({
   if (!media || failed) {
     return (
       <div className="featured-media-empty" role="img" aria-label={item.titulo}>
-        <span>{item.mediaType === "youtube" ? "Video no disponible" : "Imagen no disponible"}</span>
+        <span>{item.meta || item.titulo}</span>
       </div>
     );
   }
@@ -77,11 +115,13 @@ function FeaturedMedia({
 
     return (
       <>
-        <img
+        <Image
           src={media.thumbnailUrl}
           alt={`Portada del video ${item.titulo}`}
+          fill
+          sizes="(max-width: 640px) 82vw, 380px"
           className="featured-card-img"
-          loading={priority ? "eager" : "lazy"}
+          priority={priority}
           onError={() => setFailed(true)}
         />
         <span className="featured-play" aria-hidden="true">
@@ -112,17 +152,23 @@ function FeaturedMedia({
   );
 }
 
-export default function FeaturedGallery({ items, whatsapp, title, subtitle }: FeaturedGalleryProps) {
-  const visibleItems = useMemo(() => items.filter((item) => item.active), [items]);
+export default function FeaturedGallery({ items, primaryContact, title, subtitle }: FeaturedGalleryProps) {
+  const visibleItems = useMemo(() => {
+    const activeItems = items.filter((item) => item.active);
+    return activeItems.length ? activeItems : fallbackItems;
+  }, [items]);
   const [activeIndex, setActiveIndex] = useState(0);
   const [modalIndex, setModalIndex] = useState<number | null>(null);
   const [imageReady, setImageReady] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const modalTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const dragStartX = useRef<number | null>(null);
 
   const activeItem = visibleItems[activeIndex];
   const modalItem = modalIndex === null ? null : visibleItems[modalIndex];
   const modalMedia = modalItem ? getItemMedia(modalItem) : null;
+  const contactLabel = primaryContact.label || "WhatsApp";
 
   const goTo = useCallback((index: number) => {
     if (!visibleItems.length) return;
@@ -143,16 +189,26 @@ export default function FeaturedGallery({ items, whatsapp, title, subtitle }: Fe
   }, []);
 
   const runCta = useCallback((item: FeaturedGalleryItem) => {
+    if (item.ctaHref) {
+      window.open(item.ctaHref, "_blank", "noopener,noreferrer");
+      return;
+    }
+
     if (item.ctaAction === "scroll") {
       const id = item.targetSection;
-      if (id) document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+      const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      if (id) document.getElementById(id)?.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
       closeModal();
       return;
     }
 
     const message = item.whatsappMessage || `Hola! Quisiera información sobre ${item.titulo}.`;
-    window.open(waLink(whatsapp, message), "_blank", "noopener,noreferrer");
-  }, [closeModal, whatsapp]);
+    window.open(getContactHref(primaryContact, message), "_blank", "noopener,noreferrer");
+  }, [closeModal, primaryContact]);
+
+  useEffect(() => {
+    if (activeIndex > visibleItems.length - 1) setActiveIndex(0);
+  }, [activeIndex, visibleItems.length]);
 
   useEffect(() => {
     if (modalIndex === null) return;
@@ -178,6 +234,14 @@ export default function FeaturedGallery({ items, whatsapp, title, subtitle }: Fe
     setImageReady(modalMedia?.type !== "image");
   }, [modalItem, modalMedia?.type]);
 
+  useEffect(() => {
+    if (isPaused || modalIndex !== null || visibleItems.length < 2) return;
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduceMotion) return;
+    const id = window.setInterval(() => goTo(activeIndex + 1), 5200);
+    return () => window.clearInterval(id);
+  }, [activeIndex, goTo, isPaused, modalIndex, visibleItems.length]);
+
   if (!visibleItems.length || !activeItem) return null;
 
   return (
@@ -187,14 +251,36 @@ export default function FeaturedGallery({ items, whatsapp, title, subtitle }: Fe
           <div className="featured-gallery-head">
             <div>
               <div className="section-kicker">Galería destacada</div>
-              <h2 className="section-title">{title || "Ideas listas para celebrar"}</h2>
+              <h2 className="section-title">{title || "Novedades destacadas"}</h2>
             </div>
             <p className="section-lede">
-              {subtitle || "Explora propuestas visuales, abre el detalle y coordina por WhatsApp o salta directo a la sección que necesitas."}
+              {subtitle || "Un FocusRail con ideas protagonistas: imágenes, videos de YouTube y propuestas listas para coordinar por WhatsApp."}
             </p>
           </div>
 
-          <div className="featured-stage" aria-roledescription="carrusel">
+          <div
+            className="featured-stage focus-rail"
+            aria-roledescription="carrusel"
+            tabIndex={0}
+            onMouseEnter={() => setIsPaused(true)}
+            onMouseLeave={() => setIsPaused(false)}
+            onFocus={() => setIsPaused(true)}
+            onBlur={() => setIsPaused(false)}
+            onKeyDown={(event) => {
+              if (event.key === "ArrowLeft") goTo(activeIndex - 1);
+              if (event.key === "ArrowRight") goTo(activeIndex + 1);
+            }}
+            onPointerDown={(event) => {
+              dragStartX.current = event.clientX;
+            }}
+            onPointerUp={(event) => {
+              if (dragStartX.current === null) return;
+              const delta = event.clientX - dragStartX.current;
+              dragStartX.current = null;
+              if (Math.abs(delta) < 40) return;
+              goTo(activeIndex + (delta < 0 ? 1 : -1));
+            }}
+          >
             <button className="featured-nav featured-nav-prev" onClick={() => goTo(activeIndex - 1)} aria-label="Ver card anterior">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M15 18l-6-6 6-6" />
@@ -209,6 +295,7 @@ export default function FeaturedGallery({ items, whatsapp, title, subtitle }: Fe
                     ? offset - Math.sign(offset) * visibleItems.length
                     : offset;
                 const isActive = index === activeIndex;
+                const distance = Math.min(Math.abs(wrappedOffset), 3);
 
                 return (
                   <article
@@ -217,10 +304,12 @@ export default function FeaturedGallery({ items, whatsapp, title, subtitle }: Fe
                     style={{
                       "--gallery-x": `${wrappedOffset * 230}px`,
                       "--gallery-rotate": `${wrappedOffset * -12}deg`,
-                      "--gallery-scale": 1 - Math.min(Math.abs(wrappedOffset), 2) * 0.12,
-                      "--gallery-opacity": 1 - Math.min(Math.abs(wrappedOffset), 3) * 0.22,
-                      "--gallery-z": 10 - Math.abs(wrappedOffset),
+                      "--gallery-scale": 1 - Math.min(distance, 2) * 0.12,
+                      "--gallery-opacity": distance > 2 ? 0 : 1 - distance * 0.22,
+                      "--gallery-z": 10 - distance,
+                      "--gallery-depth": `${Math.min(distance, 2) * -90}px`,
                     } as CSSProperties}
+                    aria-hidden={distance > 2}
                   >
                     <button
                       className="featured-card-button"
@@ -238,6 +327,7 @@ export default function FeaturedGallery({ items, whatsapp, title, subtitle }: Fe
                         <FeaturedMedia item={item} mode="card" priority={index === 0} />
                       </span>
                       <span className="featured-card-copy">
+                        {item.meta && <span className="featured-card-meta">{item.meta}</span>}
                         <span className="featured-card-title">{item.titulo}</span>
                         {item.descripcion && <span className="featured-card-desc">{item.descripcion}</span>}
                       </span>
@@ -252,6 +342,23 @@ export default function FeaturedGallery({ items, whatsapp, title, subtitle }: Fe
                 <path d="M9 18l6-6-6-6" />
               </svg>
             </button>
+          </div>
+
+          <div className="focus-rail-info" aria-live="polite">
+            <div>
+              <div className="focus-rail-meta">
+                <span>{activeItem.meta || (activeItem.mediaType === "youtube" ? "Video destacado" : "Destacado")}</span>
+                <span className="focus-rail-count">{activeIndex + 1} / {visibleItems.length}</span>
+              </div>
+              <h3>{activeItem.titulo}</h3>
+              {activeItem.descripcion && <p>{activeItem.descripcion}</p>}
+            </div>
+            {(activeItem.ctaText || activeItem.ctaHref || activeItem.ctaAction) && (
+              <button className={`btn ${activeItem.ctaAction === "scroll" || primaryContact.platform !== "whatsapp" ? "btn-plum" : "btn-wa"} btn-lg`} onClick={() => runCta(activeItem)}>
+                {activeItem.ctaAction !== "scroll" && <ContactIcon platform={primaryContact.platform} size={18} />}
+                {getCtaLabel(activeItem, contactLabel)}
+              </button>
+            )}
           </div>
 
           <div className="featured-dots" role="tablist" aria-label="Cards destacadas">
@@ -303,11 +410,12 @@ export default function FeaturedGallery({ items, whatsapp, title, subtitle }: Fe
             </div>
 
             <div className="featured-modal-copy">
-              <div className="section-kicker">{modalItem.mediaType === "youtube" ? "Video destacado" : "Imagen destacada"}</div>
+              <div className="section-kicker">{modalItem.meta || (modalItem.mediaType === "youtube" ? "Video destacado" : "Imagen destacada")}</div>
               <h3 id="featured-modal-title">{modalItem.titulo}</h3>
               {modalItem.descripcion && <p>{modalItem.descripcion}</p>}
-              <button className={`btn ${modalItem.ctaAction === "scroll" ? "btn-plum" : "btn-wa"} btn-lg`} onClick={() => runCta(modalItem)}>
-                {getCtaLabel(modalItem)}
+              <button className={`btn ${modalItem.ctaAction === "scroll" || primaryContact.platform !== "whatsapp" ? "btn-plum" : "btn-wa"} btn-lg`} onClick={() => runCta(modalItem)}>
+                {modalItem.ctaAction !== "scroll" && <ContactIcon platform={primaryContact.platform} size={18} />}
+                {getCtaLabel(modalItem, contactLabel)}
               </button>
             </div>
           </div>

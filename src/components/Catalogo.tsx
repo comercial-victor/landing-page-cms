@@ -4,11 +4,12 @@ import { useState, useMemo } from "react";
 import type { ProductoFlat, Categoria } from "@/types";
 import { ProductImage, Badges, PriceDisplay } from "./ProductHelpers";
 import ProductModal from "./ProductModal";
+import type { ContactLink } from "@/lib/social";
 
 interface CatalogoProps {
   productos: ProductoFlat[];
   categorias: Categoria[];
-  brand: { whatsapp: string };
+  brand: { whatsapp: string; primaryContact?: ContactLink };
 }
 
 function ProductCard({ producto, onOpen }: { producto: ProductoFlat; onOpen: (p: ProductoFlat) => void }) {
@@ -236,6 +237,7 @@ export default function Catalogo({ productos, categorias, brand }: CatalogoProps
         producto={openProduct}
         onClose={() => setOpenProduct(null)}
         whatsapp={brand.whatsapp}
+        contact={brand.primaryContact}
       />
     </>
   );

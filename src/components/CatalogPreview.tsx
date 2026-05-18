@@ -4,14 +4,16 @@ import { useMemo, useState } from "react";
 import type { Categoria, ProductoFlat } from "@/types";
 import { ProductCard } from "./Showcase";
 import ProductModal from "./ProductModal";
+import type { ContactLink } from "@/lib/social";
 
 interface CatalogPreviewProps {
   productos: ProductoFlat[];
   categorias: Categoria[];
   whatsapp: string;
+  contact?: ContactLink;
 }
 
-export default function CatalogPreview({ productos, categorias, whatsapp }: CatalogPreviewProps) {
+export default function CatalogPreview({ productos, categorias, whatsapp, contact }: CatalogPreviewProps) {
   const [openProduct, setOpenProduct] = useState<ProductoFlat | null>(null);
 
   const featured = useMemo(() => {
@@ -61,7 +63,7 @@ export default function CatalogPreview({ productos, categorias, whatsapp }: Cata
         </div>
       </section>
 
-      <ProductModal producto={openProduct} onClose={() => setOpenProduct(null)} whatsapp={whatsapp} />
+      <ProductModal producto={openProduct} onClose={() => setOpenProduct(null)} whatsapp={whatsapp} contact={contact} />
     </>
   );
 }

@@ -1,7 +1,7 @@
 import { revalidatePath, revalidateTag } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
 
-const VALID_TAGS = ["siteSettings", "hero", "categoria", "subcategoria", "producto"];
+const VALID_TAGS = ["siteSettings", "hero", "featuredGallery", "categoria", "subcategoria", "producto"];
 
 export async function POST(request: NextRequest) {
   const secret = request.nextUrl.searchParams.get("secret");
@@ -24,6 +24,7 @@ export async function POST(request: NextRequest) {
 
     // revalidatePath como respaldo para garantizar que la home siempre se actualice
     revalidatePath("/");
+    revalidatePath("/catalog");
 
     return NextResponse.json({ revalidated: true, now: Date.now(), tag: documentType || "all" });
   } catch (error) {
