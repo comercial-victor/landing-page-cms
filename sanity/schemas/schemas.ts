@@ -1,5 +1,120 @@
 import { defineField, defineType } from "sanity";
 
+// ─── Galería destacada ─────────────────────────────────────────────
+export const featuredGallerySchema = defineType({
+  name: "featuredGallery",
+  title: "Galería destacada",
+  type: "document",
+  fields: [
+    defineField({ name: "titulo", title: "Título de la sección", type: "string", initialValue: "Ideas listas para celebrar" }),
+    defineField({ name: "subtitulo", title: "Descripción breve de la sección", type: "text", rows: 2 }),
+    defineField({ name: "active", title: "Sección activa", type: "boolean", initialValue: true }),
+    defineField({
+      name: "items",
+      title: "Cards destacadas",
+      description: "Puedes reordenarlas arrastrando cada card dentro de este listado.",
+      type: "array",
+      of: [{
+        type: "object",
+        name: "featuredGalleryItem",
+        fields: [
+          defineField({ name: "titulo", title: "Título", type: "string", validation: (R) => R.required() }),
+          defineField({ name: "descripcion", title: "Descripción breve", type: "text", rows: 3 }),
+          defineField({
+            name: "mediaType",
+            title: "Tipo de media",
+            type: "string",
+            options: {
+              layout: "radio",
+              list: [
+                { title: "Imagen", value: "image" },
+                { title: "Video de YouTube", value: "youtube" },
+              ],
+            },
+            initialValue: "image",
+            validation: (R) => R.required(),
+          }),
+          defineField({
+            name: "imagen",
+            title: "Imagen",
+            type: "image",
+            options: { hotspot: true },
+            hidden: ({ parent }) => parent?.mediaType === "youtube",
+          }),
+          defineField({
+            name: "alt",
+            title: "Texto alternativo",
+            type: "string",
+            description: "Describe la imagen para accesibilidad.",
+            hidden: ({ parent }) => parent?.mediaType === "youtube",
+          }),
+          defineField({
+            name: "focalPosition",
+            title: "Posición focal opcional",
+            type: "string",
+            description: "Ej: 50% 35%, center, 70% 50%. Se usa para ajustar el encuadre visual.",
+            hidden: ({ parent }) => parent?.mediaType === "youtube",
+          }),
+          defineField({
+            name: "youtubeUrl",
+            title: "Link de YouTube",
+            type: "url",
+            hidden: ({ parent }) => parent?.mediaType !== "youtube",
+          }),
+          defineField({ name: "ctaText", title: "Texto del botón CTA", type: "string", initialValue: "Cotizar ahora" }),
+          defineField({
+            name: "ctaAction",
+            title: "Acción del CTA",
+            type: "string",
+            options: {
+              layout: "radio",
+              list: [
+                { title: "WhatsApp", value: "whatsapp" },
+                { title: "Scroll interno", value: "scroll" },
+              ],
+            },
+            initialValue: "whatsapp",
+          }),
+          defineField({
+            name: "whatsappMessage",
+            title: "Mensaje personalizado de WhatsApp",
+            type: "text",
+            rows: 2,
+            hidden: ({ parent }) => parent?.ctaAction === "scroll",
+          }),
+          defineField({
+            name: "targetSection",
+            title: "Sección destino",
+            type: "string",
+            options: {
+              list: [
+                { title: "Novedades", value: "novedades" },
+                { title: "Catálogo", value: "catalogo" },
+                { title: "Horarios", value: "horarios" },
+                { title: "Contacto / Ubicación", value: "contacto" },
+              ],
+            },
+            hidden: ({ parent }) => parent?.ctaAction !== "scroll",
+          }),
+          defineField({ name: "active", title: "Card activa", type: "boolean", initialValue: true }),
+        ],
+        preview: {
+          select: { title: "titulo", mediaType: "mediaType", active: "active", media: "imagen" },
+          prepare: ({ title, mediaType, active, media }) => ({
+            title: title || "Card destacada",
+            subtitle: `${mediaType === "youtube" ? "Video" : "Imagen"} · ${active ? "Activo" : "Inactivo"}`,
+            media,
+          }),
+        },
+      }],
+    }),
+  ],
+  preview: {
+    select: { title: "titulo", active: "active" },
+    prepare: ({ title, active }) => ({ title: title || "Galería destacada", subtitle: active ? "Activa" : "Inactiva" }),
+  },
+});
+
 // ─── Hero ──────────────────────────────────────────────────────────
 export const heroSchema = defineType({
   name: "hero",

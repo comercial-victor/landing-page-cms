@@ -41,12 +41,17 @@ export default function Hero({ hero, brand }: HeroProps) {
 
   return (
     <section className="hero" id="top">
+      <div className="hero-glow hero-glow-a" aria-hidden="true" />
+      <div className="hero-glow hero-glow-b" aria-hidden="true" />
       <div className="container hero-grid">
-        {/* Text */}
-        <div className="fade-up">
+        <div className="hero-copy fade-up">
           <div className="eyebrow">
             <span className="eyebrow-pulse" aria-hidden="true" />
             {eyebrow}
+          </div>
+
+          <div className="hero-brand-mark" aria-label={brand.nombre}>
+            {brand.nombre}
           </div>
 
           <h1 className="display">
@@ -72,17 +77,15 @@ export default function Hero({ hero, brand }: HeroProps) {
               </svg>
               {ctaTexto}
             </a>
-            <button
+            <a
               className="btn btn-ghost btn-lg"
-              onClick={() => {
-                document.getElementById("catalogo")?.scrollIntoView({ behavior: "smooth", block: "start" });
-              }}
+              href="/catalog"
             >
               {ctaSecundario}
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M12 5v14M5 12l7 7 7-7" />
+                <path d="M7 17L17 7M7 7h10v10" />
               </svg>
-            </button>
+            </a>
           </div>
 
           {trustParsed.length > 0 && (
@@ -97,8 +100,15 @@ export default function Hero({ hero, brand }: HeroProps) {
           )}
         </div>
 
-        {/* Visual cards */}
         <div className="hero-visual fade-up" style={{ animationDelay: "0.15s" }} aria-hidden="true">
+          <div className="hero-orbit-card hero-orbit-top">
+            <span>Escolar</span>
+            <strong>Utiles y detalles</strong>
+          </div>
+          <div className="hero-orbit-card hero-orbit-bottom">
+            <span>Fiesta lista</span>
+            <strong>Packs por WhatsApp</strong>
+          </div>
           <div className="hero-visual-card hv-1">
             <div className="hv-label mono">globos · helio</div>
             <div className="hv-shape">

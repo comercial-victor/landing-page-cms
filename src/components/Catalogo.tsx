@@ -49,6 +49,7 @@ export default function Catalogo({ productos, categorias, brand }: CatalogoProps
   const [expanded, setExpanded] = useState<string | null>(null);
   const [cols, setCols] = useState<2 | 3>(3);
   const [openProduct, setOpenProduct] = useState<ProductoFlat | null>(null);
+  const [query, setQuery] = useState("");
 
   // Build subcategories map from products
   const subcatMap = useMemo(() => {
@@ -81,11 +82,20 @@ export default function Catalogo({ productos, categorias, brand }: CatalogoProps
   }, [productos]);
 
   const filtrados = useMemo(() => {
-    if (catId === "__all") return productos;
-    const byCat = productos.filter((p) => p._categoriaId === catId);
-    if (subId === "__all") return byCat;
-    return byCat.filter((p) => p._subcategoriaId === subId);
-  }, [productos, catId, subId]);
+    const normalize = (value: string) =>
+      value.toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "");
+    const term = normalize(query.trim());
+    const byTaxonomy = productos.filter((p) => {
+      if (catId !== "__all" && p._categoriaId !== catId) return false;
+      if (subId !== "__all" && p._subcategoriaId !== subId) return false;
+      return true;
+    });
+
+    if (!term) return byTaxonomy;
+    return byTaxonomy.filter((p) =>
+      normalize([p.nombre, p.descripcion, p.marca, p._categoria, p._subcategoria].filter(Boolean).join(" ")).includes(term)
+    );
+  }, [productos, catId, subId, query]);
 
   const handleCatClick = (id: string) => {
     if (id === "__all") {
@@ -179,7 +189,19 @@ export default function Catalogo({ productos, categorias, brand }: CatalogoProps
 
             {/* Products */}
             <div className="catalogo-content">
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 12 }}>
+              <div className="catalog-toolbar">
+                <label className="catalog-search">
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <circle cx="11" cy="11" r="8" />
+                    <path d="M21 21l-4.35-4.35" />
+                  </svg>
+                  <input
+                    type="search"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="Buscar productos, marcas o categorías"
+                  />
+                </label>
                 <div style={{ fontSize: 14, color: "var(--ink-soft)" }}>
                   <strong style={{ color: "var(--ink)" }}>{filtrados.length}</strong> productos
                   {catId !== "__all" && (

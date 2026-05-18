@@ -23,6 +23,9 @@ export default defineConfig({
             S.listItem()
               .title("🎉 Hero / Sección Principal")
               .child(S.documentTypeList("hero")),
+            S.listItem()
+              .title("✨ Galería destacada")
+              .child(S.document().schemaType("featuredGallery").documentId("featuredGallery")),
             S.divider(),
             S.listItem()
               .title("📂 Categorías")

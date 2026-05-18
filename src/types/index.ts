@@ -22,6 +22,34 @@ export interface Hero {
   ctaSecundarioTexto?: string; trustItems?: string[]; active: boolean;
 }
 
+// ─── Galería destacada ─────────────────────────────────────────────
+export type FeaturedGalleryMediaType = "image" | "youtube";
+export type FeaturedGalleryCtaAction = "whatsapp" | "scroll";
+
+export interface FeaturedGalleryItem {
+  _key: string;
+  titulo: string;
+  descripcion?: string;
+  mediaType: FeaturedGalleryMediaType;
+  imagen?: SanityImage;
+  alt?: string;
+  focalPosition?: string;
+  youtubeUrl?: string;
+  ctaText?: string;
+  ctaAction?: FeaturedGalleryCtaAction;
+  whatsappMessage?: string;
+  targetSection?: string;
+  active: boolean;
+}
+
+export interface FeaturedGallery {
+  _id: string;
+  titulo?: string;
+  subtitulo?: string;
+  active: boolean;
+  items: FeaturedGalleryItem[];
+}
+
 // ─── Categoria ───────────────────────────────────────────
 export interface Categoria {
   _id: string; nombre: string; slug: { current: string };

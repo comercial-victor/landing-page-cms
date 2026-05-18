@@ -2,7 +2,15 @@ import type { ProductoFlat, Presentacion } from "@/types";
 import { urlFor } from "@/lib/sanity";
 import Image from "next/image";
 
-export function ProductImage({ producto, className = "" }: { producto: ProductoFlat; className?: string }) {
+export function ProductImage({
+  producto,
+  className = "",
+  size,
+}: {
+  producto: ProductoFlat;
+  className?: string;
+  size?: number;
+}) {
   const color = producto._categoriaColor || "#D2386C";
   const colorA = color + "33";
   const colorB = color + "1a";
@@ -11,7 +19,13 @@ export function ProductImage({ producto, className = "" }: { producto: ProductoF
     return (
       <div className={`placeholder-stripes ${className}`} style={{ "--stripe-a": colorA, "--stripe-b": colorB } as React.CSSProperties}>
         <div style={{ position: "relative", width: "100%", height: "100%" }}>
-          <Image src={urlFor(producto.imagenes[0]).width(400).height(300).url()} alt={producto.nombre} fill className="object-cover" />
+          <Image
+            src={urlFor(producto.imagenes[0]).width(size ? size * 2 : 720).height(size ? size * 2 : 900).url()}
+            alt={producto.nombre}
+            fill
+            sizes={size ? `${size}px` : "(max-width: 640px) 100vw, (max-width: 1100px) 50vw, 33vw"}
+            className="object-cover"
+          />
         </div>
       </div>
     );
@@ -58,7 +72,7 @@ export function PriceDisplay({ producto, size = "card" }: { producto: ProductoFl
       <div>
         {pres.length > 1 && <span className="pcard-price-from">Desde</span>}
         <span className="pcard-price">{txt}</span>
-        <span style={{ fontSize: 11, color: "#6b7280", display: "block", marginTop: 2 }}>{defaultPres.nombre}</span>
+        <span className="pcard-price-unit">{defaultPres.nombre}</span>
       </div>
     );
   }

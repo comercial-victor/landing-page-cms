@@ -1,17 +1,20 @@
-import { getSiteSettings, getHero, getTodosLosProductos, getProductosDestacados, getCategorias } from "@/lib/queries";
+import { getSiteSettings, getHero, getFeaturedGallery, getTodosLosProductos, getProductosDestacados, getCategorias } from "@/lib/queries";
 import BackgroundDecor from "@/components/BackgroundDecor";
 import Navbar from "@/components/Navbar";
 import Hero from "@/components/Hero";
+import FeaturedGallery from "@/components/FeaturedGallery";
 import Showcase from "@/components/Showcase";
-import Catalogo from "@/components/Catalogo";
+import CatalogPreview from "@/components/CatalogPreview";
 import HorariosUbicacion from "@/components/HorariosUbicacion";
 import Footer from "@/components/Footer";
 import FabWhatsApp from "@/components/FabWhatsApp";
+import ScrollToTop from "@/components/ScrollToTop";
 
 export default async function HomePage() {
-  const [settings, hero, productos, destacados, categorias] = await Promise.all([
+  const [settings, hero, featuredGallery, productos, destacados, categorias] = await Promise.all([
     getSiteSettings(),
     getHero(),
+    getFeaturedGallery(),
     getTodosLosProductos(),
     getProductosDestacados(),
     getCategorias(),
@@ -40,11 +43,18 @@ export default async function HomePage() {
       <BackgroundDecor />
       <Navbar brand={brand} productos={productos} />
       <Hero hero={hero} brand={brand} />
+      <FeaturedGallery
+        items={featuredGallery?.items || []}
+        title={featuredGallery?.titulo}
+        subtitle={featuredGallery?.subtitulo}
+        whatsapp={brand.whatsapp}
+      />
       <Showcase productos={destacados} whatsapp={brand.whatsapp} />
-      <Catalogo productos={productos} categorias={categorias} brand={brand} />
+      <CatalogPreview productos={productos} categorias={categorias} whatsapp={brand.whatsapp} />
       <HorariosUbicacion brand={brand} />
       <Footer brand={brand} />
       <FabWhatsApp whatsapp={brand.whatsapp} />
+      <ScrollToTop />
     </>
   );
 }

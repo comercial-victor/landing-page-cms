@@ -1,5 +1,5 @@
 import { sanityClient } from "./sanity";
-import type { SiteSettings, Hero, Categoria, Producto, ProductoFlat } from "@/types";
+import type { SiteSettings, Hero, FeaturedGallery, Categoria, Producto, ProductoFlat } from "@/types";
 
 export async function getSiteSettings(): Promise<SiteSettings | null> {
   return sanityClient.fetch(
@@ -17,6 +17,20 @@ export async function getHero(): Promise<Hero | null> {
       _id, titulo, subtitulo, eyebrow, ctaPrincipalTexto, ctaPrincipalMensaje,
       ctaSecundarioTexto, trustItems, active
     }`, {}, { next: { tags: ["hero"] } }
+  );
+}
+
+export async function getFeaturedGallery(): Promise<FeaturedGallery | null> {
+  return sanityClient.fetch(
+    `*[_type == "featuredGallery" && active == true][0]{
+      _id, titulo, subtitulo, active,
+      "items": items[active == true]{
+        _key, titulo, descripcion, mediaType, imagen, alt, focalPosition,
+        youtubeUrl, ctaText, ctaAction, whatsappMessage, targetSection, active
+      }
+    }`,
+    {},
+    { next: { tags: ["featuredGallery"] } }
   );
 }
 
