@@ -5,6 +5,11 @@ export const featuredGallerySchema = defineType({
   name: "featuredGallery",
   title: "Galería destacada",
   type: "document",
+  initialValue: {
+    titulo: "Ideas listas para celebrar",
+    active: true,
+    items: [],
+  },
   fields: [
     defineField({ name: "titulo", title: "Título de la sección", type: "string", initialValue: "Ideas listas para celebrar" }),
     defineField({ name: "subtitulo", title: "Descripción breve de la sección", type: "text", rows: 2 }),
@@ -150,6 +155,22 @@ export const heroSchema = defineType({
   name: "hero",
   title: "Hero / Sección principal",
   type: "document",
+  initialValue: {
+    titulo: "Fiestas que se recuerdan, no que se improvisan.",
+    subtitulo: "Globos con helio, piñatas artesanales, menaje temático y packs todo incluido. Coordinamos tu fiesta contigo por WhatsApp.",
+    eyebrow: "Pedidos abiertos en Lima",
+    ctaPrincipalTexto: "Cotizar por WhatsApp",
+    ctaPrincipalMensaje: "Hola! Quisiera organizar una fiesta y necesito una cotización.",
+    ctaSecundarioTexto: "Ver catálogo",
+    trustItems: ["12+ años celebrando", "3.4k fiestas en Lima", "24h entrega exprés"],
+    active: true,
+    floatingCards: [
+      { _type: "heroFloatingCard", _key: "hero-card-globos", label: "globos", title: "Helio", position: "leftTop", rotation: -5, order: 1, visible: true },
+      { _type: "heroFloatingCard", _key: "hero-card-pinatas", label: "piñatas", title: "Artesanales", position: "rightTop", rotation: 4, order: 2, visible: true },
+      { _type: "heroFloatingCard", _key: "hero-card-packs", label: "packs", title: "Cumpleaños", position: "leftBottom", rotation: 3, order: 3, visible: true },
+      { _type: "heroFloatingCard", _key: "hero-card-escolar", label: "escolar", title: "Útiles", position: "rightBottom", rotation: -3, order: 4, visible: true },
+    ],
+  },
   fields: [
     defineField({ name: "titulo", title: "Título principal", type: "string", validation: (R) => R.required() }),
     defineField({ name: "subtitulo", title: "Subtítulo", type: "text", rows: 3 }),

@@ -14,7 +14,7 @@ export async function getSiteSettings(): Promise<SiteSettings | null> {
 
 export async function getHero(): Promise<Hero | null> {
   return sanityClient.fetch(
-    `*[_type == "hero" && active == true][0]{
+    `*[_type == "hero" && _id == "hero" && active != false][0]{
       _id, titulo, subtitulo, eyebrow, ctaPrincipalTexto, ctaPrincipalMensaje,
       ctaSecundarioTexto, trustItems, active,
       "floatingCards": floatingCards[visible != false] | order(order asc){
@@ -26,9 +26,9 @@ export async function getHero(): Promise<Hero | null> {
 
 export async function getFeaturedGallery(): Promise<FeaturedGallery | null> {
   return sanityClient.fetch(
-    `*[_type == "featuredGallery" && active == true][0]{
+    `*[_type == "featuredGallery" && _id == "featuredGallery" && active != false][0]{
       _id, titulo, subtitulo, active,
-      "items": items[active == true]{
+      "items": items[active != false]{
         _key, titulo, descripcion, mediaType, imagen, alt, focalPosition,
         youtubeUrl, youtubeThumbnail, meta, ctaText, ctaHref, ctaAction, whatsappMessage, targetSection, active, orden
       } | order(orden asc)

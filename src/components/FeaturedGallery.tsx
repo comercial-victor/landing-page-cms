@@ -69,6 +69,12 @@ function getItemMedia(item: FeaturedGalleryItem) {
   };
 }
 
+function getItemPreviewSrc(item: FeaturedGalleryItem) {
+  const media = getItemMedia(item);
+  if (!media) return null;
+  return media.type === "youtube" ? media.thumbnailUrl : media.src;
+}
+
 function getCtaLabel(item: FeaturedGalleryItem, contactLabel: string) {
   if (item.ctaText) return item.ctaText;
   return item.ctaAction === "scroll" ? "Ver sección" : `Cotizar por ${contactLabel}`;
@@ -166,6 +172,7 @@ export default function FeaturedGallery({ items, primaryContact, title, subtitle
   const dragStartX = useRef<number | null>(null);
 
   const activeItem = visibleItems[activeIndex];
+  const activePreviewSrc = activeItem ? getItemPreviewSrc(activeItem) : null;
   const modalItem = modalIndex === null ? null : visibleItems[modalIndex];
   const modalMedia = modalItem ? getItemMedia(modalItem) : null;
   const contactLabel = primaryContact.label || "WhatsApp";
@@ -247,6 +254,18 @@ export default function FeaturedGallery({ items, primaryContact, title, subtitle
   return (
     <>
       <section className="section featured-gallery" id="destacados">
+        {activePreviewSrc && (
+          <div className="featured-ambient" aria-hidden="true">
+            <Image
+              key={activePreviewSrc}
+              src={activePreviewSrc}
+              alt=""
+              fill
+              sizes="100vw"
+              className="featured-ambient-img"
+            />
+          </div>
+        )}
         <div className="container">
           <div className="featured-gallery-head">
             <div>
@@ -308,6 +327,9 @@ export default function FeaturedGallery({ items, primaryContact, title, subtitle
                       "--gallery-opacity": distance > 2 ? 0 : 1 - distance * 0.22,
                       "--gallery-z": 10 - distance,
                       "--gallery-depth": `${Math.min(distance, 2) * -90}px`,
+                      "--gallery-blur": `${isActive ? 0 : Math.min(distance, 2) * 5}px`,
+                      "--gallery-brightness": isActive ? 1 : 0.5,
+                      "--gallery-saturate": isActive ? 1.08 : 0.72,
                     } as CSSProperties}
                     aria-hidden={distance > 2}
                   >

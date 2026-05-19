@@ -3,16 +3,23 @@ import "./globals.css";
 import { getSiteSettings } from "@/lib/queries";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const s = await getSiteSettings();
-  return {
-    title: s?.seoTitle || s?.nombre || "Comercial Victor",
-    description: s?.seoDescription || (s?.tagline ?? "Todo para que tu fiesta brille"),
-    openGraph: {
+  try {
+    const s = await getSiteSettings();
+    return {
       title: s?.seoTitle || s?.nombre || "Comercial Victor",
-      description: s?.seoDescription || (s?.tagline ?? ""),
-      type: "website",
-    },
-  };
+      description: s?.seoDescription || (s?.tagline ?? "Todo para que tu fiesta brille"),
+      openGraph: {
+        title: s?.seoTitle || s?.nombre || "Comercial Victor",
+        description: s?.seoDescription || (s?.tagline ?? ""),
+        type: "website",
+      },
+    };
+  } catch {
+    return {
+      title: "Comercial Victor",
+      description: "Todo para que tu fiesta brille",
+    };
+  }
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

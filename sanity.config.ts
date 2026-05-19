@@ -22,9 +22,11 @@ export default defineConfig({
               .child(S.document().schemaType("siteSettings").documentId("siteSettings")),
             S.listItem()
               .title("🎉 Hero / Sección Principal")
-              .child(S.documentTypeList("hero")),
+              .id("hero")
+              .child(S.document().schemaType("hero").documentId("hero")),
             S.listItem()
               .title("✨ Galería destacada")
+              .id("featuredGallery")
               .child(S.document().schemaType("featuredGallery").documentId("featuredGallery")),
             S.divider(),
             S.listItem()
