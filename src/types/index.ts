@@ -1,6 +1,6 @@
 export interface SanityImage {
   _type: "image";
-  asset: { _ref: string; _type: "reference" };
+  asset: { _ref: string; _type: "reference"; url?: string };
   alt?: string;
 }
 
@@ -51,12 +51,14 @@ export interface HeroFloatingCard {
 // ─── Galería destacada ─────────────────────────────────────────────
 export type FeaturedGalleryMediaType = "image" | "youtube";
 export type FeaturedGalleryCtaAction = "whatsapp" | "scroll";
+export type FeaturedGalleryMediaOrientation = "vertical" | "horizontal";
 
 export interface FeaturedGalleryItem {
   _key: string;
   titulo: string;
   descripcion?: string;
   mediaType: FeaturedGalleryMediaType;
+  mediaOrientation?: FeaturedGalleryMediaOrientation;
   imagen?: SanityImage;
   alt?: string;
   focalPosition?: string;

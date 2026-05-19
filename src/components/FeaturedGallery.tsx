@@ -4,9 +4,10 @@ import Image from "next/image";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import type { FeaturedGalleryItem } from "@/types";
-import { urlFor } from "@/lib/sanity";
+import { originalImageUrl, urlFor } from "@/lib/sanity";
 import { getYouTubeEmbed } from "@/lib/youtube";
 import { ContactIcon, getContactHref, type ContactLink } from "@/lib/social";
+import ImageLightbox from "./ImageLightbox";
 
 interface FeaturedGalleryProps {
   items: FeaturedGalleryItem[];
@@ -21,6 +22,7 @@ const fallbackItems: FeaturedGalleryItem[] = [
     titulo: "Globos con helio",
     descripcion: "Composiciones listas para cumpleaños, aniversarios y sorpresas especiales.",
     mediaType: "image",
+    mediaOrientation: "vertical",
     meta: "Favorito",
     ctaText: "Cotizar globos",
     ctaAction: "whatsapp",
@@ -31,6 +33,7 @@ const fallbackItems: FeaturedGalleryItem[] = [
     titulo: "Piñatas artesanales",
     descripcion: "Diseños coloridos para fiestas infantiles y celebraciones temáticas.",
     mediaType: "image",
+    mediaOrientation: "vertical",
     meta: "Artesanal",
     ctaText: "Ver catálogo",
     ctaAction: "scroll",
@@ -42,6 +45,7 @@ const fallbackItems: FeaturedGalleryItem[] = [
     titulo: "Packs de fiesta",
     descripcion: "Menaje, decoración y detalles coordinados para resolver todo en un solo pedido.",
     mediaType: "image",
+    mediaOrientation: "vertical",
     meta: "Pack completo",
     ctaText: "Armar pack",
     ctaAction: "whatsapp",
@@ -165,6 +169,7 @@ export default function FeaturedGallery({ items, primaryContact, title, subtitle
   }, [items]);
   const [activeIndex, setActiveIndex] = useState(0);
   const [modalIndex, setModalIndex] = useState<number | null>(null);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
   const [imageReady, setImageReady] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
@@ -175,6 +180,7 @@ export default function FeaturedGallery({ items, primaryContact, title, subtitle
   const activePreviewSrc = activeItem ? getItemPreviewSrc(activeItem) : null;
   const modalItem = modalIndex === null ? null : visibleItems[modalIndex];
   const modalMedia = modalItem ? getItemMedia(modalItem) : null;
+  const modalOrientation = modalItem?.mediaOrientation || "vertical";
   const contactLabel = primaryContact.label || "WhatsApp";
 
   const goTo = useCallback((index: number) => {
@@ -191,6 +197,7 @@ export default function FeaturedGallery({ items, primaryContact, title, subtitle
   }, [visibleItems.length]);
 
   const closeModal = useCallback(() => {
+    setLightboxOpen(false);
     setModalIndex(null);
     window.setTimeout(() => modalTriggerRef.current?.focus(), 0);
   }, []);
@@ -222,6 +229,7 @@ export default function FeaturedGallery({ items, primaryContact, title, subtitle
     closeButtonRef.current?.focus();
 
     const handleKeyDown = (event: KeyboardEvent) => {
+      if (lightboxOpen) return;
       if (event.key === "Escape") closeModal();
       if (event.key === "ArrowLeft") goModal(-1);
       if (event.key === "ArrowRight") goModal(1);
@@ -234,7 +242,7 @@ export default function FeaturedGallery({ items, primaryContact, title, subtitle
       document.body.style.overflow = "";
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [closeModal, goModal, modalIndex]);
+  }, [closeModal, goModal, lightboxOpen, modalIndex]);
 
   useEffect(() => {
     if (!modalItem) return;
@@ -319,7 +327,7 @@ export default function FeaturedGallery({ items, primaryContact, title, subtitle
                 return (
                   <article
                     key={item._key}
-                    className={`featured-card ${isActive ? "active" : ""}`}
+                    className={`featured-card featured-card-${item.mediaOrientation || "vertical"} ${isActive ? "active" : ""}`}
                     style={{
                       "--gallery-x": `${wrappedOffset * 230}px`,
                       "--gallery-rotate": `${wrappedOffset * -12}deg`,
@@ -400,29 +408,33 @@ export default function FeaturedGallery({ items, primaryContact, title, subtitle
 
       {modalItem && (
         <div className="featured-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="featured-modal-title" onMouseDown={closeModal}>
-          <div className="featured-modal-shell" onMouseDown={(event) => event.stopPropagation()}>
+          <div className={`featured-modal-shell featured-modal-${modalOrientation}`} onMouseDown={(event) => event.stopPropagation()}>
             <button ref={closeButtonRef} className="featured-modal-close" onClick={closeModal} aria-label="Cerrar galería destacada">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round">
                 <path d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
 
-            {visibleItems.length > 1 && (
-              <>
-                <button className="featured-modal-arrow featured-modal-prev" onClick={() => goModal(-1)} aria-label="Ver card anterior">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M15 18l-6-6 6-6" />
-                  </svg>
-                </button>
-                <button className="featured-modal-arrow featured-modal-next" onClick={() => goModal(1)} aria-label="Ver card siguiente">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M9 18l6-6-6-6" />
-                  </svg>
-                </button>
-              </>
-            )}
-
-            <div className="featured-modal-media">
+            <div
+              className={`featured-modal-media ${modalMedia?.type === "image" ? "is-clickable" : ""}`}
+              onClick={() => {
+                if (modalMedia?.type === "image") setLightboxOpen(true);
+              }}
+            >
+              {visibleItems.length > 1 && (
+                <>
+                  <button className="featured-modal-arrow featured-modal-prev" onClick={(event) => { event.stopPropagation(); goModal(-1); }} aria-label="Ver card anterior">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M15 18l-6-6 6-6" />
+                    </svg>
+                  </button>
+                  <button className="featured-modal-arrow featured-modal-next" onClick={(event) => { event.stopPropagation(); goModal(1); }} aria-label="Ver card siguiente">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M9 18l6-6-6-6" />
+                    </svg>
+                  </button>
+                </>
+              )}
               {!imageReady && (
                 <div className="featured-loader" aria-label="Cargando imagen">
                   <span />
@@ -442,6 +454,19 @@ export default function FeaturedGallery({ items, primaryContact, title, subtitle
             </div>
           </div>
         </div>
+      )}
+
+      {lightboxOpen && modalItem && modalMedia?.type === "image" && (
+        <ImageLightbox
+          src={originalImageUrl(modalItem.imagen!)}
+          alt={modalMedia.alt}
+          onClose={() => setLightboxOpen(false)}
+          hasPrev={visibleItems.length > 1}
+          hasNext={visibleItems.length > 1}
+          onPrev={() => goModal(-1)}
+          onNext={() => goModal(1)}
+          counter={`${(modalIndex ?? 0) + 1} / ${visibleItems.length}`}
+        />
       )}
     </>
   );

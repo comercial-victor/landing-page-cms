@@ -3,10 +3,11 @@
 import { useEffect, useState } from "react";
 import type { ProductoFlat } from "@/types";
 import { waLink } from "@/lib/utils";
-import { urlFor } from "@/lib/sanity";
+import { originalImageUrl, urlFor } from "@/lib/sanity";
 import Image from "next/image";
 import { ProductImage, Badges, PriceDisplay, PresentacionesList } from "./ProductHelpers";
 import { ContactIcon, getContactHref, type ContactLink } from "@/lib/social";
+import ImageLightbox from "./ImageLightbox";
 
 interface ProductModalProps {
   producto: ProductoFlat | null;
@@ -19,6 +20,8 @@ export default function ProductModal({ producto, onClose, whatsapp, contact }: P
   const [selectedVariant, setSelectedVariant] = useState<string | null>(null);
   const [activeImgIdx, setActiveImgIdx] = useState(0);
   const [zoomed, setZoomed] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
+  const [imageLoading, setImageLoading] = useState(false);
 
   // Reset state when product changes
   useEffect(() => {
@@ -26,21 +29,44 @@ export default function ProductModal({ producto, onClose, whatsapp, contact }: P
     setSelectedVariant(null);
     setActiveImgIdx(0);
     setZoomed(false);
+    setImageLoading(true);
+    const frame = window.requestAnimationFrame(() => setIsVisible(true));
     document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = ""; };
+    return () => {
+      window.cancelAnimationFrame(frame);
+      document.body.style.overflow = "";
+      setIsVisible(false);
+    };
   }, [producto]);
 
   // Keyboard handler (separate to avoid resetting zoom)
   useEffect(() => {
     if (!producto) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") { if (zoomed) { setZoomed(false); e.stopPropagation(); } else onClose(); }
+      if (e.key === "Escape") {
+        if (zoomed) {
+          setZoomed(false);
+          e.stopPropagation();
+        } else {
+          setIsVisible(false);
+          window.setTimeout(onClose, 180);
+        }
+      }
+      if (zoomed) return;
       if (e.key === "ArrowRight") setActiveImgIdx(i => Math.min(i + 1, (producto.imagenes?.length || 1) - 1));
       if (e.key === "ArrowLeft") setActiveImgIdx(i => Math.max(i - 1, 0));
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [producto, onClose, zoomed]);
+
+  useEffect(() => {
+    if (!producto) return;
+    const visibleVariantes = producto.variantes?.filter(v => v.visible) || [];
+    const activeVariant = selectedVariant ? visibleVariantes.find(v => v._key === selectedVariant) : null;
+    const hasImage = Boolean(activeVariant?.imagen || producto.imagenes?.[activeImgIdx]);
+    setImageLoading(hasImage);
+  }, [activeImgIdx, producto, selectedVariant]);
 
   if (!producto) return null;
 
@@ -69,12 +95,31 @@ export default function ProductModal({ producto, onClose, whatsapp, contact }: P
     : allImages[activeImgIdx]
       ? urlFor(allImages[activeImgIdx]).width(800).height(600).url()
       : null;
+  const currentLightboxSrc = activeVariant?.imagen
+    ? originalImageUrl(activeVariant.imagen)
+    : allImages[activeImgIdx]
+      ? originalImageUrl(allImages[activeImgIdx])
+      : null;
+
+  const requestClose = () => {
+    setIsVisible(false);
+    window.setTimeout(onClose, 180);
+  };
+
+  const selectImage = (index: number) => {
+    if (index === activeImgIdx) return;
+    setActiveImgIdx(index);
+  };
+
+  const moveImage = (step: number) => {
+    setActiveImgIdx((index) => Math.min(Math.max(index + step, 0), (producto.imagenes?.length || 1) - 1));
+  };
 
   return (
     <>
-      <div className="modal-backdrop open" onClick={onClose} role="dialog" aria-modal="true" aria-label={producto.nombre}>
+      <div className={`modal-backdrop ${isVisible ? "open" : ""}`} onClick={requestClose} role="dialog" aria-modal="true" aria-label={producto.nombre}>
         <div className="modal" onClick={(e) => e.stopPropagation()}>
-          <button className="modal-close" onClick={onClose} aria-label="Cerrar">
+          <button className="modal-close" onClick={requestClose} aria-label="Cerrar">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12" /></svg>
           </button>
 
@@ -84,12 +129,20 @@ export default function ProductModal({ producto, onClose, whatsapp, contact }: P
               <div className="gallery-main-img">
                 {currentImgSrc ? (
                   <div style={{ position: "relative", width: "100%", height: "100%", background: "#f5f0ea" }}>
+                    {imageLoading && (
+                      <div className="modal-image-loader" aria-label="Cargando imagen">
+                        <span />
+                      </div>
+                    )}
                     <Image
+                      key={currentImgSrc}
                       src={currentImgSrc}
                       alt={activeVariant?.nombre || producto.nombre}
                       fill
                       className="modal-product-img"
                       sizes="(max-width: 768px) 100vw, 50vw"
+                      onLoad={() => setImageLoading(false)}
+                      onError={() => setImageLoading(false)}
                     />
                   </div>
                 ) : (
@@ -109,7 +162,7 @@ export default function ProductModal({ producto, onClose, whatsapp, contact }: P
             {hasMultipleImages && !activeVariant?.imagen && (
               <div style={{ display: "flex", gap: 6, padding: "8px 12px", overflowX: "auto", background: "rgba(31,27,46,0.03)" }}>
                 {allImages.map((img, i) => (
-                  <button key={i} onClick={() => setActiveImgIdx(i)}
+                  <button key={i} onClick={() => selectImage(i)}
                     style={{
                       flex: "0 0 56px", width: 56, height: 56, borderRadius: 8, overflow: "hidden",
                       border: activeImgIdx === i ? "2px solid #D2386C" : "2px solid transparent",
@@ -155,7 +208,10 @@ export default function ProductModal({ producto, onClose, whatsapp, contact }: P
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                   {visibleVariantes.map((v) => (
                     <button key={v._key}
-                      onClick={() => setSelectedVariant(selectedVariant === v._key ? null : v._key)}
+                      onClick={() => {
+                        setImageLoading(true);
+                        setSelectedVariant(selectedVariant === v._key ? null : v._key);
+                      }}
                       style={{
                         padding: "7px 16px", borderRadius: 999, fontSize: 13, cursor: "pointer",
                         border: selectedVariant === v._key ? "2px solid #D2386C" : "1.5px solid #c4bdd0",
@@ -190,51 +246,24 @@ export default function ProductModal({ producto, onClose, whatsapp, contact }: P
                 <ContactIcon platform={activeContact.platform} size={18} />
                 Pedir por {activeContact.label}
               </a>
-              <button className="btn btn-ghost" onClick={onClose}>Seguir viendo</button>
+            <button className="btn btn-ghost" onClick={requestClose}>Seguir viendo</button>
             </div>
           </div>
         </div>
       </div>
 
       {/* Lightbox / Zoom */}
-      {zoomed && currentImgSrc && (
-        <div onClick={() => setZoomed(false)}
-          style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.9)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "zoom-out", backdropFilter: "blur(8px)" }}>
-          <div style={{ position: "relative", width: "90vw", height: "85vh", maxWidth: 1200 }}>
-            <Image
-              src={currentImgSrc.replace("w=800", "w=1600").replace("h=600", "h=1200")}
-              alt={producto.nombre}
-              fill
-              style={{ objectFit: "contain" }}
-              sizes="90vw"
-              onClick={() => setZoomed(false)}
-            />
-          </div>
-          {/* Controls ON TOP of image */}
-          <button onClick={(e) => { e.stopPropagation(); setZoomed(false); }}
-            style={{ position: "absolute", top: 16, right: 16, zIndex: 10, width: 44, height: 44, borderRadius: "50%", border: "2px solid rgba(255,255,255,0.3)", background: "rgba(0,0,0,0.5)", color: "#fff", fontSize: 22, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(4px)" }}>
-            ✕
-          </button>
-          {hasMultipleImages && !activeVariant?.imagen && (
-            <>
-              {activeImgIdx > 0 && (
-                <button onClick={(e) => { e.stopPropagation(); setActiveImgIdx(i => i - 1); }}
-                  style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", zIndex: 10, width: 48, height: 48, borderRadius: "50%", border: "2px solid rgba(255,255,255,0.3)", background: "rgba(0,0,0,0.5)", color: "#fff", fontSize: 22, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(4px)" }}>
-                  ‹
-                </button>
-              )}
-              {activeImgIdx < allImages.length - 1 && (
-                <button onClick={(e) => { e.stopPropagation(); setActiveImgIdx(i => i + 1); }}
-                  style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", zIndex: 10, width: 48, height: 48, borderRadius: "50%", border: "2px solid rgba(255,255,255,0.3)", background: "rgba(0,0,0,0.5)", color: "#fff", fontSize: 22, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(4px)" }}>
-                  ›
-                </button>
-              )}
-              <div style={{ position: "absolute", bottom: 20, left: "50%", transform: "translateX(-50%)", zIndex: 10, color: "#fff", fontSize: 13, background: "rgba(0,0,0,0.6)", padding: "5px 16px", borderRadius: 999, fontWeight: 500 }}>
-                {activeImgIdx + 1} / {allImages.length}
-              </div>
-            </>
-          )}
-        </div>
+      {zoomed && currentLightboxSrc && (
+        <ImageLightbox
+          src={currentLightboxSrc}
+          alt={producto.nombre}
+          onClose={() => setZoomed(false)}
+          hasPrev={hasMultipleImages && !activeVariant?.imagen && activeImgIdx > 0}
+          hasNext={hasMultipleImages && !activeVariant?.imagen && activeImgIdx < allImages.length - 1}
+          onPrev={() => moveImage(-1)}
+          onNext={() => moveImage(1)}
+          counter={hasMultipleImages && !activeVariant?.imagen ? `${activeImgIdx + 1} / ${allImages.length}` : undefined}
+        />
       )}
     </>
   );

@@ -17,3 +17,16 @@ const builder = imageUrlBuilder(sanityClient);
 export function urlFor(source: SanityImage) {
   return builder.image(source);
 }
+
+export function originalImageUrl(source: SanityImage) {
+  if (source.asset.url) return source.asset.url;
+
+  const ref = source.asset._ref;
+  const match = /^image-(.+)-(\d+)x(\d+)-([a-z0-9]+)$/i.exec(ref);
+  if (!match) return urlFor(source).fit("max").url();
+
+  const [, id, width, height, format] = match;
+  const projectId = process.env.NEXT_PUBLIC_SANITY_PROJECT_ID!;
+  const dataset = process.env.NEXT_PUBLIC_SANITY_DATASET || "production";
+  return `https://cdn.sanity.io/images/${projectId}/${dataset}/${id}-${width}x${height}.${format}`;
+}

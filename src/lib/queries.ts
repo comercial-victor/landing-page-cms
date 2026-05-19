@@ -29,7 +29,7 @@ export async function getFeaturedGallery(): Promise<FeaturedGallery | null> {
     `*[_type == "featuredGallery" && _id == "featuredGallery" && active != false][0]{
       _id, titulo, subtitulo, active,
       "items": items[active != false]{
-        _key, titulo, descripcion, mediaType, imagen, alt, focalPosition,
+        _key, titulo, descripcion, mediaType, mediaOrientation, imagen, alt, focalPosition,
         youtubeUrl, youtubeThumbnail, meta, ctaText, ctaHref, ctaAction, whatsappMessage, targetSection, active, orden
       } | order(orden asc)
     }`,

@@ -40,6 +40,20 @@ export const featuredGallerySchema = defineType({
             validation: (R) => R.required(),
           }),
           defineField({
+            name: "mediaOrientation",
+            title: "Formato de visualización",
+            type: "string",
+            description: "Elige cómo se debe ver esta imagen o video en la web. Usa vertical para reels/historias y horizontal para videos o fotos amplias.",
+            options: {
+              layout: "radio",
+              list: [
+                { title: "Vertical / historia", value: "vertical" },
+                { title: "Horizontal / amplio", value: "horizontal" },
+              ],
+            },
+            initialValue: "vertical",
+          }),
+          defineField({
             name: "imagen",
             title: "Imagen",
             type: "image",
