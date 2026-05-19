@@ -49,9 +49,11 @@ export default function BackgroundDecor() {
     return () => document.removeEventListener("click", onClick);
   }, []);
 
+  const [mounted, setMounted] = useState(false);
   const [confetti, setConfetti] = useState<ConfettiPiece[]>([]);
 
   useEffect(() => {
+    setMounted(true);
     const palette = ["#D2386C", "#FF7A59", "#FFD23F", "#3DD6B5", "#8B5CF6", "#4BA3FF"];
     const shapes = ["pica-rect", "pica-circle", "pica-squiggle", "pica-triangle"];
     const pieces = Array.from({ length: 45 }, (_, i) => ({
@@ -75,23 +77,25 @@ export default function BackgroundDecor() {
         <div className="blob blob-3" />
         <div className="grain" />
       </div>
-      <div className="confetti-layer" aria-hidden="true">
-        {confetti.map((p) => (
-          <span
-            key={p.id}
-            className={`pica ${p.shape}`}
-            style={{
-              left: p.left + "%",
-              background: p.shape === "pica-triangle" ? "transparent" : p.color,
-              color: p.color,
-              animationDelay: p.delay + "s",
-              animationDuration: p.dur + "s",
-              transform: `scale(${p.size})`,
-              ["--drift" as string]: p.drift + "px",
-            }}
-          />
-        ))}
-      </div>
+      {mounted && (
+        <div className="confetti-layer" aria-hidden="true">
+          {confetti.map((p) => (
+            <span
+              key={p.id}
+              className={`pica ${p.shape}`}
+              style={{
+                left: p.left + "%",
+                background: p.shape === "pica-triangle" ? "transparent" : p.color,
+                color: p.color,
+                animationDelay: p.delay + "s",
+                animationDuration: p.dur + "s",
+                transform: `scale(${p.size})`,
+                ["--drift" as string]: p.drift + "px",
+              }}
+            />
+          ))}
+        </div>
+      )}
     </>
   );
 }

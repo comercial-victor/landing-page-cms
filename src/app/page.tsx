@@ -26,6 +26,7 @@ export default async function HomePage() {
   const brand = {
     nombre: settings?.nombre || "Comercial Victor",
     tagline: settings?.tagline || "Todo para que tu fiesta brille",
+    logo: settings?.logo || null,
     whatsapp: primaryContact.platform === "whatsapp" ? (primaryContact.phone || settings?.whatsapp || "51987654321") : (settings?.whatsapp || "51987654321"),
     whatsappDisplay: settings?.whatsappDisplay || primaryContact.label || "+51 987 654 321",
     socialLinks,

@@ -681,8 +681,24 @@ section.section { padding: clamp(64px, 8vw, 112px) 0; }
   box-shadow: 0 16px 42px -22px rgba(36, 27, 47, 0.42), 0 1px 0 rgba(255,255,255,0.9) inset;
   transform: translateY(-1px);
 }
-.logo-dot { width: 34px; height: 34px; transition: width 0.3s, height 0.3s, transform 0.3s; }
-.nav-float.scrolled .logo-dot { width: 25px; height: 25px; transform: rotate(18deg); }
+.nf-logo-img,
+.logo-dot {
+  width: 46px;
+  height: 46px;
+  flex: 0 0 46px;
+  transition: width 0.3s, height 0.3s, flex-basis 0.3s, transform 0.3s, box-shadow 0.3s;
+}
+.nf-logo-img {
+  box-shadow: 0 10px 24px -14px rgba(36, 27, 47, 0.45), 0 0 0 2px rgba(255,255,255,0.82);
+}
+.nav-float.scrolled .nf-logo-img,
+.nav-float.scrolled .logo-dot {
+  width: 34px;
+  height: 34px;
+  flex-basis: 34px;
+  transform: rotate(10deg);
+}
+.nav-float.scrolled .logo-dot { transform: rotate(18deg); }
 .nf-brand { font-size: clamp(18px, 1.5vw, 22px); color: var(--ink); letter-spacing: 0; transition: font-size 0.3s, color 0.3s; }
 .nav-float.scrolled .nf-brand { font-size: 16px; color: var(--plum); }
 .nf-link { font-size: 14px; font-weight: 700; padding: 10px 16px; transition: background 0.2s, color 0.2s, transform 0.2s, padding 0.3s; }
@@ -1055,6 +1071,14 @@ h1.display em { color: var(--plum); }
   .nav-float.scrolled { padding: 6px 12px; }
   .nav-float-pill, .nav-float.scrolled .nav-float-pill { height: 54px; padding: 0 8px 0 14px; }
   .nf-brand { font-size: 0; }
+  .nf-logo-img,
+  .logo-dot,
+  .nav-float.scrolled .nf-logo-img,
+  .nav-float.scrolled .logo-dot {
+    width: 38px;
+    height: 38px;
+    flex-basis: 38px;
+  }
   .nf-search { display: none; }
   .hero {
     min-height: 100svh;

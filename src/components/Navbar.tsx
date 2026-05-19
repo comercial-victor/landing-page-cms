@@ -1,13 +1,15 @@
 "use client";
 import { useState, useRef, useMemo, useEffect } from "react";
 import { usePathname } from "next/navigation";
-import type { ProductoFlat } from "@/types";
+import Image from "next/image";
+import type { ProductoFlat, SanityImage } from "@/types";
 import { fmtSoles } from "@/lib/utils";
+import { urlFor } from "@/lib/sanity";
 import { ProductImage } from "./ProductHelpers";
 import ProductModal from "./ProductModal";
 import { ContactIcon, getContactHref, type ContactLink } from "@/lib/social";
 
-interface Brand { nombre: string; whatsapp: string; whatsappDisplay?: string; primaryContact?: ContactLink; }
+interface Brand { nombre: string; whatsapp: string; whatsappDisplay?: string; primaryContact?: ContactLink; logo?: SanityImage | null; }
 
 export default function Navbar({ brand, productos }: { brand: Brand; productos: ProductoFlat[] }) {
   const [q, setQ] = useState("");
@@ -78,7 +80,18 @@ export default function Navbar({ brand, productos }: { brand: Brand; productos: 
         <div className="nav-float-pill">
           {/* Logo */}
           <button className="nf-logo" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>
-            <span className="logo-dot" aria-hidden />
+            {brand.logo ? (
+              <Image
+                src={urlFor(brand.logo).width(80).height(80).fit("crop").url()}
+                alt={brand.nombre}
+                width={32}
+                height={32}
+                className="nf-logo-img"
+                style={{ borderRadius: "50%", objectFit: "cover" }}
+              />
+            ) : (
+              <span className="logo-dot" aria-hidden />
+            )}
             <span className="nf-brand serif">{brand.nombre}</span>
           </button>
 
