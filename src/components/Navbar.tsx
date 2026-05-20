@@ -59,6 +59,7 @@ export default function Navbar({ brand, productos }: { brand: Brand; productos: 
     { href: "/#novedades", label: "Novedades" },
     { href: "/catalog", label: "Catálogo" },
     { href: "/#horarios", label: "Horarios" },
+    { href: "/#contacto", label: "Ubícanos" },
   ];
 
   const go = (href: string) => {
@@ -84,8 +85,8 @@ export default function Navbar({ brand, productos }: { brand: Brand; productos: 
               <Image
                 src={urlFor(brand.logo).width(80).height(80).fit("crop").url()}
                 alt={brand.nombre}
-                width={32}
-                height={32}
+                width={96}
+                height={96}
                 className="nf-logo-img"
                 style={{ borderRadius: "50%", objectFit: "cover" }}
               />

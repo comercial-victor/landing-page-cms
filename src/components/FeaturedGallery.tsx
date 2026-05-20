@@ -67,7 +67,7 @@ function getItemMedia(item: FeaturedGalleryItem) {
 
   return {
     type: "image" as const,
-    src: urlFor(item.imagen).width(1200).height(900).fit("crop").url(),
+    src: originalImageUrl(item.imagen),
     alt: item.alt || item.titulo,
     position: item.focalPosition || "center",
   };
@@ -143,28 +143,43 @@ function FeaturedMedia({
     );
   }
 
+  const shouldContain = item.mediaOrientation === "vertical";
+
   return (
-    <Image
-      key={media.src}
-      src={media.src}
-      alt={media.alt}
-      fill
-      sizes={mode === "modal" ? "(max-width: 900px) 92vw, 980px" : "(max-width: 640px) 78vw, 360px"}
-      className={mode === "modal" ? "featured-modal-img" : "featured-card-img"}
-      style={{ objectPosition: media.position }}
-      priority={priority}
-      onLoad={onLoaded}
-      onError={() => {
-        setFailed(true);
-        onLoaded?.();
-      }}
-    />
+    <>
+      {shouldContain && (
+        <Image
+          key={`${media.src}-fill`}
+          src={media.src}
+          alt=""
+          fill
+          sizes={mode === "modal" ? "(max-width: 900px) 92vw, 980px" : "(max-width: 640px) 78vw, 360px"}
+          className="featured-media-fill"
+          aria-hidden="true"
+        />
+      )}
+      <Image
+        key={media.src}
+        src={media.src}
+        alt={media.alt}
+        fill
+        sizes={mode === "modal" ? "(max-width: 900px) 92vw, 980px" : "(max-width: 640px) 78vw, 360px"}
+        className={`${mode === "modal" ? "featured-modal-img" : "featured-card-img"} ${shouldContain ? "featured-img-contain" : ""}`}
+        style={{ objectPosition: media.position }}
+        priority={priority}
+        onLoad={onLoaded}
+        onError={() => {
+          setFailed(true);
+          onLoaded?.();
+        }}
+      />
+    </>
   );
 }
 
 export default function FeaturedGallery({ items, primaryContact, title, subtitle }: FeaturedGalleryProps) {
   const visibleItems = useMemo(() => {
-    const activeItems = items.filter((item) => item.active);
+    const activeItems = items.filter((item) => item.active !== false);
     return activeItems.length ? activeItems : fallbackItems;
   }, [items]);
   const [activeIndex, setActiveIndex] = useState(0);

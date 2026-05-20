@@ -24,11 +24,26 @@ export default function HorariosUbicacion({ brand }: { brand: Brand }) {
   };
 
   return (
-    <section className="section">
+    <section className="section info-section" id="horarios">
       <div className="container">
+        <div className="info-section-head">
+          <div>
+            <div className="section-kicker">Visítanos</div>
+            <h2 className="section-title">Horarios y ubicación</h2>
+          </div>
+          <p className="section-lede">
+            Coordinamos pedidos por WhatsApp y te esperamos en tienda para resolver todo en un solo lugar.
+          </p>
+        </div>
         <div className="info-grid">
           {/* Horarios */}
-          <div className="info-card" id="horarios">
+          <div className="info-card info-card-schedule">
+            <div className="info-card-icon" aria-hidden="true">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="9" />
+                <path d="M12 7v5l3 2" />
+              </svg>
+            </div>
             <h3>Horarios</h3>
             <p className="info-card-lede">
               Atendemos presencial y pedidos por WhatsApp.
@@ -47,8 +62,14 @@ export default function HorariosUbicacion({ brand }: { brand: Brand }) {
           </div>
 
           {/* Ubicación */}
-          <div className="info-card" id="contacto">
-            <h3>Ubicación</h3>
+          <div className="info-card info-card-location" id="contacto">
+            <div className="info-card-icon" aria-hidden="true">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z" />
+                <circle cx="12" cy="10" r="3" />
+              </svg>
+            </div>
+            <h3>Ubícanos</h3>
             {brand.direccion && (
               <div className="addr-block">
                 <div className="addr-label">Dirección</div>
@@ -64,7 +85,7 @@ export default function HorariosUbicacion({ brand }: { brand: Brand }) {
 
             {/* Map embed or placeholder */}
             {brand.googleMapsEmbedUrl ? (
-              <div style={{ marginTop: 16, borderRadius: 14, overflow: "hidden", aspectRatio: "16/9" }}>
+              <div className="map-embed">
                 <iframe
                   src={brand.googleMapsEmbedUrl}
                   width="100%"

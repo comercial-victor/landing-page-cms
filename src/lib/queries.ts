@@ -34,7 +34,7 @@ export async function getFeaturedGallery(): Promise<FeaturedGallery | null> {
       } | order(orden asc)
     }`,
     {},
-    { next: { tags: ["featuredGallery"] } }
+    { cache: "no-store" }
   );
 }
 
