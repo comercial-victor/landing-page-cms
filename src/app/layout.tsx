@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { getSiteSettings } from "@/lib/queries";
+import logoIcon from "./logo.png";
+
+const siteIcon = typeof logoIcon === "string" ? logoIcon : logoIcon.src;
 
 export async function generateMetadata(): Promise<Metadata> {
   try {
@@ -8,6 +11,11 @@ export async function generateMetadata(): Promise<Metadata> {
     return {
       title: s?.seoTitle || s?.nombre || "Comercial Victor",
       description: s?.seoDescription || (s?.tagline ?? "Todo para que tu fiesta brille"),
+      icons: {
+        icon: [{ url: siteIcon, type: "image/png" }],
+        shortcut: [siteIcon],
+        apple: [{ url: siteIcon, type: "image/png" }],
+      },
       openGraph: {
         title: s?.seoTitle || s?.nombre || "Comercial Victor",
         description: s?.seoDescription || (s?.tagline ?? ""),
@@ -18,6 +26,11 @@ export async function generateMetadata(): Promise<Metadata> {
     return {
       title: "Comercial Victor",
       description: "Todo para que tu fiesta brille",
+      icons: {
+        icon: [{ url: siteIcon, type: "image/png" }],
+        shortcut: [siteIcon],
+        apple: [{ url: siteIcon, type: "image/png" }],
+      },
     };
   }
 }

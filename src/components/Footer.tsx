@@ -1,16 +1,21 @@
 "use client";
-import { ContactIcon, getContactHref, getPlatformColor, type ContactLink } from "@/lib/social";
+import type { CSSProperties } from "react";
+import Image from "next/image";
+import type { SanityImage } from "@/types";
+import { urlFor } from "@/lib/sanity";
+import { ContactIcon, getContactColor, getContactHref, type ContactLink } from "@/lib/social";
 
 interface Brand {
   nombre: string; whatsapp: string; whatsappDisplay?: string;
   instagramUrl?: string; facebookUrl?: string; tiktokUrl?: string;
   socialLinks?: ContactLink[];
   primaryContact?: ContactLink;
+  logo?: SanityImage | null;
 }
 
 export default function Footer({ brand }: { brand: Brand }) {
   const primary = brand.primaryContact;
-  const socials = (brand.socialLinks || []).filter((link) => link.showInFooter !== false);
+  const socials = (brand.socialLinks || []).filter((link) => link.active !== false);
 
   return (
     <footer className="footer-v2">
@@ -18,17 +23,20 @@ export default function Footer({ brand }: { brand: Brand }) {
         <div className="footer-ambient" aria-hidden="true" />
 
         <div className="container" style={{ position: "relative", zIndex: 2 }}>
-          <div className="footer-cta">
-            <h3>¿Tu fiesta es este fin de semana?</h3>
-            <p>Escríbenos ahora y te armamos una cotización en menos de una hora.</p>
-            <a className="btn btn-lg footer-cta-btn" href={primary ? getContactHref(primary, "Hola! Mi fiesta es pronto.") : "#"} target="_blank" rel="noopener noreferrer">
-              {primary ? `Conversemos por ${primary.label}` : "Conversemos"}
-            </a>
-          </div>
-
           <div className="footer-v2-grid">
             <div className="footer-v2-brand-col">
-              <div className="footer-brand serif">{brand.nombre}</div>
+              <div className="footer-brand-row">
+                {brand.logo && (
+                  <Image
+                    src={urlFor(brand.logo).width(80).height(80).fit("crop").url()}
+                    alt={brand.nombre}
+                    width={40}
+                    height={40}
+                    style={{ borderRadius: "50%", objectFit: "cover" }}
+                  />
+                )}
+                <div className="footer-brand serif footer-brand-gradient">{brand.nombre}</div>
+              </div>
               <p className="footer-v2-desc">
                 Artículos para fiesta, útiles escolares, descartables, manualidades y servicios en un solo lugar.
               </p>
@@ -43,7 +51,7 @@ export default function Footer({ brand }: { brand: Brand }) {
             <div className="footer-v2-links-col">
               <h4>Productos</h4>
               <a className="footer-link" href="/catalog">Catálogo completo</a>
-              <a className="footer-link" href="/#novedades">Novedades</a>
+              <a className="footer-link" href="/#destacados">Novedades</a>
             </div>
             <div className="footer-v2-links-col">
               <h4>Empresa</h4>
@@ -62,7 +70,7 @@ export default function Footer({ brand }: { brand: Brand }) {
                 className="footer-v2-social"
                 aria-label={s.label}
                 title={s.label}
-                style={{ "--social-color": getPlatformColor(s.platform) } as React.CSSProperties}
+                style={{ "--social-color": getContactColor(s) } as CSSProperties}
               >
                 <ContactIcon platform={s.platform} />
               </a>

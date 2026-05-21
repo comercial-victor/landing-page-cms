@@ -79,6 +79,10 @@ function getItemPreviewSrc(item: FeaturedGalleryItem) {
   return media.type === "youtube" ? media.thumbnailUrl : media.src;
 }
 
+function getItemOrientation(item: FeaturedGalleryItem) {
+  return item.mediaOrientation || (item.mediaType === "youtube" ? "horizontal" : "vertical");
+}
+
 function getCtaLabel(item: FeaturedGalleryItem, contactLabel: string) {
   if (item.ctaText) return item.ctaText;
   return item.ctaAction === "scroll" ? "Ver sección" : `Cotizar por ${contactLabel}`;
@@ -96,10 +100,12 @@ function FeaturedMedia({
   onLoaded?: () => void;
 }) {
   const [failed, setFailed] = useState(false);
+  const [thumbnailFallback, setThumbnailFallback] = useState(false);
   const media = getItemMedia(item);
 
   useEffect(() => {
     setFailed(false);
+    setThumbnailFallback(false);
   }, [item._key, mode]);
 
   if (!media || failed) {
@@ -110,7 +116,11 @@ function FeaturedMedia({
     );
   }
 
+  const orientation = getItemOrientation(item);
+
   if (media.type === "youtube") {
+    const thumbnailSrc = thumbnailFallback ? media.fallbackThumbnailUrl : media.thumbnailUrl;
+
     if (mode === "modal") {
       return (
         <iframe
@@ -126,13 +136,28 @@ function FeaturedMedia({
     return (
       <>
         <Image
-          src={media.thumbnailUrl}
+          src={thumbnailSrc}
+          alt=""
+          fill
+          sizes="(max-width: 640px) 82vw, 520px"
+          className="featured-media-fill"
+          aria-hidden="true"
+          priority={priority}
+        />
+        <Image
+          src={thumbnailSrc}
           alt={`Portada del video ${item.titulo}`}
           fill
-          sizes="(max-width: 640px) 82vw, 380px"
-          className="featured-card-img"
+          sizes="(max-width: 640px) 82vw, 520px"
+          className="featured-card-img featured-img-contain"
           priority={priority}
-          onError={() => setFailed(true)}
+          onError={() => {
+            if (!thumbnailFallback && media.fallbackThumbnailUrl) {
+              setThumbnailFallback(true);
+              return;
+            }
+            setFailed(true);
+          }}
         />
         <span className="featured-play" aria-hidden="true">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
@@ -143,28 +168,25 @@ function FeaturedMedia({
     );
   }
 
-  const shouldContain = item.mediaOrientation === "vertical";
-
   return (
     <>
-      {shouldContain && (
-        <Image
-          key={`${media.src}-fill`}
-          src={media.src}
-          alt=""
-          fill
-          sizes={mode === "modal" ? "(max-width: 900px) 92vw, 980px" : "(max-width: 640px) 78vw, 360px"}
-          className="featured-media-fill"
-          aria-hidden="true"
-        />
-      )}
+      <Image
+        key={`${media.src}-fill`}
+        src={media.src}
+        alt=""
+        fill
+        sizes={mode === "modal" ? "(max-width: 900px) 92vw, 980px" : "(max-width: 640px) 78vw, 520px"}
+        className="featured-media-fill"
+        aria-hidden="true"
+        priority={priority}
+      />
       <Image
         key={media.src}
         src={media.src}
         alt={media.alt}
         fill
-        sizes={mode === "modal" ? "(max-width: 900px) 92vw, 980px" : "(max-width: 640px) 78vw, 360px"}
-        className={`${mode === "modal" ? "featured-modal-img" : "featured-card-img"} ${shouldContain ? "featured-img-contain" : ""}`}
+        sizes={mode === "modal" ? "(max-width: 900px) 92vw, 980px" : "(max-width: 640px) 78vw, 520px"}
+        className={`${mode === "modal" ? "featured-modal-img" : "featured-card-img"} featured-img-contain featured-img-${orientation}`}
         style={{ objectPosition: media.position }}
         priority={priority}
         onLoad={onLoaded}
@@ -195,7 +217,7 @@ export default function FeaturedGallery({ items, primaryContact, title, subtitle
   const activePreviewSrc = activeItem ? getItemPreviewSrc(activeItem) : null;
   const modalItem = modalIndex === null ? null : visibleItems[modalIndex];
   const modalMedia = modalItem ? getItemMedia(modalItem) : null;
-  const modalOrientation = modalItem?.mediaOrientation || "vertical";
+  const modalOrientation = modalItem ? getItemOrientation(modalItem) : "vertical";
   const contactLabel = primaryContact.label || "WhatsApp";
 
   const goTo = useCallback((index: number) => {
@@ -226,7 +248,14 @@ export default function FeaturedGallery({ items, primaryContact, title, subtitle
     if (item.ctaAction === "scroll") {
       const id = item.targetSection;
       const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      if (id) document.getElementById(id)?.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
+      const target = id ? document.getElementById(id) : null;
+      if (target) {
+        const offset = window.innerWidth < 700 ? 78 : 96;
+        window.scrollTo({
+          top: Math.max(0, target.getBoundingClientRect().top + window.scrollY - offset),
+          behavior: reduceMotion ? "auto" : "smooth",
+        });
+      }
       closeModal();
       return;
     }
@@ -277,6 +306,7 @@ export default function FeaturedGallery({ items, primaryContact, title, subtitle
   return (
     <>
       <section className="section featured-gallery" id="destacados">
+        <span className="anchor-alias" id="novedades" aria-hidden="true" />
         {activePreviewSrc && (
           <div className="featured-ambient" aria-hidden="true">
             <Image
@@ -338,21 +368,26 @@ export default function FeaturedGallery({ items, primaryContact, title, subtitle
                     : offset;
                 const isActive = index === activeIndex;
                 const distance = Math.min(Math.abs(wrappedOffset), 3);
+                const orientation = getItemOrientation(item);
+                const isHorizontal = orientation === "horizontal";
+                const spacing = isHorizontal ? 238 : 198;
 
                 return (
                   <article
                     key={item._key}
-                    className={`featured-card featured-card-${item.mediaOrientation || "vertical"} ${isActive ? "active" : ""}`}
+                    className={`featured-card featured-card-${orientation} ${item.mediaType === "youtube" ? "featured-card-youtube" : ""} ${isActive ? "active" : ""}`}
                     style={{
-                      "--gallery-x": `${wrappedOffset * 230}px`,
-                      "--gallery-rotate": `${wrappedOffset * -12}deg`,
+                      "--gallery-x": `${wrappedOffset * spacing}px`,
+                      "--gallery-y": `${distance * 18}px`,
+                      "--gallery-rotate": `${wrappedOffset * -17}deg`,
+                      "--gallery-rotate-z": `${wrappedOffset * 7}deg`,
                       "--gallery-scale": 1 - Math.min(distance, 2) * 0.12,
                       "--gallery-opacity": distance > 2 ? 0 : 1 - distance * 0.22,
                       "--gallery-z": 10 - distance,
                       "--gallery-depth": `${Math.min(distance, 2) * -90}px`,
-                      "--gallery-blur": `${isActive ? 0 : Math.min(distance, 2) * 5}px`,
-                      "--gallery-brightness": isActive ? 1 : 0.5,
-                      "--gallery-saturate": isActive ? 1.08 : 0.72,
+                      "--gallery-blur": "0px",
+                      "--gallery-brightness": isActive ? 1 : 0.82,
+                      "--gallery-saturate": isActive ? 1.08 : 0.92,
                     } as CSSProperties}
                     aria-hidden={distance > 2}
                   >

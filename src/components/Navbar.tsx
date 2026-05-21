@@ -2,16 +2,38 @@
 import { useState, useRef, useMemo, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
+import type { CSSProperties } from "react";
 import type { ProductoFlat, SanityImage } from "@/types";
 import { fmtSoles } from "@/lib/utils";
 import { urlFor } from "@/lib/sanity";
 import { ProductImage } from "./ProductHelpers";
 import ProductModal from "./ProductModal";
-import { ContactIcon, getContactHref, type ContactLink } from "@/lib/social";
+import { ContactIcon, getContactColor, getContactHref, type ContactLink } from "@/lib/social";
 
-interface Brand { nombre: string; whatsapp: string; whatsappDisplay?: string; primaryContact?: ContactLink; logo?: SanityImage | null; }
+interface Brand {
+  nombre: string;
+  whatsapp: string;
+  whatsappDisplay?: string;
+  primaryContact?: ContactLink;
+  navbarContacts?: ContactLink[];
+  logo?: SanityImage | null;
+}
 
-export default function Navbar({ brand, productos }: { brand: Brand; productos: ProductoFlat[] }) {
+interface NavbarProps {
+  brand: Brand;
+  productos: ProductoFlat[];
+  searchMode?: "global" | "catalog";
+  catalogSearchValue?: string;
+  onCatalogSearchChange?: (value: string) => void;
+}
+
+export default function Navbar({
+  brand,
+  productos,
+  searchMode = "global",
+  catalogSearchValue = "",
+  onCatalogSearchChange,
+}: NavbarProps) {
   const [q, setQ] = useState("");
   const [focused, setFocused] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -19,6 +41,8 @@ export default function Navbar({ brand, productos }: { brand: Brand; productos: 
   const [scrolled, setScrolled] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const pathname = usePathname();
+  const isCatalogSearch = searchMode === "catalog";
+  const searchValue = isCatalogSearch ? catalogSearchValue : q;
   const primaryContact = brand.primaryContact || {
     platform: "whatsapp" as const,
     phone: brand.whatsapp,
@@ -27,6 +51,7 @@ export default function Navbar({ brand, productos }: { brand: Brand; productos: 
     showInFooter: true,
     isPrimaryCta: true,
   };
+  const navbarContacts = (brand.navbarContacts || []).filter((link) => link.active !== false);
 
   useEffect(() => {
     const fn = () => setScrolled(window.scrollY > 60);
@@ -45,6 +70,7 @@ export default function Navbar({ brand, productos }: { brand: Brand; productos: 
   };
 
   const results = useMemo(() => {
+    if (isCatalogSearch) return [];
     if (!q.trim()) return [];
     const n = normalize(q);
     const toks = n.s ? n.s.split(" ") : [];
@@ -53,20 +79,30 @@ export default function Navbar({ brand, productos }: { brand: Brand; productos: 
       if (h.s.includes(n.s) || h.c.includes(n.c)) return true;
       return toks.length > 0 && toks.every((t) => h.s.includes(t));
     }).slice(0, 8);
-  }, [q, productos]);
+  }, [isCatalogSearch, q, productos]);
 
   const links = [
-    { href: "/#novedades", label: "Novedades" },
+    { href: "/", label: "Inicio" },
+    { href: "/#destacados", label: "Novedades" },
     { href: "/catalog", label: "Catálogo" },
     { href: "/#horarios", label: "Horarios" },
     { href: "/#contacto", label: "Ubícanos" },
   ];
 
+  const scrollToHash = (hash: string) => {
+    const target = document.getElementById(hash.replace("#", ""));
+    if (!target) return;
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const offset = window.innerWidth < 700 ? 78 : 96;
+    const top = target.getBoundingClientRect().top + window.scrollY - offset;
+    window.scrollTo({ top: Math.max(0, top), behavior: reduceMotion ? "auto" : "smooth" });
+  };
+
   const go = (href: string) => {
     setMobileOpen(false);
     if (href.startsWith("/#")) {
       if (pathname === "/") {
-        document.querySelector(href.slice(1))?.scrollIntoView({ behavior: "smooth", block: "start" });
+        scrollToHash(href.slice(1));
       } else {
         window.location.href = href;
       }
@@ -80,7 +116,7 @@ export default function Navbar({ brand, productos }: { brand: Brand; productos: 
       <nav className={`nav-float ${scrolled ? "scrolled" : ""}`}>
         <div className="nav-float-pill">
           {/* Logo */}
-          <button className="nf-logo" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>
+          <button className="nf-logo" onClick={() => go("/")}>
             {brand.logo ? (
               <Image
                 src={urlFor(brand.logo).width(80).height(80).fit("crop").url()}
@@ -112,14 +148,56 @@ export default function Navbar({ brand, productos }: { brand: Brand; productos: 
           {/* Search */}
           <div className="nf-search">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <input ref={inputRef} type="text" placeholder="Buscar…" value={q} onChange={(e) => setQ(e.target.value)} onFocus={() => setFocused(true)} onBlur={() => setTimeout(() => setFocused(false), 200)} autoComplete="off" />
+            <input
+              ref={inputRef}
+              type="text"
+              placeholder={isCatalogSearch ? "Buscar" : "Buscar…"}
+              value={searchValue}
+              onChange={(e) => {
+                if (isCatalogSearch) {
+                  onCatalogSearchChange?.(e.target.value);
+                  return;
+                }
+                setQ(e.target.value);
+              }}
+              onFocus={() => {
+                setFocused(true);
+                if (isCatalogSearch) {
+                  const target = document.getElementById("catalogo");
+                  if (target && window.scrollY > 40) {
+                    const offset = window.innerWidth < 700 ? 80 : 98;
+                    window.scrollTo({
+                      top: Math.max(0, target.getBoundingClientRect().top + window.scrollY - offset),
+                      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+                    });
+                  }
+                }
+              }}
+              onBlur={() => setTimeout(() => setFocused(false), 200)}
+              autoComplete="off"
+            />
           </div>
 
-          {/* Desktop CTA */}
-          <a className={`btn ${primaryContact.platform === "whatsapp" ? "btn-wa" : "btn-plum"} nf-cta-desktop`} href={getContactHref(primaryContact, "Hola! Quisiera cotizar.")} target="_blank" rel="noopener noreferrer">
-            <ContactIcon platform={primaryContact.platform} size={16} />
-            Cotizar
-          </a>
+          {/* Desktop social CTAs */}
+          {navbarContacts.length > 0 && (
+            <div className={`nf-socials ${navbarContacts.length > 1 ? "compact" : ""}`} aria-label="Redes de contacto">
+              {navbarContacts.map((item) => (
+                <a
+                  key={item._key || `${item.platform}-${item.label}`}
+                  className="nf-social-link"
+                  href={getContactHref(item, "Hola! Quisiera cotizar.")}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={item.label}
+                  title={item.label}
+                  style={{ "--nav-social-color": getContactColor(item) } as CSSProperties}
+                >
+                  <ContactIcon platform={item.platform} size={16} />
+                  {navbarContacts.length === 1 && <span>Cotizar</span>}
+                </a>
+              ))}
+            </div>
+          )}
 
           {/* Mobile toggle */}
           <button className="nf-toggle" onClick={() => setMobileOpen(!mobileOpen)} aria-label="Menú">
@@ -128,7 +206,7 @@ export default function Navbar({ brand, productos }: { brand: Brand; productos: 
         </div>
 
         {/* Search results */}
-        {focused && results.length > 0 && (
+        {!isCatalogSearch && focused && results.length > 0 && (
           <div className="search-results nf-results">
             {results.map((p) => {
               const dp = p.presentaciones?.find((pr) => pr.esDefault && pr.visibleEnWeb && pr.precio);
@@ -157,10 +235,24 @@ export default function Navbar({ brand, productos }: { brand: Brand; productos: 
             </button>
           ))}
           <div style={{ height: 1, background: "var(--line-strong)", margin: "12px 0" }} />
-          <a className={`btn ${primaryContact.platform === "whatsapp" ? "btn-wa" : "btn-plum"} btn-lg`} style={{ width: "100%", justifyContent: "center" }} href={getContactHref(primaryContact, "Hola!")} target="_blank" rel="noopener noreferrer" onClick={() => setMobileOpen(false)}>
-            <ContactIcon platform={primaryContact.platform} size={18} />
-            Cotizar por {primaryContact.label}
-          </a>
+          {navbarContacts.length > 0 && (
+            <div className="nf-mobile-socials">
+              {navbarContacts.map((item) => (
+                <a
+                  key={item._key || `${item.platform}-${item.label}`}
+                  className="nf-mobile-social"
+                  href={getContactHref(item, "Hola!")}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => setMobileOpen(false)}
+                  style={{ "--nav-social-color": getContactColor(item) } as CSSProperties}
+                >
+                  <ContactIcon platform={item.platform} size={18} />
+                  {item.label}
+                </a>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 

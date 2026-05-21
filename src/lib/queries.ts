@@ -6,9 +6,10 @@ export async function getSiteSettings(): Promise<SiteSettings | null> {
     `*[_type == "siteSettings"][0]{
       _id, nombre, tagline, logo, whatsapp, whatsappDisplay, telefono, email,
       direccion, googleMapsUrl, googleMapsEmbedUrl, instagramUrl, facebookUrl, tiktokUrl,
-      socialLinks[]{ _key, platform, label, url, phone, active, showInFooter, isPrimaryCta },
+      socialLinks[]{ _key, platform, label, url, phone, active, showInFooter, showFloating, showInNavbar, color, isPrimaryCta },
+      storeStatus{ enabled, mode, openingTime, message, validUntil },
       horarios[]{ dia, hora, cerrado }, seoTitle, seoDescription, seoImage
-    }`, {}, { next: { tags: ["siteSettings"] } }
+    }`, {}, { cache: "no-store" }
   );
 }
 
@@ -20,7 +21,7 @@ export async function getHero(): Promise<Hero | null> {
       "floatingCards": floatingCards[visible != false] | order(order asc){
         _key, label, title, image, position, rotation, order, visible
       }
-    }`, {}, { next: { tags: ["hero"] } }
+    }`, {}, { cache: "no-store" }
   );
 }
 

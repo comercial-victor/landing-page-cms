@@ -2,6 +2,7 @@
 
 import type { Hero as HeroType } from "@/types";
 import Image from "next/image";
+import { useEffect, useRef, useState } from "react";
 import { urlFor } from "@/lib/sanity";
 import { ContactIcon, getContactHref, type ContactLink } from "@/lib/social";
 
@@ -23,6 +24,12 @@ const fallbackFloatingCards: NonNullable<HeroType["floatingCards"]> = [
 ];
 
 export default function Hero({ hero, brand }: HeroProps) {
+  const interactiveRef = useRef<HTMLDivElement>(null);
+  const rafRef = useRef<number | null>(null);
+  const currentRef = useRef({ x: 0, y: 0 });
+  const targetRef = useRef({ x: 0, y: 0 });
+  const [isSafari, setIsSafari] = useState(false);
+
   const titulo = hero?.titulo || "Fiestas que se recuerdan, no que se improvisan.";
   const subtitulo =
     hero?.subtitulo ||
@@ -58,8 +65,57 @@ export default function Hero({ hero, brand }: HeroProps) {
   const titleParts = titulo.split(",");
   const hasComma = titleParts.length > 1;
 
+  useEffect(() => {
+    setIsSafari(/^((?!chrome|android).)*safari/i.test(navigator.userAgent));
+
+    const animatePointer = () => {
+      if (interactiveRef.current) {
+        currentRef.current.x += (targetRef.current.x - currentRef.current.x) / 18;
+        currentRef.current.y += (targetRef.current.y - currentRef.current.y) / 18;
+        interactiveRef.current.style.transform = `translate3d(${Math.round(currentRef.current.x)}px, ${Math.round(currentRef.current.y)}px, 0)`;
+      }
+      rafRef.current = window.requestAnimationFrame(animatePointer);
+    };
+
+    rafRef.current = window.requestAnimationFrame(animatePointer);
+
+    return () => {
+      if (rafRef.current) window.cancelAnimationFrame(rafRef.current);
+    };
+  }, []);
+
+  const handleHeroMouseMove = (event: React.MouseEvent<HTMLElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    targetRef.current = {
+      x: event.clientX - rect.left,
+      y: event.clientY - rect.top,
+    };
+  };
+
   return (
-    <section className="hero" id="top">
+    <section className="hero" id="top" onMouseMove={handleHeroMouseMove}>
+      <svg className="hero-gradient-svg" aria-hidden="true" focusable="false">
+        <defs>
+          <filter id="heroBlurMe">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="10" result="blur" />
+            <feColorMatrix
+              in="blur"
+              mode="matrix"
+              values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 18 -8"
+              result="goo"
+            />
+            <feBlend in="SourceGraphic" in2="goo" />
+          </filter>
+        </defs>
+      </svg>
+      <div className={`hero-gradient-animation ${isSafari ? "is-safari" : ""}`} aria-hidden="true">
+        <span className="hero-gradient-orb hero-gradient-orb-1" />
+        <span className="hero-gradient-orb hero-gradient-orb-2" />
+        <span className="hero-gradient-orb hero-gradient-orb-3" />
+        <span className="hero-gradient-orb hero-gradient-orb-4" />
+        <span className="hero-gradient-orb hero-gradient-orb-5" />
+        <span ref={interactiveRef} className="hero-gradient-orb hero-gradient-pointer" />
+      </div>
       <div className="hero-glow hero-glow-a" aria-hidden="true" />
       <div className="hero-glow hero-glow-b" aria-hidden="true" />
       <div className="container hero-grid">

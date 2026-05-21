@@ -17,6 +17,9 @@ export interface SocialLink {
   phone?: string;
   active?: boolean;
   showInFooter?: boolean;
+  showFloating?: boolean;
+  showInNavbar?: boolean;
+  color?: string;
   isPrimaryCta?: boolean;
 }
 
@@ -26,7 +29,18 @@ export interface SiteSettings {
   direccion?: string; googleMapsUrl?: string; googleMapsEmbedUrl?: string;
   instagramUrl?: string; facebookUrl?: string; tiktokUrl?: string;
   socialLinks?: SocialLink[];
+  storeStatus?: StoreStatus;
   horarios?: Horario[]; seoTitle?: string; seoDescription?: string; seoImage?: SanityImage;
+}
+
+export type StoreStatusMode = "normal" | "opens_later" | "open_now" | "closed_today" | "custom";
+
+export interface StoreStatus {
+  enabled?: boolean;
+  mode?: StoreStatusMode;
+  openingTime?: string;
+  message?: string;
+  validUntil?: string;
 }
 
 // ─── Hero ────────────────────────────────────────────────

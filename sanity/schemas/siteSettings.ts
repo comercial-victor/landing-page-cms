@@ -21,7 +21,7 @@ export default defineType({
     defineField({
       name: "socialLinks",
       title: "Redes sociales y contacto",
-      description: "Fuente central para footer, CTA principal y botón flotante. Los campos antiguos de WhatsApp/redes quedan como respaldo.",
+      description: "Fuente central de redes. Todas las redes activas salen en el footer. Aquí decides cuáles aparecen en la navbar y en el botón flotante.",
       type: "array",
       of: [{
         type: "object",
@@ -48,17 +48,30 @@ export default defineType({
           defineField({ name: "phone", title: "Teléfono", type: "string", description: "Para WhatsApp. Ej: 51987654321", hidden: ({ parent }) => parent?.platform !== "whatsapp" }),
           defineField({ name: "url", title: "URL", type: "url", description: "Para Instagram, Facebook, Messenger, TikTok u otras redes." }),
           defineField({ name: "active", title: "Activa", type: "boolean", initialValue: true }),
-          defineField({ name: "showInFooter", title: "Mostrar en footer", type: "boolean", initialValue: true }),
-          defineField({ name: "isPrimaryCta", title: "Usar como contacto principal / CTA", type: "boolean", initialValue: false }),
+          defineField({ name: "showFloating", title: "Mostrar en botón flotante", type: "boolean", initialValue: false, description: "Aparece en la esquina inferior derecha. Si marcas varias, se abrirá un selector." }),
+          defineField({ name: "showInNavbar", title: "Mostrar en navbar", type: "boolean", initialValue: false, description: "Aparece arriba junto al buscador. Si hay varias, se muestran compactas." }),
+          defineField({ name: "color", title: "Color personalizado opcional", type: "string", description: "Ej: #25D366. Si lo dejas vacío se usa el color oficial aproximado de la red." }),
+          defineField({ name: "isPrimaryCta", title: "Usar como contacto principal / CTA", type: "boolean", initialValue: false, description: "Se usa para botones principales cuando no hay una red específica configurada. Solo una red puede ser CTA principal." }),
         ],
         preview: {
-          select: { platform: "platform", label: "label", active: "active", primary: "isPrimaryCta" },
-          prepare: ({ platform, label, active, primary }) => ({
+          select: { platform: "platform", label: "label", active: "active", primary: "isPrimaryCta", floating: "showFloating", navbar: "showInNavbar" },
+          prepare: ({ platform, label, active, primary, floating, navbar }) => ({
             title: label || platform || "Red social",
-            subtitle: `${primary ? "CTA principal · " : ""}${active ? "Activa" : "Inactiva"}`,
+            subtitle: `${primary ? "⭐ CTA principal · " : ""}${floating ? "Flotante · " : ""}${navbar ? "Navbar · " : ""}${active ? "Activa" : "Inactiva"}`,
           }),
         },
       }],
+      validation: (Rule) =>
+        Rule.custom((links) => {
+          if (!Array.isArray(links)) return true;
+          const primaryCount = links.filter(
+            (link) => (link as { isPrimaryCta?: boolean })?.isPrimaryCta === true
+          ).length;
+          if (primaryCount > 1) {
+            return `Solo una red social puede ser CTA principal. Actualmente hay ${primaryCount} marcadas.`;
+          }
+          return true;
+        }),
     }),
     defineField({
       name: "horarios",
@@ -73,6 +86,59 @@ export default defineType({
         ],
         preview: { select: { title: "dia", subtitle: "hora" } },
       }],
+    }),
+    defineField({
+      name: "storeStatus",
+      title: "Aviso especial de atención",
+      description: "Úsalo cuando hoy abrirán más tarde, están atendiendo diferente o quieres mostrar un aviso temporal.",
+      type: "object",
+      fields: [
+        defineField({ name: "enabled", title: "Activar aviso especial", type: "boolean", initialValue: false }),
+        defineField({
+          name: "mode",
+          title: "Estado para mostrar",
+          type: "string",
+          hidden: ({ parent }) => !parent?.enabled,
+          options: {
+            layout: "radio",
+            list: [
+              { title: "Abriremos más tarde", value: "opens_later" },
+              { title: "Estamos atendiendo", value: "open_now" },
+              { title: "Hoy atendemos diferente", value: "custom" },
+              { title: "No atenderemos hoy", value: "closed_today" },
+            ],
+          },
+          initialValue: "opens_later",
+        }),
+        defineField({
+          name: "openingTime",
+          title: "Hora estimada de apertura",
+          type: "string",
+          description: "Ej: 10:30 a.m. o 14:00. Puedes cambiarla si se atrasan.",
+          hidden: ({ parent }) => !parent?.enabled || parent?.mode !== "opens_later",
+        }),
+        defineField({
+          name: "message",
+          title: "Mensaje visible opcional",
+          type: "string",
+          description: "Ej: Abriremos pronto, estamos preparando la tienda.",
+          hidden: ({ parent }) => !parent?.enabled,
+        }),
+        defineField({
+          name: "validUntil",
+          title: "Mostrar hasta",
+          type: "datetime",
+          description: "Opcional. Si lo dejas vacío, el aviso seguirá visible hasta que lo desactives.",
+          hidden: ({ parent }) => !parent?.enabled,
+        }),
+      ],
+      preview: {
+        select: { enabled: "enabled", mode: "mode", openingTime: "openingTime" },
+        prepare: ({ enabled, mode, openingTime }) => ({
+          title: enabled ? "Aviso especial activo" : "Sin aviso especial",
+          subtitle: enabled ? `${mode || "custom"}${openingTime ? ` · ${openingTime}` : ""}` : "Se usa el horario normal",
+        }),
+      },
     }),
     defineField({ name: "seoTitle", title: "SEO: Título", type: "string" }),
     defineField({ name: "seoDescription", title: "SEO: Descripción", type: "text", rows: 3 }),

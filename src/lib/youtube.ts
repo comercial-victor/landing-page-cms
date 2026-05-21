@@ -2,6 +2,7 @@ export interface YouTubeEmbed {
   id: string;
   embedUrl: string;
   thumbnailUrl: string;
+  fallbackThumbnailUrl: string;
 }
 
 export function getYouTubeEmbed(url?: string): YouTubeEmbed | null {
@@ -27,7 +28,8 @@ export function getYouTubeEmbed(url?: string): YouTubeEmbed | null {
     return {
       id,
       embedUrl: `https://www.youtube.com/embed/${id}`,
-      thumbnailUrl: `https://img.youtube.com/vi/${id}/hqdefault.jpg`,
+      thumbnailUrl: `https://img.youtube.com/vi/${id}/maxresdefault.jpg`,
+      fallbackThumbnailUrl: `https://img.youtube.com/vi/${id}/hqdefault.jpg`,
     };
   } catch {
     return null;

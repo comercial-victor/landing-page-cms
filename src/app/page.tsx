@@ -23,6 +23,9 @@ export default async function HomePage() {
 
   const socialLinks = normalizeSocialLinks(settings);
   const primaryContact = getPrimaryContact(socialLinks, settings?.whatsapp);
+  const navbarContacts = socialLinks.filter((link) => link.showInNavbar === true);
+  const selectedFloatingContacts = socialLinks.filter((link) => link.showFloating === true);
+  const floatingContacts = selectedFloatingContacts.length ? selectedFloatingContacts : socialLinks;
   const brand = {
     nombre: settings?.nombre || "Comercial Victor",
     tagline: settings?.tagline || "Todo para que tu fiesta brille",
@@ -30,6 +33,8 @@ export default async function HomePage() {
     whatsapp: primaryContact.platform === "whatsapp" ? (primaryContact.phone || settings?.whatsapp || "51987654321") : (settings?.whatsapp || "51987654321"),
     whatsappDisplay: settings?.whatsappDisplay || primaryContact.label || "+51 987 654 321",
     socialLinks,
+    navbarContacts,
+    floatingContacts,
     primaryContact,
     direccion: settings?.direccion || "Miraflores, Lima",
     horarios: settings?.horarios || [
@@ -39,6 +44,7 @@ export default async function HomePage() {
     ],
     googleMapsUrl: settings?.googleMapsUrl,
     googleMapsEmbedUrl: settings?.googleMapsEmbedUrl,
+    storeStatus: settings?.storeStatus,
     instagramUrl: settings?.instagramUrl,
     facebookUrl: settings?.facebookUrl,
     tiktokUrl: settings?.tiktokUrl,
@@ -59,7 +65,7 @@ export default async function HomePage() {
       <CatalogPreview productos={productos} categorias={categorias} whatsapp={brand.whatsapp} contact={brand.primaryContact} />
       <HorariosUbicacion brand={brand} />
       <Footer brand={brand} />
-      <FabWhatsApp contact={brand.primaryContact} />
+      <FabWhatsApp contacts={brand.floatingContacts} />
       <ScrollToTop />
     </>
   );

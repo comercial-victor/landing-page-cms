@@ -18,6 +18,7 @@ const s: Record<string, React.CSSProperties> = {
   btnPrimary: { background: "#D2386C", color: "#fff" },
   btnSecondary: { background: "#f3f4f6", color: "#374151", border: "1px solid #d1d5db" },
   btnSuccess: { background: "#059669", color: "#fff" },
+  btnExport: { background: "#111827", color: "#fff" },
   btnDisabled: { opacity: 0.5, cursor: "not-allowed" },
   statsGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 16, marginBottom: 20 },
   statCard: { background: "#f9fafb", border: "1px solid #e5e7eb", borderRadius: 10, padding: "16px 20px", textAlign: "center" as const },
@@ -42,6 +43,7 @@ export function ImportCatalogTool() {
   const [catalog, setCatalog] = useState<NormalizedCatalog | null>(null);
   const [progress, setProgress] = useState<ImportProgress | null>(null);
   const [summary, setSummary] = useState<ImportSummary | null>(null);
+  const [exporting, setExporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFile = useCallback(async (f: File) => {
@@ -95,6 +97,111 @@ export function ImportCatalogTool() {
     setSummary(null);
   };
 
+  const handleExportCurrentCatalog = async () => {
+    setExporting(true);
+    setParseError(null);
+    try {
+      const XLSX = await import("xlsx");
+      const data = await client.fetch(`{
+        "categorias": *[_type == "categoria"] | order(orden asc){
+          _id, idExcel, nombre, orden, descripcion, activo
+        },
+        "subcategorias": *[_type == "subcategoria"] | order(orden asc){
+          _id, idExcel, nombre, orden, activo, categoria->{_id, idExcel, nombre}
+        },
+        "productos": *[_type == "producto"] | order(orden asc){
+          _id, idExcel, nombre, descripcion, marca, tags, visible, manejaStock,
+          permiteVentaFraccionada, unidadBase, medidas, observaciones,
+          subcategoria->{_id, idExcel, nombre},
+          variantes[]{ _key, idExcel, nombre, color, tamano, otrosAtributos, stock, visible },
+          presentaciones[]{ _key, idExcel, nombre, factorConversion, precio, visibleEnWeb, esDefault }
+        }
+      }`);
+
+      const categoriasRows = [
+        ...(data.categorias || []).map((cat: any) => ({
+          id_categoria: cat.idExcel || cat._id.replace(/^cat-/, ""),
+          nombre: cat.nombre || "",
+          id_padre: "",
+          orden: cat.orden ?? "",
+          descripcion: cat.descripcion || "",
+          activo: cat.activo !== false ? "si" : "no",
+        })),
+        ...(data.subcategorias || []).map((sub: any) => ({
+          id_categoria: sub.idExcel || sub._id.replace(/^subcat-/, ""),
+          nombre: sub.nombre || "",
+          id_padre: sub.categoria?.idExcel || sub.categoria?._id?.replace(/^cat-/, "") || "",
+          orden: sub.orden ?? "",
+          descripcion: "",
+          activo: sub.activo !== false ? "si" : "no",
+        })),
+      ];
+
+      const productosRows = (data.productos || []).map((producto: any) => ({
+        id_producto: producto.idExcel || producto._id.replace(/^prod-/, ""),
+        nombre: producto.nombre || "",
+        descripcion: producto.descripcion || "",
+        categorias: producto.subcategoria?.idExcel || producto.subcategoria?._id?.replace(/^subcat-/, "") || "",
+        marca: producto.marca || "",
+        tags: Array.isArray(producto.tags) ? producto.tags.join(", ") : "",
+        visible: producto.visible !== false ? "si" : "no",
+        maneja_stock: producto.manejaStock !== false ? "si" : "no",
+        permite_venta_fraccionada: producto.permiteVentaFraccionada ? "si" : "no",
+        unidad_base: producto.unidadBase || "unidad",
+        medidas: producto.medidas || "",
+        observaciones: producto.observaciones || "",
+      }));
+
+      const variantesRows = (data.productos || []).flatMap((producto: any) =>
+        (producto.variantes || []).map((variante: any) => ({
+          id_variante: variante.idExcel || variante._key || "",
+          id_producto: producto.idExcel || producto._id.replace(/^prod-/, ""),
+          nombre_producto: producto.nombre || "",
+          nombre_variante: variante.nombre || "",
+          color: variante.color || "",
+          "tamaño_medida": variante.tamano || "",
+          otros_atributos: variante.otrosAtributos || "",
+          stock_actual: variante.stock ?? "",
+          imagen_archivo: "",
+          visible: variante.visible !== false ? "si" : "no",
+        })),
+      );
+
+      const presentacionesRows = (data.productos || []).flatMap((producto: any) =>
+        (producto.presentaciones || []).map((presentacion: any) => ({
+          id_presentacion: presentacion.idExcel || presentacion._key || "",
+          id_producto: producto.idExcel || producto._id.replace(/^prod-/, ""),
+          nombre_producto: producto.nombre || "",
+          nombre_presentacion: presentacion.nombre || "",
+          factor_conversion: presentacion.factorConversion ?? 1,
+          precio: presentacion.precio ?? "",
+          variantes_aplicables: "",
+          visible_en_web: presentacion.visibleEnWeb !== false ? "si" : "no",
+          es_default: presentacion.esDefault ? "si" : "no",
+        })),
+      );
+
+      const uniqueTags = Array.from(
+        new Set((data.productos || []).flatMap((producto: any) => producto.tags || [])),
+      ).sort();
+      const tagsRows = uniqueTags.map((tag) => ({ nombre_tag: tag, descripcion: "" }));
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(categoriasRows), "Categorias");
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(productosRows), "Productos");
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(variantesRows), "Variantes");
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(presentacionesRows), "Presentaciones");
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(tagsRows), "Tags");
+
+      const stamp = new Date().toISOString().slice(0, 10);
+      XLSX.writeFile(wb, `catalogo-comercial-victor-${stamp}.xlsx`);
+    } catch (err) {
+      setParseError(err instanceof Error ? err.message : "No se pudo exportar el catálogo actual");
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const totalVariantes = catalog?.productos.reduce((sum, p) => sum + p.variantes.length, 0) || 0;
   const totalPresentaciones = catalog?.productos.reduce((sum, p) => sum + p.presentaciones.length, 0) || 0;
   const progressPct = progress ? Math.round((progress.current / Math.max(progress.total, 1)) * 100) : 0;
@@ -104,6 +211,20 @@ export function ImportCatalogTool() {
       <div style={s.header}>
         <h1 style={s.title}>📦 Importar catálogo</h1>
         <p style={s.subtitle}>Importa el Excel de Comercial Victor con las hojas: Categorías, Productos, Variantes, Presentaciones y Tags.</p>
+      </div>
+
+      <div style={s.card}>
+        <p style={s.cardTitle}>Exportar catálogo actual</p>
+        <p style={{ margin: "0 0 16px", color: "#6b7280", fontSize: 14 }}>
+          Descarga un Excel generado desde los productos, categorías, variantes y precios que están ahora mismo en Sanity.
+        </p>
+        <button
+          style={{ ...s.btn, ...s.btnExport, ...(exporting ? s.btnDisabled : {}) }}
+          onClick={handleExportCurrentCatalog}
+          disabled={exporting}
+        >
+          {exporting ? "⏳ Generando Excel..." : "⬇️ Descargar Excel actualizado"}
+        </button>
       </div>
 
       {step === "upload" && (

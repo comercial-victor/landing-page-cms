@@ -43,15 +43,15 @@ export const featuredGallerySchema = defineType({
             name: "mediaOrientation",
             title: "Formato de visualización",
             type: "string",
-            description: "Elige cómo se debe ver esta imagen o video en la web. Usa vertical para reels/historias y horizontal para videos o fotos amplias.",
+            description: "Elige cómo se verá la card. Para videos normales de YouTube suele convenir Horizontal. Para historias, reels o fotos altas usa Vertical.",
             options: {
               layout: "radio",
               list: [
-                { title: "Vertical / historia", value: "vertical" },
-                { title: "Horizontal / amplio", value: "horizontal" },
+                { title: "Vertical / historia o reel", value: "vertical" },
+                { title: "Horizontal / video amplio", value: "horizontal" },
               ],
             },
-            initialValue: "vertical",
+            initialValue: "horizontal",
           }),
           defineField({
             name: "imagen",
@@ -136,7 +136,7 @@ export const featuredGallerySchema = defineType({
             type: "string",
             options: {
               list: [
-                { title: "Novedades", value: "novedades" },
+                { title: "Novedades", value: "destacados" },
                 { title: "Catálogo", value: "catalogo" },
                 { title: "Horarios", value: "horarios" },
                 { title: "Contacto / Ubicación", value: "contacto" },

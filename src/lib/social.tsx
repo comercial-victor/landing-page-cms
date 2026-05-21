@@ -28,6 +28,10 @@ export function getPlatformColor(platform: SocialPlatform) {
   return platformColors[platform] || platformColors.other;
 }
 
+export function getContactColor(contact: Pick<ContactLink, "platform" | "color">) {
+  return contact.color || getPlatformColor(contact.platform);
+}
+
 export function normalizeSocialLinks(settings?: Partial<SiteSettings> | null): ContactLink[] {
   const configured = (settings?.socialLinks || [])
     .filter((link) => link?.active !== false)
@@ -47,6 +51,8 @@ export function normalizeSocialLinks(settings?: Partial<SiteSettings> | null): C
       label: settings.whatsappDisplay || "WhatsApp",
       active: true,
       showInFooter: true,
+      showFloating: true,
+      showInNavbar: true,
       isPrimaryCta: true,
     });
   }

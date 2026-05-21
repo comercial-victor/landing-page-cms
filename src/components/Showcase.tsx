@@ -55,7 +55,7 @@ export default function Showcase({ productos, whatsapp = "51987654321", contact 
 
   return (
     <>
-      <section className="section" id="novedades">
+      <section className="section" id="productos-destacados">
         <div className="container">
           <div className="section-head">
             <div>

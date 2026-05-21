@@ -91,9 +91,9 @@ export function InteractiveViewTool() {
     <div style={{ padding: "20px 28px", fontFamily: "'Outfit',sans-serif", background: C.bg, minHeight: "100vh" }}>
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 12 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: C.plum, margin: 0 }}>👁️ Editor interactivo</h1>
+        <h1 style={{ fontSize: 26, fontWeight: 700, color: C.plum, margin: 0 }}>👁️ Editor interactivo</h1>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <span style={{ fontSize: 12, color: C.inkSoft }}>{vis} visibles · {prods.length - vis} ocultos</span>
+          <span style={{ fontSize: 14, color: C.inkSoft }}>{vis} visibles · {prods.length - vis} ocultos</span>
           <button onClick={fetchData} style={btnStyle("secondary")}>🔄 Refrescar</button>
         </div>
       </div>
@@ -101,9 +101,9 @@ export function InteractiveViewTool() {
       {/* Search + filter */}
       <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar por nombre, ID, marca..."
-          style={{ flex: 1, minWidth: 220, height: 38, padding: "0 14px", border: `1px solid ${C.line}`, borderRadius: 999, fontSize: 13, outline: "none", fontFamily: "inherit", background: C.white }} />
+          style={{ flex: 1, minWidth: 220, height: 42, padding: "0 14px", border: `1px solid ${C.line}`, borderRadius: 999, fontSize: 15, outline: "none", fontFamily: "inherit", background: C.white }} />
         <select value={catFilter} onChange={e => setCatFilter(e.target.value)}
-          style={{ height: 38, padding: "0 12px", border: `1px solid ${C.line}`, borderRadius: 10, fontSize: 13, fontFamily: "inherit", background: C.white, cursor: "pointer" }}>
+          style={{ height: 42, padding: "0 12px", border: `1px solid ${C.line}`, borderRadius: 10, fontSize: 15, fontFamily: "inherit", background: C.white, cursor: "pointer" }}>
           <option value="__all">Todas las categorías ({prods.length})</option>
           {cats.map(c => <option key={c._id} value={c._id}>{c.nombre} ({prods.filter(p => p.subcategoria?.categoria?._id === c._id).length})</option>)}
         </select>
@@ -136,15 +136,15 @@ function MiniCard({ prod: p, onEdit, client, onUpdate }: { prod: SProd; onEdit: 
     <div style={{ background: C.white, borderRadius: 14, border: `1px solid ${p.visible ? C.line : "#fca5a5"}`, opacity: p.visible ? 1 : 0.6, display: "flex", gap: 0 }}>
       {/* Left: info */}
       <div style={{ flex: 1, padding: "12px 14px", minWidth: 0 }}>
-        <div style={{ fontSize: 10, color: C.inkSoft, textTransform: "uppercase", letterSpacing: "0.06em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+        <div style={{ fontSize: 14, color: C.inkSoft, textTransform: "uppercase", letterSpacing: "0.06em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
           {p.subcategoria?.categoria?.nombre} › {p.subcategoria?.nombre}
         </div>
-        <div style={{ fontSize: 14, fontWeight: 600, color: C.ink, lineHeight: 1.3, marginTop: 3, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{p.nombre}</div>
-        {p.idExcel && <span style={{ fontSize: 9, color: "#9ca3af", fontFamily: "monospace" }}>{p.idExcel}</span>}
-        {p.marca && p.marca !== "Genérico" && <span style={{ fontSize: 10, color: C.plum, marginLeft: 6 }}>{p.marca}</span>}
+        <div style={{ fontSize: 16, fontWeight: 600, color: C.ink, lineHeight: 1.3, marginTop: 3, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{p.nombre}</div>
+        {p.idExcel && <span style={{ fontSize: 15, color: "#6b7280", fontFamily: "monospace" }}>{p.idExcel}</span>}
+        {p.marca && p.marca !== "Genérico" && <span style={{ fontSize: 14, color: C.plum, marginLeft: 6 }}>{p.marca}</span>}
         <div style={{ display: "flex", gap: 4, marginTop: 6, flexWrap: "wrap" }}>
-          <span style={{ fontSize: 11, color: C.inkSoft }}>{p.variantes?.length || 0} var · {p.presentaciones?.length || 0} pres</span>
-          {p.imagenes && p.imagenes.length > 0 && <span style={{ fontSize: 11, color: C.green }}>📷 {p.imagenes.length}</span>}
+          <span style={{ fontSize: 14, color: C.inkSoft }}>{p.variantes?.length || 0} var · {p.presentaciones?.length || 0} pres</span>
+          {p.imagenes && p.imagenes.length > 0 && <span style={{ fontSize: 14, color: C.green }}>📷 {p.imagenes.length}</span>}
         </div>
       </div>
       {/* Right: actions */}
@@ -153,7 +153,7 @@ function MiniCard({ prod: p, onEdit, client, onUpdate }: { prod: SProd; onEdit: 
           <MiniToggle on={!!p.visible} label={p.visible ? "👁️" : "🚫"} onClick={() => toggle("visible")} disabled={saving} title={p.visible ? "Ocultar" : "Mostrar"} />
           <MiniToggle on={!!p.destacado} label={p.destacado ? "⭐" : "☆"} onClick={() => toggle("destacado")} disabled={saving} title={p.destacado ? "Quitar destacado" : "Destacar"} />
         </div>
-        <button onClick={onEdit} style={{ ...btnStyle("primary"), height: 28, fontSize: 11, padding: "0 12px" }}>✏️ Editar</button>
+        <button onClick={onEdit} style={{ ...btnStyle("primary"), height: 34, fontSize: 14, padding: "0 12px" }}>✏️ Editar</button>
       </div>
     </div>
   );
@@ -162,7 +162,7 @@ function MiniCard({ prod: p, onEdit, client, onUpdate }: { prod: SProd; onEdit: 
 function MiniToggle({ on, label, onClick, disabled, title }: { on: boolean; label: string; onClick: () => void; disabled: boolean; title: string }) {
   return (
     <button onClick={onClick} disabled={disabled} title={title}
-      style={{ width: 28, height: 28, borderRadius: 8, border: `1px solid ${on ? C.green : "#d1d5db"}`, background: on ? "#f0fdf4" : "#f9fafb", cursor: "pointer", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center" }}>
+      style={{ width: 28, height: 34, borderRadius: 8, border: `1px solid ${on ? C.green : "#d1d5db"}`, background: on ? "#f0fdf4" : "#f9fafb", cursor: "pointer", fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center" }}>
       {label}
     </button>
   );
@@ -315,7 +315,7 @@ const changed = (field: string) => {
   const tabBtnStyle = (t: string) => ({
     padding: "8px 16px", border: "none", borderBottom: tab === t ? `2px solid ${C.plum}` : "2px solid transparent",
     background: "transparent", color: tab === t ? C.plum : C.inkSoft, fontWeight: tab === t ? 600 : 400,
-    cursor: "pointer", fontSize: 13, fontFamily: "inherit",
+    cursor: "pointer", fontSize: 15, fontFamily: "inherit",
   });
 
   const fieldBg = (field: string) => changed(field) ? C.yellowBg : C.white;
@@ -330,8 +330,8 @@ const changed = (field: string) => {
         {/* Header */}
         <div style={{ padding: "16px 20px", borderBottom: `1px solid ${C.line}`, display: "flex", justifyContent: "space-between", alignItems: "center", background: C.white, position: "sticky", top: 0, zIndex: 10 }}>
           <div>
-            <div style={{ fontSize: 10, color: C.inkSoft, fontFamily: "monospace" }}>{draft.idExcel || draft._id}</div>
-            <div style={{ fontSize: 16, fontWeight: 700, color: C.ink }}>{draft.nombre || "Sin nombre"}</div>
+            <div style={{ fontSize: 14, color: C.inkSoft, fontFamily: "monospace" }}>{draft.idExcel || draft._id}</div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: C.ink }}>{draft.nombre || "Sin nombre"}</div>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             {isModified && <button onClick={() => setDraft(JSON.parse(original))} style={btnStyle("secondary")}>↩️ Deshacer</button>}
@@ -345,7 +345,7 @@ const changed = (field: string) => {
 
         {/* Modified banner */}
         {isModified && (
-          <div style={{ padding: "8px 20px", background: C.yellowBg, borderBottom: `1px solid ${C.yellowBorder}`, fontSize: 12, color: C.orange, display: "flex", alignItems: "center", gap: 6 }}>
+          <div style={{ padding: "8px 20px", background: C.yellowBg, borderBottom: `1px solid ${C.yellowBorder}`, fontSize: 14, color: C.orange, display: "flex", alignItems: "center", gap: 6 }}>
             ⚠️ Hay cambios sin guardar. Los campos modificados aparecen en <span style={{ background: C.yellowBg, border: `1px solid ${C.yellowBorder}`, borderRadius: 4, padding: "1px 6px" }}>amarillo</span>.
           </div>
         )}
@@ -408,24 +408,24 @@ const changed = (field: string) => {
                   {/* Current tags */}
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
                     {(draft.tags || []).map(t => (
-                      <span key={t} style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "3px 10px", background: "rgba(210,56,108,0.08)", color: C.plum, borderRadius: 999, fontSize: 12 }}>
+                      <span key={t} style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "3px 10px", background: "rgba(210,56,108,0.08)", color: C.plum, borderRadius: 999, fontSize: 14 }}>
                         {t} <button onClick={() => removeTag(t)} style={{ background: "none", border: "none", cursor: "pointer", color: C.red, fontSize: 14, padding: 0, lineHeight: 1 }}>×</button>
                       </span>
                     ))}
-                    {(!draft.tags || draft.tags.length === 0) && <span style={{ fontSize: 12, color: "#9ca3af" }}>Sin tags</span>}
+                    {(!draft.tags || draft.tags.length === 0) && <span style={{ fontSize: 14, color: "#6b7280" }}>Sin tags</span>}
                   </div>
                   {/* Add tag */}
                   <div style={{ display: "flex", gap: 6 }}>
                     <input value={newTag} onChange={e => setNewTag(e.target.value)} placeholder="Nuevo tag..."
                       onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addTag(newTag); } }}
-                      style={{ ...inputStyle(C.white, "#d1d5db"), flex: 1, height: 30, fontSize: 12 }} />
-                    <button onClick={() => addTag(newTag)} style={{ ...btnStyle("primary"), height: 30, fontSize: 11, padding: "0 10px" }}>+ Agregar</button>
+                      style={{ ...inputStyle(C.white, "#d1d5db"), flex: 1, height: 36, fontSize: 14 }} />
+                    <button onClick={() => addTag(newTag)} style={{ ...btnStyle("primary"), height: 36, fontSize: 14, padding: "0 10px" }}>+ Agregar</button>
                   </div>
                   {/* Suggestions */}
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 6 }}>
                     {allTags.filter(t => !(draft.tags || []).includes(t)).slice(0, 12).map(t => (
                       <button key={t} onClick={() => addTag(t)}
-                        style={{ padding: "2px 8px", background: "#f3f4f6", border: "1px solid #e5e7eb", borderRadius: 999, fontSize: 10, cursor: "pointer", color: C.inkSoft, fontFamily: "inherit" }}>
+                        style={{ padding: "2px 8px", background: "#f3f4f6", border: "1px solid #e5e7eb", borderRadius: 999, fontSize: 14, cursor: "pointer", color: C.inkSoft, fontFamily: "inherit" }}>
                         + {t}
                       </button>
                     ))}
@@ -454,7 +454,7 @@ const changed = (field: string) => {
           {tab === "variantes" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ fontSize: 13, color: C.inkSoft }}>{draft.variantes?.length || 0} variantes</span>
+                <span style={{ fontSize: 15, color: C.inkSoft }}>{draft.variantes?.length || 0} variantes</span>
                 <button onClick={addVariante} style={btnStyle("primary")}>+ Agregar variante</button>
               </div>
               {(draft.variantes || []).map((v, i) => {
@@ -463,10 +463,10 @@ const changed = (field: string) => {
                 return (
                   <div key={v._key} style={{ background: varChanged ? C.yellowBg : C.white, border: `1px solid ${varChanged ? C.yellowBorder : "#e5e7eb"}`, borderRadius: 12, padding: 14 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                      <span style={{ fontSize: 12, fontWeight: 600, color: C.ink }}>Variante {i + 1} {varChanged && <span style={{ color: C.orange }}>●</span>}</span>
+                      <span style={{ fontSize: 16, fontWeight: 600, color: C.ink }}>Variante {i + 1} {varChanged && <span style={{ color: C.orange }}>●</span>}</span>
                       <div style={{ display: "flex", gap: 4 }}>
                         <MiniToggle on={v.visible !== false} label={v.visible !== false ? "👁️" : "🚫"} onClick={() => updateVar(v._key, "visible", !v.visible)} disabled={false} title="Visibilidad" />
-                        <button onClick={() => removeVar(v._key)} style={{ ...btnStyle("secondary"), height: 28, fontSize: 11, color: C.red }}>🗑️</button>
+                        <button onClick={() => removeVar(v._key)} style={{ ...btnStyle("secondary"), height: 34, fontSize: 14, color: C.red }}>🗑️</button>
                       </div>
                     </div>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
@@ -482,7 +482,7 @@ const changed = (field: string) => {
                 );
               })}
               {(!draft.variantes || draft.variantes.length === 0) && (
-                <div style={{ textAlign: "center", padding: 32, color: C.inkSoft, fontSize: 13, background: C.white, borderRadius: 12, border: `1px dashed ${C.line}` }}>
+                <div style={{ textAlign: "center", padding: 32, color: C.inkSoft, fontSize: 15, background: C.white, borderRadius: 12, border: `1px dashed ${C.line}` }}>
                   Sin variantes. Si el producto tiene colores o tamaños, agrégalos aquí.
                 </div>
               )}
@@ -493,7 +493,7 @@ const changed = (field: string) => {
           {tab === "presentaciones" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ fontSize: 13, color: C.inkSoft }}>{draft.presentaciones?.length || 0} presentaciones</span>
+                <span style={{ fontSize: 15, color: C.inkSoft }}>{draft.presentaciones?.length || 0} presentaciones</span>
                 <button onClick={addPres} style={btnStyle("primary")}>+ Agregar presentación</button>
               </div>
               {(draft.presentaciones || []).map((p, i) => {
@@ -502,16 +502,16 @@ const changed = (field: string) => {
                 return (
                   <div key={p._key} style={{ background: presChanged ? C.yellowBg : C.white, border: `1px solid ${presChanged ? C.yellowBorder : "#e5e7eb"}`, borderRadius: 12, padding: 14 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                      <span style={{ fontSize: 12, fontWeight: 600, color: C.ink }}>
+                      <span style={{ fontSize: 16, fontWeight: 600, color: C.ink }}>
                         Presentación {i + 1} {p.esDefault && <span style={{ color: C.plum }}>★ Principal</span>} {presChanged && <span style={{ color: C.orange }}>●</span>}
                       </span>
                       <div style={{ display: "flex", gap: 4 }}>
                         <button onClick={() => {
                           // Set this as default, unset others
                           setDraft(d => ({ ...d, presentaciones: (d.presentaciones || []).map(pp => ({ ...pp, esDefault: pp._key === p._key })) }));
-                        }} style={{ ...btnStyle("secondary"), height: 28, fontSize: 10 }}>{p.esDefault ? "★" : "☆"}</button>
+                        }} style={{ ...btnStyle("secondary"), height: 34, fontSize: 14 }}>{p.esDefault ? "★" : "☆"}</button>
                         <MiniToggle on={p.visibleEnWeb !== false} label={p.visibleEnWeb !== false ? "👁️" : "🚫"} onClick={() => updatePres(p._key, "visibleEnWeb", !p.visibleEnWeb)} disabled={false} title="Visible" />
-                        <button onClick={() => removePres(p._key)} style={{ ...btnStyle("secondary"), height: 28, fontSize: 11, color: C.red }}>🗑️</button>
+                        <button onClick={() => removePres(p._key)} style={{ ...btnStyle("secondary"), height: 34, fontSize: 14, color: C.red }}>🗑️</button>
                       </div>
                     </div>
                     <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 8 }}>
@@ -523,7 +523,7 @@ const changed = (field: string) => {
                 );
               })}
               {(!draft.presentaciones || draft.presentaciones.length === 0) && (
-                <div style={{ textAlign: "center", padding: 32, color: C.inkSoft, fontSize: 13, background: C.white, borderRadius: 12, border: `1px dashed ${C.line}` }}>
+                <div style={{ textAlign: "center", padding: 32, color: C.inkSoft, fontSize: 15, background: C.white, borderRadius: 12, border: `1px dashed ${C.line}` }}>
                   Sin presentaciones. Agrega las formas en que se vende este producto (unidad, paquete, metro...).
                 </div>
               )}
@@ -534,7 +534,7 @@ const changed = (field: string) => {
           {tab === "imagenes" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ fontSize: 13, color: C.inkSoft }}>{draft.imagenes?.length || 0} imágenes</span>
+                <span style={{ fontSize: 15, color: C.inkSoft }}>{draft.imagenes?.length || 0} imágenes</span>
                 <div>
                   <input ref={fileRef} type="file" accept="image/*" multiple style={{ display: "none" }} onChange={handleImageUpload} />
                   <button onClick={() => fileRef.current?.click()} style={btnStyle("primary")}>📷 Subir imágenes</button>
@@ -551,7 +551,7 @@ const changed = (field: string) => {
                         style={{ position: "absolute", top: 6, right: 6, width: 26, height: 26, borderRadius: "50%", border: "none", background: "rgba(220,38,38,0.9)", color: "#fff", cursor: "pointer", fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center" }}>
                         ×
                       </button>
-                      <div style={{ position: "absolute", bottom: 6, left: 6, background: "rgba(0,0,0,0.6)", color: "#fff", fontSize: 10, padding: "2px 6px", borderRadius: 4 }}>
+                      <div style={{ position: "absolute", bottom: 6, left: 6, background: "rgba(0,0,0,0.6)", color: "#fff", fontSize: 14, padding: "2px 6px", borderRadius: 4 }}>
                         {i + 1}
                       </div>
                     </div>
@@ -561,13 +561,13 @@ const changed = (field: string) => {
 
               {(!draft.imagenes || draft.imagenes.length === 0) && (
                 <div onClick={() => fileRef.current?.click()}
-                  style={{ textAlign: "center", padding: 48, color: C.inkSoft, fontSize: 13, background: C.white, borderRadius: 12, border: `2px dashed ${C.line}`, cursor: "pointer" }}>
+                  style={{ textAlign: "center", padding: 48, color: C.inkSoft, fontSize: 15, background: C.white, borderRadius: 12, border: `2px dashed ${C.line}`, cursor: "pointer" }}>
                   📷 Haz clic para subir la primera imagen
                 </div>
               )}
 
               {changed("imagenes") && (
-                <div style={{ padding: "8px 12px", background: C.yellowBg, border: `1px solid ${C.yellowBorder}`, borderRadius: 8, fontSize: 12, color: C.orange }}>
+                <div style={{ padding: "8px 12px", background: C.yellowBg, border: `1px solid ${C.yellowBorder}`, borderRadius: 8, fontSize: 14, color: C.orange }}>
                   ⚠️ Las imágenes se han modificado. Haz clic en "Guardar" para aplicar los cambios.
                 </div>
               )}
@@ -583,7 +583,7 @@ const changed = (field: string) => {
 function Field({ label, modified, children }: { label: string; modified?: boolean; children: React.ReactNode }) {
   return (
     <div>
-      <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: C.inkSoft, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+      <label style={{ display: "block", fontSize: 16, fontWeight: 600, color: C.inkSoft, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em" }}>
         {label} {modified && <span style={{ color: C.orange }}>●</span>}
       </label>
       {children}
@@ -594,9 +594,9 @@ function Field({ label, modified, children }: { label: string; modified?: boolea
 function ToggleField({ label, value, onChange, modified }: { label: string; value: boolean; onChange: (v: boolean) => void; modified?: boolean }) {
   return (
     <div style={{ background: modified ? C.yellowBg : C.white, border: `1px solid ${modified ? C.yellowBorder : "#e5e7eb"}`, borderRadius: 10, padding: "10px 14px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-      <span style={{ fontSize: 12, color: C.ink }}>{label} {modified && <span style={{ color: C.orange }}>●</span>}</span>
-      <button onClick={() => onChange(!value)} style={{ width: 40, height: 22, borderRadius: 999, border: "none", cursor: "pointer", position: "relative", background: value ? C.green : "#d1d5db", transition: "background 0.2s" }}>
-        <div style={{ width: 16, height: 16, borderRadius: "50%", background: "#fff", position: "absolute", top: 3, left: value ? 21 : 3, transition: "left 0.2s", boxShadow: "0 1px 3px rgba(0,0,0,0.2)" }} />
+      <span style={{ fontSize: 15, fontWeight: 500, color: C.ink }}>{label} {modified && <span style={{ color: C.orange }}>●</span>}</span>
+      <button onClick={() => onChange(!value)} style={{ width: 48, height: 26, borderRadius: 999, border: "none", cursor: "pointer", position: "relative", background: value ? C.green : "#d1d5db", transition: "background 0.2s" }}>
+        <div style={{ width: 20, height: 20, borderRadius: "50%", background: "#fff", position: "absolute", top: 3, left: value ? 25 : 3, transition: "left 0.2s", boxShadow: "0 1px 3px rgba(0,0,0,0.2)" }} />
       </button>
     </div>
   );
@@ -605,19 +605,19 @@ function ToggleField({ label, value, onChange, modified }: { label: string; valu
 function MiniInput({ label, value, onChange, type = "text", placeholder }: { label: string; value: string; onChange: (v: string) => void; type?: string; placeholder?: string }) {
   return (
     <div>
-      <label style={{ display: "block", fontSize: 10, color: C.inkSoft, marginBottom: 3 }}>{label}</label>
+      <label style={{ display: "block", fontSize: 14, color: C.inkSoft, marginBottom: 3 }}>{label}</label>
       <input value={value} onChange={e => onChange(e.target.value)} type={type} placeholder={placeholder}
-        style={{ ...inputStyle(C.white, "#d1d5db"), height: 30, fontSize: 12 }} />
+        style={{ ...inputStyle(C.white, "#d1d5db"), height: 36, fontSize: 14 }} />
     </div>
   );
 }
 
 function inputStyle(bg: string, border: string): React.CSSProperties {
-  return { width: "100%", height: 36, padding: "0 12px", border: `1px solid ${border}`, borderRadius: 8, fontSize: 13, fontFamily: "inherit", outline: "none", background: bg, transition: "border-color 0.2s, background 0.2s", boxSizing: "border-box" };
+  return { width: "100%", height: 36, padding: "0 12px", border: `1px solid ${border}`, borderRadius: 8, fontSize: 15, fontFamily: "inherit", outline: "none", background: bg, transition: "border-color 0.2s, background 0.2s", boxSizing: "border-box" };
 }
 
 function btnStyle(type: "primary" | "secondary" | "save"): React.CSSProperties {
-  const base: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 4, height: 32, padding: "0 14px", borderRadius: 8, border: "none", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" };
+  const base: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 6, height: 38, padding: "0 16px", borderRadius: 8, border: "none", fontSize: 15, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" };
   if (type === "primary") return { ...base, background: C.plum, color: "#fff" };
   if (type === "save") return { ...base, background: C.green, color: "#fff" };
   return { ...base, background: "#f3f4f6", color: "#374151", border: "1px solid #d1d5db" };

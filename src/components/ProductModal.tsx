@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { ProductoFlat } from "@/types";
 import { waLink } from "@/lib/utils";
 import { originalImageUrl, urlFor } from "@/lib/sanity";
@@ -22,8 +22,8 @@ export default function ProductModal({ producto, onClose, whatsapp, contact }: P
   const [zoomed, setZoomed] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
   const [imageLoading, setImageLoading] = useState(false);
+  const closeRef = useRef<HTMLButtonElement>(null);
 
-  // Reset state when product changes
   useEffect(() => {
     if (!producto) return;
     setSelectedVariant(null);
@@ -32,6 +32,7 @@ export default function ProductModal({ producto, onClose, whatsapp, contact }: P
     setImageLoading(true);
     const frame = window.requestAnimationFrame(() => setIsVisible(true));
     document.body.style.overflow = "hidden";
+    closeRef.current?.focus();
     return () => {
       window.cancelAnimationFrame(frame);
       document.body.style.overflow = "";
@@ -39,7 +40,6 @@ export default function ProductModal({ producto, onClose, whatsapp, contact }: P
     };
   }, [producto]);
 
-  // Keyboard handler (separate to avoid resetting zoom)
   useEffect(() => {
     if (!producto) return;
     const onKey = (e: KeyboardEvent) => {
@@ -48,8 +48,7 @@ export default function ProductModal({ producto, onClose, whatsapp, contact }: P
           setZoomed(false);
           e.stopPropagation();
         } else {
-          setIsVisible(false);
-          window.setTimeout(onClose, 180);
+          requestClose();
         }
       }
       if (zoomed) return;
@@ -58,7 +57,8 @@ export default function ProductModal({ producto, onClose, whatsapp, contact }: P
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [producto, onClose, zoomed]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [producto, zoomed]);
 
   useEffect(() => {
     if (!producto) return;
@@ -68,11 +68,16 @@ export default function ProductModal({ producto, onClose, whatsapp, contact }: P
     setImageLoading(hasImage);
   }, [activeImgIdx, producto, selectedVariant]);
 
+  const requestClose = useCallback(() => {
+    setIsVisible(false);
+    window.setTimeout(onClose, 260);
+  }, [onClose]);
+
   if (!producto) return null;
 
   const waMsg = producto.whatsappMensaje || `Hola! Me interesa: ${producto.nombre}`;
-  const fallbackContact = {
-    platform: "whatsapp" as const,
+  const fallbackContact: ContactLink = {
+    platform: "whatsapp",
     phone: whatsapp,
     label: "WhatsApp",
     active: true,
@@ -82,12 +87,10 @@ export default function ProductModal({ producto, onClose, whatsapp, contact }: P
   const activeContact = contact || fallbackContact;
   const contactUrl = contact ? getContactHref(activeContact, waMsg) : waLink(whatsapp, waMsg);
 
-  // Variantes
   const visibleVariantes = producto.variantes?.filter(v => v.visible) || [];
   const hasVariantes = visibleVariantes.length > 0 && !(visibleVariantes.length === 1 && visibleVariantes[0].nombre === "Único");
   const activeVariant = selectedVariant ? visibleVariantes.find(v => v._key === selectedVariant) : null;
 
-  // Images: variant image takes priority, then product images
   const allImages = producto.imagenes || [];
   const hasMultipleImages = allImages.length > 1;
   const currentImgSrc = activeVariant?.imagen
@@ -101,11 +104,6 @@ export default function ProductModal({ producto, onClose, whatsapp, contact }: P
       ? originalImageUrl(allImages[activeImgIdx])
       : null;
 
-  const requestClose = () => {
-    setIsVisible(false);
-    window.setTimeout(onClose, 180);
-  };
-
   const selectImage = (index: number) => {
     if (index === activeImgIdx) return;
     setActiveImgIdx(index);
@@ -117,18 +115,29 @@ export default function ProductModal({ producto, onClose, whatsapp, contact }: P
 
   return (
     <>
-      <div className={`modal-backdrop ${isVisible ? "open" : ""}`} onClick={requestClose} role="dialog" aria-modal="true" aria-label={producto.nombre}>
+      <div
+        className={`modal-backdrop ${isVisible ? "open" : ""}`}
+        onClick={requestClose}
+        role="dialog"
+        aria-modal="true"
+        aria-label={producto.nombre}
+      >
         <div className="modal" onClick={(e) => e.stopPropagation()}>
-          <button className="modal-close" onClick={requestClose} aria-label="Cerrar">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12" /></svg>
+          <button ref={closeRef} className="modal-close" onClick={requestClose} aria-label="Cerrar">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round">
+              <path d="M18 6L6 18M6 6l12 12" />
+            </svg>
           </button>
 
           {/* Gallery */}
           <div className="modal-gallery">
-            <div className="gallery-main" style={{ cursor: currentImgSrc ? "zoom-in" : "default" }} onClick={() => currentImgSrc && setZoomed(true)}>
+            <div
+              className="gallery-main"
+              onClick={() => currentImgSrc && setZoomed(true)}
+            >
               <div className="gallery-main-img">
                 {currentImgSrc ? (
-                  <div style={{ position: "relative", width: "100%", height: "100%", background: "#f5f0ea" }}>
+                  <>
                     {imageLoading && (
                       <div className="modal-image-loader" aria-label="Cargando imagen">
                         <span />
@@ -144,85 +153,111 @@ export default function ProductModal({ producto, onClose, whatsapp, contact }: P
                       onLoad={() => setImageLoading(false)}
                       onError={() => setImageLoading(false)}
                     />
-                  </div>
+                  </>
                 ) : (
                   <ProductImage producto={producto} />
                 )}
               </div>
+
+              {/* Navigation arrows */}
+              {hasMultipleImages && !activeVariant?.imagen && (
+                <>
+                  {activeImgIdx > 0 && (
+                    <button
+                      className="gallery-arrow gallery-arrow-prev"
+                      onClick={(e) => { e.stopPropagation(); moveImage(-1); }}
+                      aria-label="Imagen anterior"
+                    >
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M15 18l-6-6 6-6" />
+                      </svg>
+                    </button>
+                  )}
+                  {activeImgIdx < allImages.length - 1 && (
+                    <button
+                      className="gallery-arrow gallery-arrow-next"
+                      onClick={(e) => { e.stopPropagation(); moveImage(1); }}
+                      aria-label="Imagen siguiente"
+                    >
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M9 18l6-6-6-6" />
+                      </svg>
+                    </button>
+                  )}
+                </>
+              )}
+
               {/* Zoom hint */}
               {currentImgSrc && (
-                <div style={{ position: "absolute", bottom: 10, right: 10, background: "rgba(0,0,0,0.5)", color: "#fff", fontSize: 11, padding: "4px 10px", borderRadius: 999, display: "flex", alignItems: "center", gap: 4, pointerEvents: "none" }}>
+                <div className="gallery-zoom-hint">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /><path d="M11 8v6M8 11h6" /></svg>
                   Zoom
+                </div>
+              )}
+
+              {/* Image counter */}
+              {hasMultipleImages && !activeVariant?.imagen && (
+                <div className="gallery-counter">
+                  {activeImgIdx + 1} / {allImages.length}
                 </div>
               )}
             </div>
 
             {/* Thumbnails */}
             {hasMultipleImages && !activeVariant?.imagen && (
-              <div style={{ display: "flex", gap: 6, padding: "8px 12px", overflowX: "auto", background: "rgba(31,27,46,0.03)" }}>
+              <div className="gallery-thumbs">
                 {allImages.map((img, i) => (
-                  <button key={i} onClick={() => selectImage(i)}
-                    style={{
-                      flex: "0 0 56px", width: 56, height: 56, borderRadius: 8, overflow: "hidden",
-                      border: activeImgIdx === i ? "2px solid #D2386C" : "2px solid transparent",
-                      opacity: activeImgIdx === i ? 1 : 0.6, cursor: "pointer", padding: 0, background: "#f5f0ea",
-                      transition: "border-color 0.2s, opacity 0.2s",
-                    }}
+                  <button
+                    key={i}
+                    className={`gallery-thumb ${activeImgIdx === i ? "active" : ""}`}
+                    onClick={() => selectImage(i)}
                   >
-                    <Image src={urlFor(img).width(120).height(120).url()} alt={`Foto ${i + 1}`} width={56} height={56} style={{ objectFit: "cover", width: "100%", height: "100%" }} />
+                    <Image
+                      src={urlFor(img).width(120).height(120).url()}
+                      alt={`Foto ${i + 1}`}
+                      width={56}
+                      height={56}
+                      className="gallery-thumb-img"
+                    />
                   </button>
                 ))}
-              </div>
-            )}
-
-            {/* Image counter */}
-            {hasMultipleImages && !activeVariant?.imagen && (
-              <div style={{ position: "absolute", top: 12, left: 12, background: "rgba(0,0,0,0.5)", color: "#fff", fontSize: 11, padding: "3px 10px", borderRadius: 999, fontWeight: 500 }}>
-                {activeImgIdx + 1} / {allImages.length}
               </div>
             )}
           </div>
 
           {/* Body */}
           <div className="modal-body">
-            <div className="modal-cat" style={{ color: "#7c6f8a", fontWeight: 500 }}>{producto._categoria} · {producto._subcategoria}</div>
+            <div className="modal-cat">{producto._categoria} · {producto._subcategoria}</div>
             <h2 className="modal-title">{producto.nombre}</h2>
 
             {producto.marca && producto.marca !== "Genérico" && (
-              <div style={{ fontSize: 14, color: "#4a4258", marginBottom: 6 }}>Marca: <strong style={{ color: "#1F1B2E" }}>{producto.marca}</strong></div>
+              <div className="modal-meta-line">Marca: <strong>{producto.marca}</strong></div>
             )}
 
             {producto.medidas && (
-              <div style={{ fontSize: 14, color: "#4a4258", marginBottom: 8 }}>Medida: <strong style={{ color: "#1F1B2E" }}>{producto.medidas}</strong></div>
+              <div className="modal-meta-line">Medida: <strong>{producto.medidas}</strong></div>
             )}
 
             <div className="modal-badges"><Badges producto={producto} /></div>
 
             {/* Variantes */}
             {hasVariantes && (
-              <div style={{ margin: "16px 0" }}>
-                <div style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: "0.1em", color: "#7c6f8a", marginBottom: 8, fontWeight: 600 }}>
+              <div className="modal-variantes">
+                <div className="modal-variantes-label">
                   {visibleVariantes.some(v => v.color) ? "Colores" : "Variantes"} disponibles
                 </div>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                <div className="modal-variantes-list">
                   {visibleVariantes.map((v) => (
-                    <button key={v._key}
+                    <button
+                      key={v._key}
+                      className={`modal-variante-btn ${selectedVariant === v._key ? "active" : ""}`}
                       onClick={() => {
                         setImageLoading(true);
                         setSelectedVariant(selectedVariant === v._key ? null : v._key);
                       }}
-                      style={{
-                        padding: "7px 16px", borderRadius: 999, fontSize: 13, cursor: "pointer",
-                        border: selectedVariant === v._key ? "2px solid #D2386C" : "1.5px solid #c4bdd0",
-                        background: selectedVariant === v._key ? "rgba(210,56,108,0.08)" : "#fff",
-                        color: selectedVariant === v._key ? "#D2386C" : "#1F1B2E",
-                        fontWeight: selectedVariant === v._key ? 600 : 500,
-                        fontFamily: "inherit", transition: "all 0.15s",
-                      }}
                     >
                       {v.nombre || v.color || v.tamano || "Variante"}
-                      {v.stock != null && v.stock <= 0 && <span style={{ fontSize: 10, color: "#dc2626", marginLeft: 4 }}>Agotado</span>}
+                      {v.stock != null && v.stock <= 0 && <span className="modal-variante-agotado">Agotado</span>}
                     </button>
                   ))}
                 </div>
@@ -233,20 +268,25 @@ export default function ProductModal({ producto, onClose, whatsapp, contact }: P
             <PresentacionesList presentaciones={producto.presentaciones} />
 
             {/* Price block */}
-            <div className="price-block" style={{ marginTop: 18 }}>
-              <div className="price-block-label" style={{ color: "#7c6f8a", fontWeight: 600 }}>Precio referencial</div>
+            <div className="price-block">
+              <div className="price-block-label">Precio referencial</div>
               <PriceDisplay producto={producto} size="modal" />
             </div>
 
-            {producto.descripcion && <p className="modal-desc" style={{ color: "#4a4258", fontSize: 14, lineHeight: 1.6 }}>{producto.descripcion}</p>}
-            {producto.observaciones && <p style={{ fontSize: 13, color: "#7c6f8a", fontStyle: "italic", margin: "0 0 16px" }}>{producto.observaciones}</p>}
+            {producto.descripcion && <p className="modal-desc">{producto.descripcion}</p>}
+            {producto.observaciones && <p className="modal-obs">{producto.observaciones}</p>}
 
             <div className="modal-cta">
-              <a className={`btn ${activeContact.platform === "whatsapp" ? "btn-wa" : "btn-plum"} btn-lg`} href={contactUrl} target="_blank" rel="noopener noreferrer">
+              <a
+                className={`btn ${activeContact.platform === "whatsapp" ? "btn-wa" : "btn-plum"} btn-lg`}
+                href={contactUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
                 <ContactIcon platform={activeContact.platform} size={18} />
                 Pedir por {activeContact.label}
               </a>
-            <button className="btn btn-ghost" onClick={requestClose}>Seguir viendo</button>
+              <button className="btn btn-ghost" onClick={requestClose}>Seguir viendo</button>
             </div>
           </div>
         </div>

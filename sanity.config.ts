@@ -3,6 +3,7 @@ import { structureTool } from "sanity/structure";
 import { visionTool } from "@sanity/vision";
 import { schemaTypes } from "./sanity/schemas";
 import { importCatalogPlugin } from "./sanity/tools/importCatalog";
+import { exportCatalogPlugin } from "./sanity/tools/exportCatalog";
 import { interactiveViewPlugin } from "./sanity/tools/interactiveView";
 
 export default defineConfig({
@@ -42,6 +43,7 @@ export default defineConfig({
     }),
     visionTool(),
     importCatalogPlugin(),
+    exportCatalogPlugin(),
     interactiveViewPlugin(),
   ],
   schema: { types: schemaTypes },
