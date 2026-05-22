@@ -1,29 +1,47 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { getSiteSettings } from "@/lib/queries";
+import { urlFor } from "@/lib/sanity";
 import logoIcon from "./logo.png";
 
 const siteIcon = typeof logoIcon === "string" ? logoIcon : logoIcon.src;
+const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000").replace(/\/$/, "");
 
 export async function generateMetadata(): Promise<Metadata> {
   try {
     const s = await getSiteSettings();
+    const title = s?.seoTitle || s?.nombre || "Comercial Victor";
+    const description = s?.seoDescription || (s?.tagline ?? "Todo para que tu fiesta brille");
+    const seoImage = s?.seoImage ? urlFor(s.seoImage).width(1200).height(630).fit("crop").url() : undefined;
+
     return {
-      title: s?.seoTitle || s?.nombre || "Comercial Victor",
-      description: s?.seoDescription || (s?.tagline ?? "Todo para que tu fiesta brille"),
+      metadataBase: new URL(siteUrl),
+      title,
+      description,
       icons: {
         icon: [{ url: siteIcon, type: "image/png" }],
         shortcut: [siteIcon],
         apple: [{ url: siteIcon, type: "image/png" }],
       },
       openGraph: {
-        title: s?.seoTitle || s?.nombre || "Comercial Victor",
-        description: s?.seoDescription || (s?.tagline ?? ""),
+        title,
+        description,
+        url: siteUrl,
+        siteName: s?.nombre || "Comercial Victor",
         type: "website",
+        locale: "es_PE",
+        images: seoImage ? [{ url: seoImage, width: 1200, height: 630, alt: title }] : undefined,
+      },
+      twitter: {
+        card: "summary_large_image",
+        title,
+        description,
+        images: seoImage ? [seoImage] : undefined,
       },
     };
   } catch {
     return {
+      metadataBase: new URL(siteUrl),
       title: "Comercial Victor",
       description: "Todo para que tu fiesta brille",
       icons: {
