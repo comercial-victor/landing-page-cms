@@ -6,9 +6,9 @@ import { importCatalogToSanity, type ImportProgress, type ImportSummary } from "
 
 const s: Record<string, React.CSSProperties> = {
   container: { maxWidth: 960, margin: "0 auto", padding: "32px 24px", fontFamily: "inherit" },
-  header: { marginBottom: 32, borderBottom: "1px solid #e5e7eb", paddingBottom: 24 },
-  title: { fontSize: 28, fontWeight: 700, margin: "0 0 8px", color: "#111827" },
-  subtitle: { fontSize: 15, color: "#6b7280", margin: 0 },
+  header: { marginBottom: 32, borderBottom: "1px solid rgba(148,163,184,0.32)", paddingBottom: 24 },
+  title: { fontSize: 28, fontWeight: 800, margin: "0 0 8px", color: "#f8fafc" },
+  subtitle: { fontSize: 15, color: "#94a3b8", margin: 0, lineHeight: 1.5 },
   card: { background: "#fff", border: "1px solid #e5e7eb", borderRadius: 12, padding: 24, marginBottom: 20 },
   cardTitle: { fontSize: 16, fontWeight: 600, margin: "0 0 16px", color: "#111827" },
   dropzone: { border: "2px dashed #d1d5db", borderRadius: 10, padding: "40px 24px", textAlign: "center" as const, cursor: "pointer", background: "#f9fafb" },
@@ -111,9 +111,8 @@ export function ImportCatalogTool() {
         },
         "productos": *[_type == "producto"] | order(orden asc){
           _id, idExcel, nombre, descripcion, marca, tags, visible, manejaStock,
-          permiteVentaFraccionada, unidadBase, medidas, observaciones,
+          permiteVentaFraccionada, unidadBase, medidas, observaciones, stock,
           subcategoria->{_id, idExcel, nombre},
-          variantes[]{ _key, idExcel, nombre, color, tamano, otrosAtributos, stock, visible },
           presentaciones[]{ _key, idExcel, nombre, factorConversion, precio, visibleEnWeb, esDefault }
         }
       }`);
@@ -137,7 +136,9 @@ export function ImportCatalogTool() {
         })),
       ];
 
-      const productosRows = (data.productos || []).map((producto: any) => ({
+      const activeProductos = (data.productos || []).filter((producto: any) => producto.visible !== false);
+
+      const productosRows = activeProductos.map((producto: any) => ({
         id_producto: producto.idExcel || producto._id.replace(/^prod-/, ""),
         nombre: producto.nombre || "",
         descripcion: producto.descripcion || "",
@@ -146,28 +147,15 @@ export function ImportCatalogTool() {
         tags: Array.isArray(producto.tags) ? producto.tags.join(", ") : "",
         visible: producto.visible !== false ? "si" : "no",
         maneja_stock: producto.manejaStock !== false ? "si" : "no",
+        stock_actual: producto.stock ?? "",
         permite_venta_fraccionada: producto.permiteVentaFraccionada ? "si" : "no",
         unidad_base: producto.unidadBase || "unidad",
         medidas: producto.medidas || "",
         observaciones: producto.observaciones || "",
       }));
 
-      const variantesRows = (data.productos || []).flatMap((producto: any) =>
-        (producto.variantes || []).map((variante: any) => ({
-          id_variante: variante.idExcel || variante._key || "",
-          id_producto: producto.idExcel || producto._id.replace(/^prod-/, ""),
-          nombre_producto: producto.nombre || "",
-          nombre_variante: variante.nombre || "",
-          color: variante.color || "",
-          "tamaño_medida": variante.tamano || "",
-          otros_atributos: variante.otrosAtributos || "",
-          stock_actual: variante.stock ?? "",
-          imagen_archivo: "",
-          visible: variante.visible !== false ? "si" : "no",
-        })),
-      );
-
       const presentacionesRows = (data.productos || []).flatMap((producto: any) =>
+        producto.visible === false ? [] :
         (producto.presentaciones || []).map((presentacion: any) => ({
           id_presentacion: presentacion.idExcel || presentacion._key || "",
           id_producto: producto.idExcel || producto._id.replace(/^prod-/, ""),
@@ -175,7 +163,6 @@ export function ImportCatalogTool() {
           nombre_presentacion: presentacion.nombre || "",
           factor_conversion: presentacion.factorConversion ?? 1,
           precio: presentacion.precio ?? "",
-          variantes_aplicables: "",
           visible_en_web: presentacion.visibleEnWeb !== false ? "si" : "no",
           es_default: presentacion.esDefault ? "si" : "no",
         })),
@@ -189,7 +176,6 @@ export function ImportCatalogTool() {
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(categoriasRows), "Categorias");
       XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(productosRows), "Productos");
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(variantesRows), "Variantes");
       XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(presentacionesRows), "Presentaciones");
       XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(tagsRows), "Tags");
 
@@ -202,7 +188,6 @@ export function ImportCatalogTool() {
     }
   };
 
-  const totalVariantes = catalog?.productos.reduce((sum, p) => sum + p.variantes.length, 0) || 0;
   const totalPresentaciones = catalog?.productos.reduce((sum, p) => sum + p.presentaciones.length, 0) || 0;
   const progressPct = progress ? Math.round((progress.current / Math.max(progress.total, 1)) * 100) : 0;
 
@@ -210,13 +195,13 @@ export function ImportCatalogTool() {
     <div style={s.container}>
       <div style={s.header}>
         <h1 style={s.title}>📦 Importar catálogo</h1>
-        <p style={s.subtitle}>Importa el Excel de Comercial Victor con las hojas: Categorías, Productos, Variantes, Presentaciones y Tags.</p>
+        <p style={s.subtitle}>Importa el Excel de Comercial Victor: Categorías, Productos, Presentaciones y Tags.</p>
       </div>
 
       <div style={s.card}>
         <p style={s.cardTitle}>Exportar catálogo actual</p>
         <p style={{ margin: "0 0 16px", color: "#6b7280", fontSize: 14 }}>
-          Descarga un Excel generado desde los productos, categorías, variantes y precios que están ahora mismo en Sanity.
+          Descarga un Excel generado desde productos activos, categorías, presentaciones y precios.
         </p>
         <button
           style={{ ...s.btn, ...s.btnExport, ...(exporting ? s.btnDisabled : {}) }}
@@ -238,7 +223,7 @@ export function ImportCatalogTool() {
           >
             <div style={{ fontSize: 40, marginBottom: 12 }}>📗</div>
             <p style={{ margin: "0 0 6px", fontWeight: 600 }}>Arrastra el archivo aquí o haz clic</p>
-            <p style={{ margin: 0, fontSize: 13, color: "#6b7280" }}>Formato: .xlsx con hojas Categorias, Productos, Variantes, Presentaciones, Tags</p>
+            <p style={{ margin: 0, fontSize: 13, color: "#6b7280" }}>Formato: .xlsx con hojas Categorias, Productos, Presentaciones y Tags</p>
             <input ref={fileInputRef} type="file" accept=".xlsx,.xls" style={{ display: "none" }}
               onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])} />
           </div>
@@ -272,7 +257,6 @@ export function ImportCatalogTool() {
               { num: catalog.categorias.length, label: "Categorías" },
               { num: catalog.subcategorias.length, label: "Subcategorías" },
               { num: catalog.productos.length, label: "Productos" },
-              { num: totalVariantes, label: "Variantes" },
               { num: totalPresentaciones, label: "Presentaciones" },
             ].map(({ num, label }) => (
               <div key={label} style={s.statCard}>
@@ -303,7 +287,7 @@ export function ImportCatalogTool() {
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                 <thead>
                   <tr style={{ background: "#f9fafb" }}>
-                    {["ID", "Nombre", "Marca", "Variantes", "Presentaciones"].map((h) => (
+                    {["ID", "Nombre", "Marca", "Presentaciones"].map((h) => (
                       <th key={h} style={{ padding: "8px 12px", textAlign: "left", borderBottom: "1px solid #e5e7eb", fontSize: 11, textTransform: "uppercase", color: "#6b7280" }}>{h}</th>
                     ))}
                   </tr>
@@ -314,7 +298,6 @@ export function ImportCatalogTool() {
                       <td style={{ padding: "7px 12px", fontFamily: "monospace", color: "#7c3aed" }}>{p.idExcel}</td>
                       <td style={{ padding: "7px 12px" }}>{p.nombre}</td>
                       <td style={{ padding: "7px 12px", color: "#6b7280" }}>{p.marca}</td>
-                      <td style={{ padding: "7px 12px" }}>{p.variantes.length}</td>
                       <td style={{ padding: "7px 12px" }}>{p.presentaciones.length}</td>
                     </tr>
                   ))}

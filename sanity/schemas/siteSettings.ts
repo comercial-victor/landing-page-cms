@@ -1,26 +1,35 @@
 import { defineField, defineType } from "sanity";
+import { Building2, Clock3, MapPin, Search, Share2 } from "lucide-react";
 
 export default defineType({
   name: "siteSettings",
   title: "Configuración del Sitio",
   type: "document",
+  groups: [
+    { name: "identidad", title: "Identidad", icon: Building2, default: true },
+    { name: "contacto", title: "Contacto y ubicación", icon: MapPin },
+    { name: "redes", title: "Redes", icon: Share2 },
+    { name: "horarios", title: "Horarios", icon: Clock3 },
+    { name: "seo", title: "SEO", icon: Search },
+  ],
   fields: [
-    defineField({ name: "nombre", title: "Nombre del negocio", type: "string", validation: (R) => R.required() }),
-    defineField({ name: "tagline", title: "Tagline / eslogan", type: "string" }),
-    defineField({ name: "logo", title: "Logo", type: "image", options: { hotspot: true } }),
-    defineField({ name: "whatsapp", title: "WhatsApp (con código de país)", type: "string", description: "Ej: 51987654321", validation: (R) => R.required() }),
-    defineField({ name: "whatsappDisplay", title: "WhatsApp visible al público", type: "string", description: "Ej: +51 987 654 321" }),
-    defineField({ name: "telefono", title: "Teléfono (opcional)", type: "string" }),
-    defineField({ name: "email", title: "Email", type: "string" }),
-    defineField({ name: "direccion", title: "Dirección", type: "string" }),
-    defineField({ name: "googleMapsUrl", title: "Google Maps URL", type: "url" }),
-    defineField({ name: "googleMapsEmbedUrl", title: "Google Maps Embed URL (iframe)", type: "url" }),
-    defineField({ name: "instagramUrl", title: "Instagram URL", type: "url" }),
-    defineField({ name: "facebookUrl", title: "Facebook URL", type: "url" }),
-    defineField({ name: "tiktokUrl", title: "TikTok URL", type: "url" }),
+    defineField({ name: "nombre", title: "Nombre del negocio", type: "string", group: "identidad", validation: (R) => R.required() }),
+    defineField({ name: "tagline", title: "Tagline / eslogan", type: "string", group: "identidad" }),
+    defineField({ name: "logo", title: "Logo", type: "image", group: "identidad", options: { hotspot: true } }),
+    defineField({ name: "whatsapp", title: "WhatsApp (con código de país)", type: "string", group: "contacto", description: "Ej: 51987654321", validation: (R) => R.required() }),
+    defineField({ name: "whatsappDisplay", title: "WhatsApp visible al público", type: "string", group: "contacto", description: "Ej: +51 987 654 321" }),
+    defineField({ name: "telefono", title: "Teléfono (opcional)", type: "string", group: "contacto" }),
+    defineField({ name: "email", title: "Email", type: "string", group: "contacto" }),
+    defineField({ name: "direccion", title: "Dirección", type: "string", group: "contacto" }),
+    defineField({ name: "googleMapsUrl", title: "Google Maps URL", type: "url", group: "contacto" }),
+    defineField({ name: "googleMapsEmbedUrl", title: "Google Maps Embed URL (iframe)", type: "url", group: "contacto" }),
+    defineField({ name: "instagramUrl", title: "Instagram URL", type: "url", group: "redes" }),
+    defineField({ name: "facebookUrl", title: "Facebook URL", type: "url", group: "redes" }),
+    defineField({ name: "tiktokUrl", title: "TikTok URL", type: "url", group: "redes" }),
     defineField({
       name: "socialLinks",
       title: "Redes sociales y contacto",
+      group: "redes",
       description: "Fuente central de redes. Todas las redes activas salen en el footer. Aquí decides cuáles aparecen en la navbar y en el botón flotante.",
       type: "array",
       of: [{
@@ -76,6 +85,7 @@ export default defineType({
     defineField({
       name: "horarios",
       title: "Horarios de atención",
+      group: "horarios",
       type: "array",
       of: [{
         type: "object",
@@ -90,6 +100,7 @@ export default defineType({
     defineField({
       name: "storeStatus",
       title: "Aviso especial de atención",
+      group: "horarios",
       description: "Úsalo cuando hoy abrirán más tarde, están atendiendo diferente o quieres mostrar un aviso temporal.",
       type: "object",
       fields: [
@@ -140,9 +151,9 @@ export default defineType({
         }),
       },
     }),
-    defineField({ name: "seoTitle", title: "SEO: Título", type: "string" }),
-    defineField({ name: "seoDescription", title: "SEO: Descripción", type: "text", rows: 3 }),
-    defineField({ name: "seoImage", title: "SEO: Imagen social", type: "image" }),
+    defineField({ name: "seoTitle", title: "SEO: Título", type: "string", group: "seo" }),
+    defineField({ name: "seoDescription", title: "SEO: Descripción", type: "text", rows: 3, group: "seo" }),
+    defineField({ name: "seoImage", title: "SEO: Imagen social", type: "image", group: "seo" }),
   ],
   preview: {
     select: { title: "nombre" },

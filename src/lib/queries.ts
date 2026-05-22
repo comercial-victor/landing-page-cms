@@ -49,10 +49,9 @@ export async function getCategorias(): Promise<Categoria[]> {
 
 const productoProjection = `{
   _id, idExcel, nombre, slug, descripcion, marca, tags, medidas, observaciones,
-  imagenes, visible, destacado, orden, manejaStock, permiteVentaFraccionada, unidadBase,
-  whatsappMensaje,
+  imagenes, visible, destacado, orden, stock, manejaStock, permiteVentaFraccionada, unidadBase,
+  whatsappMensaje, migratedFromVariant,
   subcategoria->{ _id, nombre, slug, categoria->{ _id, nombre, slug, color } },
-  variantes[]{ _key, idExcel, nombre, color, tamano, otrosAtributos, stock, imagen, visible },
   presentaciones[]{ _key, idExcel, nombre, factorConversion, precio, visibleEnWeb, esDefault }
 }`;
 

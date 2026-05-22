@@ -107,19 +107,6 @@ export interface Subcategoria {
   categoria: Categoria; orden?: number; activo: boolean;
 }
 
-// ─── Variante (embebida en producto) ─────────────────────
-export interface Variante {
-  _key: string;
-  idExcel?: string;
-  nombre?: string;
-  color?: string;
-  tamano?: string;
-  otrosAtributos?: string;
-  stock?: number | null;
-  imagen?: SanityImage;
-  visible: boolean;
-}
-
 // ─── Presentacion (embebida en producto) ─────────────────
 export interface Presentacion {
   _key: string;
@@ -147,12 +134,13 @@ export interface Producto {
   visible: boolean;
   destacado?: boolean;
   orden?: number;
+  stock?: number | null;
   manejaStock?: boolean;
   permiteVentaFraccionada?: boolean;
   unidadBase?: string;
-  variantes?: Variante[];
   presentaciones?: Presentacion[];
   whatsappMensaje?: string;
+  migratedFromVariant?: string;
 }
 
 // ─── Computed / View types ────────────────────────────────

@@ -150,6 +150,9 @@ async function importProductos(
         unidadBase: p.unidadBase,
       };
 
+      // Stock at product level
+      if (p.stock != null) doc.stock = p.stock;
+
       if (p.descripcion) doc.descripcion = p.descripcion;
       if (p.tags && p.tags.length > 0) doc.tags = p.tags;
       if (p.medidas) doc.medidas = p.medidas;

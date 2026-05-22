@@ -18,6 +18,7 @@ export interface RawProducto {
   tags?: string;
   visible?: string;
   maneja_stock?: string;
+  stock_actual?: string | number;
   permite_venta_fraccionada?: string;
   unidad_base?: string;
   medidas?: string;
@@ -122,6 +123,7 @@ export interface NormProducto {
   visible: boolean;
   destacado: boolean;
   orden: number;
+  stock?: number | null;
   manejaStock: boolean;
   permiteVentaFraccionada: boolean;
   unidadBase: string;
@@ -313,6 +315,7 @@ export function normalizeCatalog(raw: ParsedCatalog): NormalizedCatalog {
       visible: p.visible !== undefined ? parseBool(String(p.visible)) : true,
       destacado: false,
       orden: 0,
+      stock: parseNum(p.stock_actual),
       manejaStock: p.maneja_stock !== undefined ? parseBool(String(p.maneja_stock)) : true,
       permiteVentaFraccionada: p.permite_venta_fraccionada !== undefined ? parseBool(String(p.permite_venta_fraccionada)) : false,
       unidadBase: String(p.unidad_base || "unidad").trim(),

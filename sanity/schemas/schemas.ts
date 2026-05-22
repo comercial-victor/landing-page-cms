@@ -1,22 +1,36 @@
 import { defineField, defineType } from "sanity";
+import {
+  BadgeCheck,
+  GalleryHorizontalEnd,
+  Image as ImageIcon,
+  MousePointerClick,
+  Sparkles,
+  Type,
+} from "lucide-react";
 
 // ─── Galería destacada ─────────────────────────────────────────────
 export const featuredGallerySchema = defineType({
   name: "featuredGallery",
   title: "Galería destacada",
   type: "document",
+  groups: [
+    { name: "contenido", title: "Contenido", icon: Type, default: true },
+    { name: "cards", title: "Cards", icon: GalleryHorizontalEnd },
+    { name: "estado", title: "Estado", icon: BadgeCheck },
+  ],
   initialValue: {
     titulo: "Ideas listas para celebrar",
     active: true,
     items: [],
   },
   fields: [
-    defineField({ name: "titulo", title: "Título de la sección", type: "string", initialValue: "Ideas listas para celebrar" }),
-    defineField({ name: "subtitulo", title: "Descripción breve de la sección", type: "text", rows: 2 }),
-    defineField({ name: "active", title: "Sección activa", type: "boolean", initialValue: true }),
+    defineField({ name: "titulo", title: "Título de la sección", type: "string", group: "contenido", initialValue: "Ideas listas para celebrar" }),
+    defineField({ name: "subtitulo", title: "Descripción breve de la sección", type: "text", group: "contenido", rows: 2 }),
+    defineField({ name: "active", title: "Sección activa", type: "boolean", group: "estado", initialValue: true }),
     defineField({
       name: "items",
       title: "Cards destacadas",
+      group: "cards",
       description: "Puedes reordenarlas arrastrando cada card dentro de este listado.",
       type: "array",
       of: [{
@@ -169,6 +183,13 @@ export const heroSchema = defineType({
   name: "hero",
   title: "Hero / Sección principal",
   type: "document",
+  groups: [
+    { name: "texto", title: "Texto", icon: Type, default: true },
+    { name: "acciones", title: "Botones", icon: MousePointerClick },
+    { name: "confianza", title: "Confianza", icon: Sparkles },
+    { name: "visuales", title: "Visuales", icon: ImageIcon },
+    { name: "estado", title: "Estado", icon: BadgeCheck },
+  ],
   initialValue: {
     titulo: "Fiestas que se recuerdan, no que se improvisan.",
     subtitulo: "Globos con helio, piñatas artesanales, menaje temático y packs todo incluido. Coordinamos tu fiesta contigo por WhatsApp.",
@@ -186,21 +207,23 @@ export const heroSchema = defineType({
     ],
   },
   fields: [
-    defineField({ name: "titulo", title: "Título principal", type: "string", validation: (R) => R.required() }),
-    defineField({ name: "subtitulo", title: "Subtítulo", type: "text", rows: 3 }),
-    defineField({ name: "eyebrow", title: "Eyebrow (texto pequeño arriba)", type: "string" }),
-    defineField({ name: "ctaPrincipalTexto", title: "Botón principal: texto", type: "string" }),
-    defineField({ name: "ctaPrincipalMensaje", title: "Botón principal: mensaje WhatsApp", type: "text", rows: 2 }),
-    defineField({ name: "ctaSecundarioTexto", title: "Botón secundario: texto", type: "string" }),
+    defineField({ name: "titulo", title: "Título principal", type: "string", group: "texto", validation: (R) => R.required() }),
+    defineField({ name: "subtitulo", title: "Subtítulo", type: "text", group: "texto", rows: 3 }),
+    defineField({ name: "eyebrow", title: "Eyebrow (texto pequeño arriba)", type: "string", group: "texto" }),
+    defineField({ name: "ctaPrincipalTexto", title: "Botón principal: texto", type: "string", group: "acciones" }),
+    defineField({ name: "ctaPrincipalMensaje", title: "Botón principal: mensaje WhatsApp", type: "text", group: "acciones", rows: 2 }),
+    defineField({ name: "ctaSecundarioTexto", title: "Botón secundario: texto", type: "string", group: "acciones" }),
     defineField({
       name: "trustItems",
       title: "Indicadores de confianza (badges)",
+      group: "confianza",
       type: "array",
       of: [{ type: "string" }],
     }),
     defineField({
       name: "floatingCards",
       title: "Cards / imágenes flotantes",
+      group: "visuales",
       description: "Aparecen desde el centro y se acomodan alrededor del Hero. En mobile se muestran menos para mantener rendimiento.",
       type: "array",
       of: [{
@@ -240,11 +263,11 @@ export const heroSchema = defineType({
         },
       }],
     }),
-    defineField({ name: "active", title: "Activo", type: "boolean", initialValue: true }),
+    defineField({ name: "active", title: "Activo", type: "boolean", group: "estado", initialValue: true }),
   ],
   preview: {
     select: { title: "titulo", active: "active" },
-    prepare: ({ title, active }) => ({ title, subtitle: active ? "✅ Activo" : "❌ Inactivo" }),
+    prepare: ({ title, active }) => ({ title, subtitle: active ? "Activo" : "Inactivo" }),
   },
 });
 
@@ -293,16 +316,15 @@ export const productoSchema = defineType({
   title: "Productos",
   type: "document",
   groups: [
-    { name: "general", title: "📋 General", default: true },
-    { name: "variantes", title: "🎨 Variantes" },
-    { name: "presentaciones", title: "📦 Presentaciones" },
-    { name: "media", title: "🖼️ Imágenes" },
-    { name: "avanzado", title: "⚙️ Avanzado" },
+    { name: "general", title: "General", default: true },
+    { name: "presentaciones", title: "Presentaciones" },
+    { name: "media", title: "Imágenes" },
+    { name: "avanzado", title: "Avanzado" },
   ],
   fields: [
     // General
     defineField({ name: "idExcel", title: "ID Excel", type: "string", group: "general", readOnly: true }),
-    defineField({ name: "nombre", title: "Nombre del producto", type: "string", group: "general", validation: (R) => R.required() }),
+    defineField({ name: "nombre", title: "Nombre del producto", type: "string", group: "general", validation: (R) => R.required(), description: "Nombre específico y completo. Ej: Block Navarrete A4 cuadriculado x50" }),
     defineField({ name: "slug", title: "Slug (URL)", type: "slug", group: "general", options: { source: "nombre", maxLength: 96 }, validation: (R) => R.required() }),
     defineField({ name: "descripcion", title: "Descripción", type: "text", rows: 3, group: "general" }),
     defineField({ name: "subcategoria", title: "Subcategoría principal", type: "reference", to: [{ type: "subcategoria" }], group: "general", validation: (R) => R.required() }),
@@ -318,39 +340,18 @@ export const productoSchema = defineType({
     defineField({ name: "destacado", title: "⭐ Destacado", type: "boolean", initialValue: false, group: "general" }),
     defineField({ name: "orden", title: "Orden", type: "number", initialValue: 0, group: "general" }),
 
-    // Stock
+    // Stock at product level
+    defineField({ name: "stock", title: "Stock actual", type: "number", group: "general", description: "Cantidad disponible del producto." }),
     defineField({ name: "manejaStock", title: "¿Maneja stock?", type: "boolean", initialValue: true, group: "avanzado" }),
     defineField({ name: "permiteVentaFraccionada", title: "¿Venta fraccionada?", type: "boolean", initialValue: false, group: "avanzado" }),
     defineField({ name: "unidadBase", title: "Unidad base", type: "string", group: "avanzado", initialValue: "unidad" }),
     defineField({ name: "whatsappMensaje", title: "Mensaje WhatsApp", type: "text", rows: 2, group: "avanzado" }),
 
+    // Migration tracking
+    defineField({ name: "migratedFromVariant", title: "Migrado desde variante", type: "string", group: "avanzado", readOnly: true, description: "ID interno si este producto fue creado por migración de variantes." }),
+
     // Media
     defineField({ name: "imagenes", title: "Imágenes", type: "array", of: [{ type: "image", options: { hotspot: true } }], group: "media" }),
-
-    // Variantes
-    defineField({
-      name: "variantes", title: "Variantes", type: "array", group: "variantes",
-      of: [{
-        type: "object", name: "variante",
-        fields: [
-          defineField({ name: "idExcel", title: "ID", type: "string", readOnly: true }),
-          defineField({ name: "nombre", title: "Nombre", type: "string" }),
-          defineField({ name: "color", title: "Color", type: "string" }),
-          defineField({ name: "tamano", title: "Tamaño/Medida", type: "string" }),
-          defineField({ name: "otrosAtributos", title: "Otros", type: "string" }),
-          defineField({ name: "stock", title: "Stock", type: "number" }),
-          defineField({ name: "imagen", title: "Imagen", type: "image", options: { hotspot: true } }),
-          defineField({ name: "visible", title: "Visible", type: "boolean", initialValue: true }),
-        ],
-        preview: {
-          select: { nombre: "nombre", color: "color", tamano: "tamano", stock: "stock", visible: "visible" },
-          prepare: ({ nombre, color, tamano, stock, visible }) => ({
-            title: nombre || color || tamano || "Variante",
-            subtitle: `${stock != null ? `Stock: ${stock}` : ""} ${visible ? "✅" : "❌"}`,
-          }),
-        },
-      }],
-    }),
 
     // Presentaciones
     defineField({
@@ -368,7 +369,7 @@ export const productoSchema = defineType({
         preview: {
           select: { nombre: "nombre", factor: "factorConversion", precio: "precio", def: "esDefault" },
           prepare: ({ nombre, factor, precio, def }) => ({
-            title: `${nombre || ""}${def ? " ★" : ""}`,
+            title: `${nombre || ""}${def ? " - Principal" : ""}`,
             subtitle: `×${factor || "?"} · ${precio != null ? `S/ ${precio}` : "Consultar"}`,
           }),
         },
@@ -379,7 +380,7 @@ export const productoSchema = defineType({
     select: { title: "nombre", marca: "marca", visible: "visible", id: "idExcel" },
     prepare: ({ title, marca, visible, id }) => ({
       title,
-      subtitle: `${id || ""} · ${marca !== "Genérico" ? marca + " · " : ""}${visible ? "✅" : "❌"}`,
+      subtitle: `${id || ""} · ${marca !== "Genérico" ? marca + " · " : ""}${visible ? "Visible" : "Oculto"}`,
     }),
   },
   orderings: [
