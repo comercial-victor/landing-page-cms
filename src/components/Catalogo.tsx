@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
+import type { ReactNode } from "react";
 import type { ProductoFlat, Categoria } from "@/types";
 import { ProductImage, Badges, PriceDisplay } from "./ProductHelpers";
 import ProductModal from "./ProductModal";
@@ -13,6 +14,9 @@ interface CatalogoProps {
   externalQuery?: string;
   onExternalQueryChange?: (value: string) => void;
   hideLocalSearch?: boolean;
+  kicker?: string;
+  title?: ReactNode;
+  lede?: string;
 }
 
 function ProductCard({ producto, onOpen }: { producto: ProductoFlat; onOpen: (p: ProductoFlat) => void }) {
@@ -54,6 +58,9 @@ export default function Catalogo({
   externalQuery,
   onExternalQueryChange,
   hideLocalSearch = false,
+  kicker = "Catálogo completo",
+  title,
+  lede = "Filtra por categoría o subcategoría. Cualquier producto se cotiza por WhatsApp con un toque.",
 }: CatalogoProps) {
   const [catId, setCatId] = useState<string>("__all");
   const [subId, setSubId] = useState<string>("__all");
@@ -143,13 +150,11 @@ export default function Catalogo({
         <div className="container">
           <div className="section-head">
             <div>
-              <div className="section-kicker">Catálogo completo</div>
-              <h2 className="section-title">
-                Todo bajo<br />un mismo techo.
-              </h2>
+              <div className="section-kicker">{kicker}</div>
+              <h2 className="section-title">{title || <>Todo bajo<br />un mismo techo.</>}</h2>
             </div>
             <p className="section-lede">
-              Filtra por categoría o subcategoría. Cualquier producto se cotiza por WhatsApp con un toque.
+              {lede}
             </p>
           </div>
 

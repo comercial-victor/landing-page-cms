@@ -56,6 +56,7 @@ export interface HeroFloatingCard {
   label?: string;
   title?: string;
   image?: SanityImage;
+  visualFormat?: "vertical" | "horizontal";
   position?: "leftTop" | "rightTop" | "leftBottom" | "rightBottom" | "leftMid" | "rightMid";
   rotation?: number;
   order?: number;
@@ -94,6 +95,31 @@ export interface FeaturedGallery {
   active: boolean;
   items: FeaturedGalleryItem[];
 }
+
+// ─── Colecciones ─────────────────────────────────────────
+export interface CollectionItem {
+  _key: string;
+  titulo?: string;
+  descripcion?: string;
+  visible?: boolean;
+  producto?: ProductoFlat;
+}
+
+export interface Collection {
+  _id: string;
+  titulo: string;
+  subtitulo?: string;
+  etiqueta?: string;
+  slug?: { current: string };
+  portada?: SanityImage;
+  themeColor?: string;
+  visible?: boolean;
+  orden?: number;
+  items: CollectionItem[];
+}
+
+export type AlbumItem = CollectionItem;
+export type Album = Collection;
 
 // ─── Categoria ───────────────────────────────────────────
 export interface Categoria {

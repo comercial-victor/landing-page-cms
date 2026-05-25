@@ -178,6 +178,66 @@ export const featuredGallerySchema = defineType({
   },
 });
 
+// ─── Colecciones ───────────────────────────────────────────────────
+export const albumSchema = defineType({
+  name: "album",
+  title: "Colecciones",
+  type: "document",
+  groups: [
+    { name: "contenido", title: "Contenido", icon: Type, default: true },
+    { name: "productos", title: "Productos", icon: GalleryHorizontalEnd },
+    { name: "estado", title: "Estado", icon: BadgeCheck },
+  ],
+  initialValue: {
+    visible: true,
+    orden: 0,
+    items: [],
+  },
+  fields: [
+    defineField({ name: "titulo", title: "Título de la colección", type: "string", group: "contenido", validation: (R) => R.required() }),
+    defineField({ name: "subtitulo", title: "Descripción breve", type: "text", group: "contenido", rows: 2 }),
+    defineField({ name: "etiqueta", title: "Etiqueta opcional", type: "string", group: "contenido", description: "Ej: Halloween, Navidad, Cumpleaños, Escolar" }),
+    defineField({ name: "slug", title: "Slug", type: "slug", group: "contenido", options: { source: "titulo", maxLength: 96 } }),
+    defineField({ name: "portada", title: "Portada opcional", type: "image", group: "contenido", options: { hotspot: true } }),
+    defineField({ name: "themeColor", title: "Color principal del degradado", type: "string", group: "contenido", initialValue: "#D2386C", description: "Usa un color HEX. Ej: #D2386C" }),
+    defineField({ name: "visible", title: "Mostrar colección en el sitio", type: "boolean", group: "estado", initialValue: true }),
+    defineField({ name: "orden", title: "Orden", type: "number", group: "estado", initialValue: 0 }),
+    defineField({
+      name: "items",
+      title: "Productos de la colección",
+      type: "array",
+      group: "productos",
+      description: "Cada producto puede ocultarse dentro de esta colección sin ocultarlo del catálogo general.",
+      of: [{
+        type: "object",
+        name: "albumItem",
+        fields: [
+          defineField({ name: "producto", title: "Producto", type: "reference", to: [{ type: "producto" }], validation: (R) => R.required() }),
+          defineField({ name: "titulo", title: "Título alternativo opcional", type: "string" }),
+          defineField({ name: "descripcion", title: "Descripción corta opcional", type: "text", rows: 2 }),
+          defineField({ name: "visible", title: "Visible en este álbum", type: "boolean", initialValue: true }),
+        ],
+        preview: {
+          select: { title: "titulo", productTitle: "producto.nombre", visible: "visible", media: "producto.imagenes.0" },
+          prepare: ({ title, productTitle, visible, media }) => ({
+            title: title || productTitle || "Producto de la colección",
+            subtitle: visible === false ? "Oculto en esta colección" : "Visible en esta colección",
+            media,
+          }),
+        },
+      }],
+    }),
+  ],
+  preview: {
+    select: { title: "titulo", visible: "visible", media: "portada" },
+    prepare: ({ title, visible, media }) => ({
+      title: title || "Colección",
+      subtitle: visible === false ? "Oculto" : "Visible",
+      media,
+    }),
+  },
+});
+
 // ─── Hero ──────────────────────────────────────────────────────────
 export const heroSchema = defineType({
   name: "hero",
@@ -224,15 +284,28 @@ export const heroSchema = defineType({
       name: "floatingCards",
       title: "Cards / imágenes flotantes",
       group: "visuales",
-      description: "Aparecen desde el centro y se acomodan alrededor del Hero. En mobile se muestran menos para mantener rendimiento.",
+      description: "Se muestran como carril debajo del texto del Hero. Aquí eliges la foto, el mini título superior y el título principal de cada card.",
       type: "array",
       of: [{
         type: "object",
         name: "heroFloatingCard",
         fields: [
-          defineField({ name: "label", title: "Etiqueta opcional", type: "string" }),
-          defineField({ name: "title", title: "Título corto opcional", type: "string" }),
+          defineField({ name: "label", title: "Mini título arriba", type: "string", description: "Texto pequeño superior de la card. Ej: globos, packs, escolar." }),
+          defineField({ name: "title", title: "Título principal de la card", type: "string", description: "Texto fuerte de la card. Ej: Helio, Cumpleaños, Útiles." }),
           defineField({ name: "image", title: "Imagen", type: "image", options: { hotspot: true } }),
+          defineField({
+            name: "visualFormat",
+            title: "Formato de card",
+            type: "string",
+            options: {
+              layout: "radio",
+              list: [
+                { title: "Vertical", value: "vertical" },
+                { title: "Horizontal", value: "horizontal" },
+              ],
+            },
+            initialValue: "vertical",
+          }),
           defineField({
             name: "position",
             title: "Posición aproximada",

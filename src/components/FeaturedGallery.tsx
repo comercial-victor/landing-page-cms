@@ -206,11 +206,13 @@ export default function FeaturedGallery({ items, primaryContact, title, subtitle
   }, [items]);
   const [activeIndex, setActiveIndex] = useState(0);
   const [modalIndex, setModalIndex] = useState<number | null>(null);
+  const [isFeaturedModalVisible, setIsFeaturedModalVisible] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [imageReady, setImageReady] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const modalTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const closeTimerRef = useRef<number | null>(null);
   const dragStartX = useRef<number | null>(null);
 
   const activeItem = visibleItems[activeIndex];
@@ -233,10 +235,26 @@ export default function FeaturedGallery({ items, primaryContact, title, subtitle
     });
   }, [visibleItems.length]);
 
+  const openModal = useCallback((index: number, trigger: HTMLButtonElement) => {
+    if (closeTimerRef.current) {
+      window.clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
+
+    modalTriggerRef.current = trigger;
+    setModalIndex(index);
+  }, []);
+
   const closeModal = useCallback(() => {
     setLightboxOpen(false);
-    setModalIndex(null);
-    window.setTimeout(() => modalTriggerRef.current?.focus(), 0);
+    setIsFeaturedModalVisible(false);
+
+    if (closeTimerRef.current) window.clearTimeout(closeTimerRef.current);
+    closeTimerRef.current = window.setTimeout(() => {
+      setModalIndex(null);
+      closeTimerRef.current = null;
+      window.setTimeout(() => modalTriggerRef.current?.focus(), 0);
+    }, 360);
   }, []);
 
   const runCta = useCallback((item: FeaturedGalleryItem) => {
@@ -289,6 +307,22 @@ export default function FeaturedGallery({ items, primaryContact, title, subtitle
   }, [closeModal, goModal, lightboxOpen, modalIndex]);
 
   useEffect(() => {
+    if (modalIndex === null) {
+      setIsFeaturedModalVisible(false);
+      return;
+    }
+
+    const frame = window.requestAnimationFrame(() => setIsFeaturedModalVisible(true));
+    return () => window.cancelAnimationFrame(frame);
+  }, [modalIndex]);
+
+  useEffect(() => {
+    return () => {
+      if (closeTimerRef.current) window.clearTimeout(closeTimerRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
     if (!modalItem) return;
     setImageReady(modalMedia?.type !== "image");
   }, [modalItem, modalMedia?.type]);
@@ -326,7 +360,7 @@ export default function FeaturedGallery({ items, primaryContact, title, subtitle
               <h2 className="section-title">{title || "Novedades destacadas"}</h2>
             </div>
             <p className="section-lede">
-              {subtitle || "Un FocusRail con ideas protagonistas: imágenes, videos de YouTube y propuestas listas para coordinar por WhatsApp."}
+              {subtitle || "Ideas reales de tienda: fotos, videos y propuestas listas para coordinar sin dar vueltas."}
             </p>
           </div>
 
@@ -398,8 +432,7 @@ export default function FeaturedGallery({ items, primaryContact, title, subtitle
                           goTo(index);
                           return;
                         }
-                        modalTriggerRef.current = event.currentTarget;
-                        setModalIndex(index);
+                        openModal(index, event.currentTarget);
                       }}
                       aria-label={isActive ? `Abrir detalle de ${item.titulo}` : `Ver ${item.titulo}`}
                     >
@@ -457,7 +490,7 @@ export default function FeaturedGallery({ items, primaryContact, title, subtitle
       </section>
 
       {modalItem && (
-        <div className="featured-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="featured-modal-title" onMouseDown={closeModal}>
+        <div className={`featured-modal-backdrop ${isFeaturedModalVisible ? "open" : ""}`} role="dialog" aria-modal="true" aria-labelledby="featured-modal-title" onMouseDown={closeModal}>
           <div className={`featured-modal-shell featured-modal-${modalOrientation}`} onMouseDown={(event) => event.stopPropagation()}>
             <button ref={closeButtonRef} className="featured-modal-close" onClick={closeModal} aria-label="Cerrar galería destacada">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round">

@@ -65,7 +65,7 @@ export default function Showcase({ productos, whatsapp = "51987654321", contact 
               </h2>
             </div>
             <p className="section-lede">
-              Curaduría rápida de lo más movido del mes — pedí el tuyo antes de que se acabe.
+              Una selección rápida de lo más pedido del mes, con opciones listas para cotizar.
             </p>
           </div>
           <div className="showcase-grid">

@@ -3,6 +3,7 @@
 import type { Hero as HeroType } from "@/types";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
+import type { CSSProperties, MouseEvent, PointerEvent } from "react";
 import { urlFor } from "@/lib/sanity";
 import { ContactIcon, getContactHref, type ContactLink } from "@/lib/social";
 
@@ -28,7 +29,11 @@ export default function Hero({ hero, brand }: HeroProps) {
   const rafRef = useRef<number | null>(null);
   const currentRef = useRef({ x: 0, y: 0 });
   const targetRef = useRef({ x: 0, y: 0 });
+  const dragRef = useRef({ active: false, startX: 0, startOffset: 0 });
   const [isSafari, setIsSafari] = useState(false);
+  const [railDrag, setRailDrag] = useState(0);
+  const [isRailDragging, setIsRailDragging] = useState(false);
+  const [isRailSettling, setIsRailSettling] = useState(false);
 
   const titulo = hero?.titulo || "Fiestas que se recuerdan, no que se improvisan.";
   const subtitulo =
@@ -51,7 +56,11 @@ export default function Hero({ hero, brand }: HeroProps) {
   };
   const primaryUrl = getContactHref(primaryContact, ctaMensaje);
   const ctaTexto = hero?.ctaPrincipalTexto || `Cotizar por ${primaryContact.label}`;
-  const floatingCards = (hero?.floatingCards?.length ? hero.floatingCards : fallbackFloatingCards).slice(0, 6);
+  const floatingCards = (hero?.floatingCards?.length ? hero.floatingCards : fallbackFloatingCards).slice(0, 10);
+  const railRows = [0, 1].map((row) => {
+    const rowCards = floatingCards.filter((_, index) => index % 2 === row);
+    return rowCards.length ? rowCards : floatingCards;
+  });
 
   // Parse trust items as "num · label" pairs
   const trustParsed = trustItems.map((item) => {
@@ -84,12 +93,38 @@ export default function Hero({ hero, brand }: HeroProps) {
     };
   }, []);
 
-  const handleHeroMouseMove = (event: React.MouseEvent<HTMLElement>) => {
+  const handleHeroMouseMove = (event: MouseEvent<HTMLElement>) => {
     const rect = event.currentTarget.getBoundingClientRect();
     targetRef.current = {
       x: event.clientX - rect.left,
       y: event.clientY - rect.top,
     };
+  };
+
+  const handleRailPointerDown = (event: PointerEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    dragRef.current = { active: true, startX: event.clientX, startOffset: railDrag };
+    setIsRailDragging(true);
+    setIsRailSettling(false);
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+
+  const handleRailPointerMove = (event: PointerEvent<HTMLDivElement>) => {
+    if (!dragRef.current.active) return;
+    event.preventDefault();
+    const nextOffset = dragRef.current.startOffset + event.clientX - dragRef.current.startX;
+    setRailDrag(Math.max(-720, Math.min(720, nextOffset)));
+  };
+
+  const endRailDrag = (event: PointerEvent<HTMLDivElement>) => {
+    if (!dragRef.current.active) return;
+    dragRef.current.active = false;
+    setIsRailDragging(false);
+    setIsRailSettling(true);
+    window.setTimeout(() => setIsRailSettling(false), 360);
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
   };
 
   return (
@@ -150,10 +185,7 @@ export default function Hero({ hero, brand }: HeroProps) {
               <ContactIcon platform={primaryContact.platform} size={19} />
               {ctaTexto}
             </a>
-            <a
-              className="btn btn-ghost btn-lg"
-              href="/catalog"
-            >
+            <a className="btn btn-plum btn-lg btn-catalog" href="/catalog">
               {ctaSecundario}
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M7 17L17 7M7 7h10v10" />
@@ -173,49 +205,60 @@ export default function Hero({ hero, brand }: HeroProps) {
           )}
         </div>
 
-        <div className="hero-visual fade-up" style={{ animationDelay: "0.15s" }} aria-hidden="true">
-          {floatingCards.map((card, index) => (
-            <div
-              key={card._key}
-              className={`hero-float-card hero-float-${card.position || "leftTop"}`}
-              style={{
-                "--hero-rotate": `${card.rotation ?? 0}deg`,
-                "--hero-delay": `${index * 120}ms`,
-              } as React.CSSProperties}
-            >
-              {card.image ? (
-                <Image
-                  src={urlFor(card.image).width(520).height(640).fit("crop").url()}
-                  alt={card.title || card.label || "Destacado Comercial Victor"}
-                  fill
-                  sizes="(max-width: 700px) 38vw, 220px"
-                  className="hero-float-img"
-                />
-              ) : (
-                <div className="hero-float-art" aria-hidden="true">
-                  {index % 3 === 0 && <div className="balloon" />}
-                  {index % 3 === 1 && (
-                    <svg width="120" height="110" viewBox="0 0 120 110">
-                      <polygon points="60,8 74,38 106,38 82,58 92,90 60,72 28,90 38,58 14,38 46,38" fill="rgba(255,255,255,0.86)" />
-                    </svg>
-                  )}
-                  {index % 3 === 2 && (
-                    <svg width="130" height="110" viewBox="0 0 130 110">
-                      <rect x="15" y="40" width="100" height="60" rx="8" fill="rgba(255,255,255,0.82)" />
-                      <rect x="10" y="32" width="110" height="14" rx="4" fill="rgba(255,255,255,0.96)" />
-                      <rect x="60" y="32" width="10" height="68" fill="rgba(31,26,36,0.24)" />
-                    </svg>
-                  )}
-                </div>
-              )}
-              {(card.label || card.title) && (
-                <div className="hero-float-label">
-                  {card.label && <span>{card.label}</span>}
-                  {card.title && <strong>{card.title}</strong>}
-                </div>
-              )}
-            </div>
-          ))}
+        <div
+          className={`hero-visual hero-rail-wrap fade-up ${isRailDragging ? "is-dragging" : ""} ${isRailSettling ? "is-settling" : ""}`}
+          style={{ animationDelay: "0.15s", "--hero-drag": `${railDrag}px` } as CSSProperties}
+          onPointerDown={handleRailPointerDown}
+          onPointerMove={handleRailPointerMove}
+          onPointerUp={endRailDrag}
+          onPointerCancel={endRailDrag}
+          onDragStart={(event) => event.preventDefault()}
+          aria-hidden="true"
+        >
+          {railRows.map((rowCards, row) => {
+            const loopCards = [...rowCards, ...rowCards, ...rowCards];
+            return (
+              <div key={row} className={`hero-rail hero-rail-${row === 0 ? "top" : "bottom"}`}>
+                {loopCards.map((card, index) => {
+                  const format = card.visualFormat || (index % 3 === 1 ? "horizontal" : "vertical");
+                  const isHorizontal = format === "horizontal";
+                  return (
+                    <div
+                      key={`${card._key}-${row}-${index}`}
+                      className={`hero-rail-card hero-rail-card-${format}`}
+                      style={{
+                        "--hero-rotate": `${card.rotation ?? 0}deg`,
+                      } as CSSProperties}
+                    >
+                      <span className="hero-rail-media">
+                        {card.image ? (
+                          <Image
+                            src={
+                              isHorizontal
+                                ? urlFor(card.image).width(760).height(480).fit("crop").url()
+                                : urlFor(card.image).width(520).height(680).fit("crop").url()
+                            }
+                            alt={card.title || card.label || "Destacado Comercial Victor"}
+                            fill
+                            sizes={isHorizontal ? "(max-width: 700px) 58vw, 320px" : "(max-width: 700px) 38vw, 210px"}
+                            className="hero-rail-img"
+                          />
+                        ) : (
+                          <span className="hero-rail-fallback" />
+                        )}
+                      </span>
+                      {(card.label || card.title) && (
+                        <span className="hero-rail-copy">
+                          {card.label && <span>{card.label}</span>}
+                          {card.title && <strong>{card.title}</strong>}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })}
         </div>
       </div>
     </section>

@@ -1,5 +1,5 @@
 import { sanityClient } from "./sanity";
-import type { SiteSettings, Hero, FeaturedGallery, Categoria, Producto, ProductoFlat } from "@/types";
+import type { Collection, Album, SiteSettings, Hero, FeaturedGallery, Categoria, Producto, ProductoFlat } from "@/types";
 
 export async function getSiteSettings(): Promise<SiteSettings | null> {
   return sanityClient.fetch(
@@ -19,7 +19,7 @@ export async function getHero(): Promise<Hero | null> {
       _id, titulo, subtitulo, eyebrow, ctaPrincipalTexto, ctaPrincipalMensaje,
       ctaSecundarioTexto, trustItems, active,
       "floatingCards": floatingCards[visible != false] | order(order asc){
-        _key, label, title, image, position, rotation, order, visible
+        _key, label, title, image, visualFormat, position, rotation, order, visible
       }
     }`, {}, { cache: "no-store" }
   );
@@ -69,6 +69,90 @@ export async function getProductosDestacados(): Promise<ProductoFlat[]> {
     {}, { next: { tags: ["producto"] } }
   );
   return productos.map(flattenProducto);
+}
+
+export async function getColecciones(): Promise<Collection[]> {
+  type CollectionRaw = Omit<Collection, "items"> & {
+    items?: Array<{
+      _key: string;
+      titulo?: string;
+      descripcion?: string;
+      visible?: boolean;
+      producto?: Producto | null;
+    }>;
+  };
+
+  const colecciones: CollectionRaw[] = await sanityClient.fetch(
+    `*[_type == "album" && visible != false] | order(orden asc){
+      _id, titulo, subtitulo, etiqueta, slug, portada, themeColor, visible, orden,
+      "items": items[visible != false]{
+        _key, titulo, descripcion, visible,
+        producto-> ${productoProjection}
+      }
+    }`,
+    {},
+    { next: { tags: ["album", "producto"] } }
+  );
+
+  return colecciones.map((collection) => ({
+    ...collection,
+    items: (collection.items || []).reduce<Collection["items"]>((items, item) => {
+      if (!item.producto) return items;
+      items.push({
+        ...item,
+        producto: flattenProducto(item.producto),
+      });
+      return items;
+    }, []),
+  }));
+}
+
+export const getAlbumes = getColecciones;
+
+export async function getColeccionPorSlug(slug: string): Promise<Collection | null> {
+  type CollectionRaw = Omit<Collection, "items"> & {
+    items?: Array<{
+      _key: string;
+      titulo?: string;
+      descripcion?: string;
+      visible?: boolean;
+      producto?: Producto | null;
+    }>;
+  };
+
+  const collection: CollectionRaw | null = await sanityClient.fetch(
+    `*[_type == "album" && visible != false && slug.current == $slug][0]{
+      _id, titulo, subtitulo, etiqueta, slug, portada, themeColor, visible, orden,
+      "items": items[visible != false]{
+        _key, titulo, descripcion, visible,
+        producto-> ${productoProjection}
+      }
+    }`,
+    { slug },
+    { next: { tags: ["album", "producto"] } }
+  );
+
+  if (!collection) return null;
+
+  return {
+    ...collection,
+    items: (collection.items || []).reduce<Collection["items"]>((items, item) => {
+      if (!item.producto) return items;
+      items.push({
+        ...item,
+        producto: flattenProducto(item.producto),
+      });
+      return items;
+    }, []),
+  };
+}
+
+export async function getColeccionSlugs(): Promise<string[]> {
+  return sanityClient.fetch(
+    `*[_type == "album" && visible != false && defined(slug.current)].slug.current`,
+    {},
+    { next: { tags: ["album"] } }
+  );
 }
 
 export async function getProductoPorSlug(slug: string): Promise<ProductoFlat | null> {

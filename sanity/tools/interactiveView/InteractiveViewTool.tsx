@@ -5,13 +5,17 @@ import {
   ChevronDown,
   ChevronRight,
   ClipboardList,
+  ExternalLink,
   Eye,
   EyeOff,
   FolderTree,
+  GalleryHorizontalEnd,
   ImageIcon,
   ImagePlus,
+  Layers,
   Loader2,
   Package,
+  Palette,
   Pencil,
   Plus,
   RefreshCw,
@@ -19,8 +23,10 @@ import {
   Save,
   Search,
   Star,
+  Tag,
   Trash2,
   Upload,
+  WandSparkles,
   X,
 } from "lucide-react";
 
@@ -37,6 +43,55 @@ interface SProd {
   imagenes?: SImg[]; slug?: { current: string };
 }
 interface SCat { _id: string; idExcel?: string; nombre: string; color?: string; activo?: boolean }
+interface SCollectionItem {
+  _key: string;
+  titulo?: string;
+  descripcion?: string;
+  visible?: boolean;
+  producto?: SProd;
+}
+interface SCollection {
+  _id: string;
+  titulo: string;
+  subtitulo?: string;
+  etiqueta?: string;
+  slug?: { current: string };
+  portada?: SImg;
+  themeColor?: string;
+  visible?: boolean;
+  orden?: number;
+  items?: SCollectionItem[];
+}
+type FeaturedMediaType = "image" | "youtube";
+type FeaturedOrientation = "vertical" | "horizontal";
+type FeaturedCtaAction = "whatsapp" | "scroll";
+interface SFeaturedGalleryItem {
+  _key: string;
+  titulo: string;
+  descripcion?: string;
+  mediaType?: FeaturedMediaType;
+  mediaOrientation?: FeaturedOrientation;
+  imagen?: SImg;
+  alt?: string;
+  focalPosition?: string;
+  youtubeUrl?: string;
+  youtubeThumbnail?: SImg;
+  meta?: string;
+  ctaText?: string;
+  ctaHref?: string;
+  ctaAction?: FeaturedCtaAction;
+  whatsappMessage?: string;
+  targetSection?: string;
+  active?: boolean;
+  orden?: number;
+}
+interface SFeaturedGallery {
+  _id: string;
+  titulo?: string;
+  subtitulo?: string;
+  active?: boolean;
+  items?: SFeaturedGalleryItem[];
+}
 interface DeleteRequest { products: SProd[]; mode: "single" | "bulk" }
 interface FilterOption {
   value: string;
@@ -51,6 +106,11 @@ const uid = () => Math.random().toString(36).slice(2, 10);
 const normalize = (s: string) => s.toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "").replace(/[^a-z0-9]+/g, " ").trim();
 const slugify = (s: string) => normalize(s).replace(/\s+/g, "-");
 const COMMON_TAGS = ["popular","nuevo","para-eventos","barra","metalizado","color-blanco","tecnopor","escolar","fiesta-infantil","manualidades","descartable","tela"];
+const DEMO_COLLECTIONS = [
+  { id: "collection-halloween", title: "Halloween", slug: "halloween", label: "Temporada", color: "#8B3FD1", keywords: ["halloween", "fiesta", "infantil", "globo", "decoracion", "metalizado"], subtitle: "Ideas para armar una vitrina, mesa o fiesta con un toque misterioso y divertido." },
+  { id: "collection-dia-del-padre", title: "Día del Padre", slug: "dia-del-padre", label: "Regalos", color: "#2F6EB8", keywords: ["padre", "regalo", "metalizado", "globo", "popular", "detalle"], subtitle: "Detalles, arreglos y propuestas listas para sorprender sin complicarse." },
+  { id: "collection-fiestas-patrias", title: "Fiestas Patrias", slug: "fiestas-patrias", label: "Perú", color: "#D23838", keywords: ["patrias", "peru", "rojo", "blanco", "fiesta", "manualidades", "escolar"], subtitle: "Rojo, blanco y celebración: productos para decorar, compartir y ambientar." },
+];
 const iconSize = 16;
 const NEW_PRODUCT_ID = "__new_producto__";
 const STRUCTURE_PANE_HEADER_OFFSET = 96;
@@ -73,6 +133,46 @@ function makeNewProduct(): SProd {
     stock: null,
     presentaciones: [{ _key: uid(), nombre: "Unidad", factorConversion: 1, precio: null, visibleEnWeb: true, esDefault: true }],
     imagenes: [],
+  };
+}
+
+function makeNewCollection(): SCollection {
+  return {
+    _id: "__new_collection__",
+    titulo: "",
+    subtitulo: "",
+    etiqueta: "",
+    slug: { current: "" },
+    themeColor: C.plum,
+    visible: true,
+    orden: 0,
+    items: [],
+  };
+}
+
+function makeDefaultFeaturedGallery(): SFeaturedGallery {
+  return {
+    _id: "featuredGallery",
+    titulo: "Ideas listas para celebrar",
+    subtitulo: "",
+    active: true,
+    items: [],
+  };
+}
+
+function makeNewFeaturedItem(): SFeaturedGalleryItem {
+  return {
+    _key: uid(),
+    titulo: "",
+    descripcion: "",
+    mediaType: "image",
+    mediaOrientation: "vertical",
+    meta: "",
+    ctaText: "Cotizar ahora",
+    ctaAction: "whatsapp",
+    targetSection: "catalogo",
+    active: true,
+    orden: 0,
   };
 }
 
@@ -99,21 +199,27 @@ export function InteractiveViewTool() {
   const [prods, setProds] = useState<SProd[]>([]);
   const [cats, setCats] = useState<SCat[]>([]);
   const [subcats, setSubcats] = useState<SSubcat[]>([]);
+  const [collections, setCollections] = useState<SCollection[]>([]);
+  const [featuredGallery, setFeaturedGallery] = useState<SFeaturedGallery>(() => makeDefaultFeaturedGallery());
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [catFilter, setCatFilter] = useState("__all");
+  const [tagFilter, setTagFilter] = useState("__all");
   const [editing, setEditing] = useState<SProd | null>(null);
+  const [editingCollection, setEditingCollection] = useState<SCollection | null>(null);
   const [allTags, setAllTags] = useState<string[]>([]);
-  const [view, setView] = useState<"products" | "categories">("products");
+  const [view, setView] = useState<"products" | "categories" | "collections" | "featured">("products");
   const [visibilityFilter, setVisibilityFilter] = useState<"all" | "visible" | "hidden" | "duplicates">("all");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const [confirmDelete, setConfirmDelete] = useState<DeleteRequest | null>(null);
   const [deletingIds, setDeletingIds] = useState<Set<string>>(() => new Set());
   const [deleteError, setDeleteError] = useState("");
+  const [bulkTag, setBulkTag] = useState("");
+  const [bulkSaving, setBulkSaving] = useState(false);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
-    const [p, c, sc] = await Promise.all([
+    const [p, c, sc, col, featured] = await Promise.all([
       client.fetch<SProd[]>(`*[_type=="producto"]|order(nombre asc){
         _id,idExcel,nombre,descripcion,marca,visible,destacado,medidas,observaciones,tags,
         unidadBase,manejaStock,permiteVentaFraccionada,stock,migratedFromVariant,slug,
@@ -123,8 +229,20 @@ export function InteractiveViewTool() {
       }`),
       client.fetch<SCat[]>(`*[_type=="categoria"]|order(orden asc, nombre asc){_id,idExcel,nombre,color,activo}`),
       client.fetch<SSubcat[]>(`*[_type=="subcategoria"]|order(nombre asc){_id,idExcel,nombre,activo,categoria->{_id,nombre,color}}`),
+      client.fetch<SCollection[]>(`*[_type=="album"]|order(orden asc, titulo asc){
+        _id,titulo,subtitulo,etiqueta,slug,themeColor,visible,orden,portada{asset},
+        items[]{_key,titulo,descripcion,visible,producto->{_id,idExcel,nombre,visible,tags,imagenes[]{_key,asset},subcategoria->{_id,nombre,categoria->{_id,nombre,color}}}}
+      }`),
+      client.fetch<SFeaturedGallery | null>(`*[_type=="featuredGallery" && _id=="featuredGallery"][0]{
+        _id,titulo,subtitulo,active,
+        items[]{
+          _key,titulo,descripcion,mediaType,mediaOrientation,imagen{asset},alt,focalPosition,
+          youtubeUrl,youtubeThumbnail{asset},meta,ctaText,ctaHref,ctaAction,whatsappMessage,targetSection,active,orden
+        }
+      }`),
     ]);
-    setProds(p); setCats(c); setSubcats(sc);
+    setProds(p); setCats(c); setSubcats(sc); setCollections(col);
+    setFeaturedGallery(featured || makeDefaultFeaturedGallery());
     // Collect all unique tags
     const tags = new Set<string>();
     COMMON_TAGS.forEach(t => tags.add(t));
@@ -139,6 +257,7 @@ export function InteractiveViewTool() {
   const filtered = useMemo(() => {
     let r = prods;
     if (catFilter !== "__all") r = r.filter(p => p.subcategoria?.categoria?._id === catFilter);
+    if (tagFilter !== "__all") r = r.filter(p => p.tags?.includes(tagFilter));
     if (visibilityFilter === "visible") r = r.filter(p => p.visible !== false);
     if (visibilityFilter === "hidden") r = r.filter(p => p.visible === false);
     if (visibilityFilter === "duplicates") {
@@ -152,12 +271,12 @@ export function InteractiveViewTool() {
     if (search.trim()) {
       const tokens = normalize(search).split(" ").filter(Boolean);
       r = r.filter(p => {
-        const hay = normalize([p.nombre, p.idExcel, p.marca, p.subcategoria?.nombre, p.subcategoria?.categoria?.nombre].filter(Boolean).join(" "));
+        const hay = normalize([p.nombre, p.idExcel, p.marca, p.subcategoria?.nombre, p.subcategoria?.categoria?.nombre, ...(p.tags || [])].filter(Boolean).join(" "));
         return tokens.every(t => hay.includes(t));
       });
     }
     return r;
-  }, [prods, catFilter, search, visibilityFilter]);
+  }, [prods, catFilter, tagFilter, search, visibilityFilter]);
 
   const activeCats = useMemo(() => cats.filter(c => c.activo !== false), [cats]);
   const categoryOptions = useMemo<FilterOption[]>(() => [
@@ -183,6 +302,15 @@ export function InteractiveViewTool() {
     { value: "hidden", label: "Ocultos", count: prods.filter(p => p.visible === false).length, tone: "hidden" },
     { value: "duplicates", label: "Posibles duplicados", count: duplicateCount, tone: "duplicates" },
   ], [duplicateCount, prods]);
+  const tagOptions = useMemo<FilterOption[]>(() => [
+    { value: "__all", label: "Todos los tags", count: prods.length, tone: "all" },
+    ...allTags.map(tag => ({
+      value: tag,
+      label: tag,
+      count: prods.filter(p => p.tags?.includes(tag)).length,
+      color: C.plum,
+    })),
+  ], [allTags, prods]);
   const selectedProducts = useMemo(() => prods.filter(p => selectedIds.has(p._id)), [prods, selectedIds]);
   const filteredIds = useMemo(() => filtered.map(p => p._id), [filtered]);
   const allFilteredSelected = filteredIds.length > 0 && filteredIds.every(id => selectedIds.has(id));
@@ -206,12 +334,14 @@ export function InteractiveViewTool() {
   };
 
   const clearSelection = () => setSelectedIds(new Set());
-  const hasActiveFilters = search.trim() !== "" || catFilter !== "__all" || visibilityFilter !== "all";
+  const hasActiveFilters = search.trim() !== "" || catFilter !== "__all" || tagFilter !== "__all" || visibilityFilter !== "all";
   const activeCategory = categoryOptions.find(o => o.value === catFilter);
+  const activeTag = tagOptions.find(o => o.value === tagFilter);
   const activeVisibility = visibilityOptions.find(o => o.value === visibilityFilter);
   const clearProductFilters = () => {
     setSearch("");
     setCatFilter("__all");
+    setTagFilter("__all");
     setVisibilityFilter("all");
   };
 
@@ -219,6 +349,42 @@ export function InteractiveViewTool() {
     if (products.length === 0) return;
     setDeleteError("");
     setConfirmDelete({ products, mode });
+  };
+
+  const updateProducts = async (products: SProd[], build: (product: SProd) => Partial<SProd>) => {
+    if (products.length === 0) return;
+    setBulkSaving(true);
+    try {
+      let trx = client.transaction();
+      const updates = products.map((product) => ({ product, patch: build(product) }));
+      updates.forEach(({ product, patch }) => { trx = trx.patch(product._id, (p) => p.set(patch)); });
+      await trx.commit();
+      setProds((current) => current.map((product) => {
+        const update = updates.find((item) => item.product._id === product._id);
+        return update ? { ...product, ...update.patch } : product;
+      }));
+    } finally {
+      setBulkSaving(false);
+    }
+  };
+
+  const setSelectedVisibility = (visible: boolean) => updateProducts(selectedProducts, () => ({ visible }));
+  const setProductsWithActiveTagVisibility = (visible: boolean) => {
+    if (tagFilter === "__all") return;
+    const targets = prods.filter((product) => product.tags?.includes(tagFilter));
+    updateProducts(targets, () => ({ visible }));
+  };
+  const addTagToSelected = () => {
+    const tag = slugify(bulkTag);
+    if (!tag) return;
+    updateProducts(selectedProducts, (product) => ({ tags: Array.from(new Set([...(product.tags || []), tag])) }));
+    if (!allTags.includes(tag)) setAllTags((tags) => [...tags, tag].sort());
+    setBulkTag("");
+  };
+  const removeTagFromSelected = () => {
+    if (!bulkTag) return;
+    updateProducts(selectedProducts, (product) => ({ tags: (product.tags || []).filter((tag) => tag !== bulkTag) }));
+    setBulkTag("");
   };
 
   const confirmDeleteProducts = async () => {
@@ -254,17 +420,61 @@ export function InteractiveViewTool() {
   if (loading) return (
     <div style={{ padding: 60, textAlign: "center", color: "#dbe3f0", background: C.bg, minHeight: "100vh", fontFamily: "'Outfit',sans-serif" }}>
       <Loader2 size={24} style={{ animation: "iv-spin 0.8s linear infinite", verticalAlign: "middle", marginRight: 8 }} />
-      Cargando productos...
+      Cargando contenido...
     </div>
   );
 
   const vis = prods.filter(p => p.visible !== false).length;
 
   return (
-    <div className="iv-root" style={{ padding: "20px 28px", fontFamily: "'Outfit',sans-serif", background: C.bg, minHeight: "100vh" }}>
+    <div className="iv-root" style={{ padding: "20px 28px", fontFamily: "'Outfit',sans-serif", background: C.bg, minHeight: "100vh", marginLeft: -1, position: "relative", zIndex: 1 }}>
       <style>{`
+        .iv-root {
+          box-shadow: -2px 0 0 ${C.bg};
+        }
+        body:has(.iv-root) [data-ui="PaneLayout"] {
+          --card-border-color: rgba(255,255,255,0.08) !important;
+        }
+        body:has(.iv-root) [data-ui="Pane"] {
+          box-shadow: 1px 0 0 rgba(255,255,255,0.08) !important;
+        }
         .iv-root input::placeholder, .iv-root textarea::placeholder { color: #667085; opacity: 1; }
         .iv-root select, .iv-root input, .iv-root textarea { color: ${C.ink}; }
+        .iv-header, .iv-filterbar, .iv-tabs, .iv-bulkbar, .iv-bulk-actions, .iv-action-group {
+          display: flex;
+          gap: 8px;
+          flex-wrap: wrap;
+          align-items: center;
+        }
+        .iv-header {
+          justify-content: space-between;
+          margin-bottom: 16px;
+        }
+        .iv-filterbar { margin-bottom: 14px; }
+        .iv-tabs { margin-bottom: 14px; }
+        .iv-bulkbar {
+          justify-content: space-between;
+          gap: 10px;
+          background: ${C.surface};
+          border: 1px solid ${C.darkLine};
+          border-radius: 10px;
+          padding: 10px 12px;
+          margin-bottom: 14px;
+        }
+        .iv-action-group {
+          gap: 6px;
+          padding: 5px;
+          border-radius: 10px;
+          background: rgba(255,255,255,0.035);
+          border: 1px solid rgba(255,255,255,0.08);
+        }
+        .iv-action-group-danger {
+          background: rgba(220,38,38,0.08);
+          border-color: rgba(248,113,113,0.22);
+        }
+        .iv-searchbox { flex: 1 1 360px; min-width: 220px; position: relative; }
+        .iv-filter-control { width: var(--iv-filter-width); flex: 0 0 var(--iv-filter-width); }
+        .iv-bulk-select { height: 34px; min-width: 150px; border-radius: 8px; border: 1px solid ${C.darkLine}; background: ${C.white}; color: ${C.ink}; font-family: inherit; font-size: 13px; padding: 0 8px; }
         .iv-product-grid {
           display: grid;
           grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
@@ -277,10 +487,34 @@ export function InteractiveViewTool() {
           .iv-root { padding-left: 16px !important; padding-right: 16px !important; }
           .iv-product-grid { grid-template-columns: 1fr; }
         }
+        @media (max-width: 760px) {
+          .iv-header { align-items: flex-start; }
+          .iv-header > div { width: 100%; justify-content: space-between; }
+          .iv-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+          .iv-tabs button { justify-content: center; width: 100%; }
+          .iv-filterbar { display: grid; grid-template-columns: 1fr; }
+          .iv-searchbox,
+          .iv-filter-control,
+          .iv-filterbar > button {
+            width: 100% !important;
+            min-width: 0 !important;
+            flex-basis: auto !important;
+          }
+          .iv-filterbar > button { justify-content: center; }
+          .iv-bulkbar { display: grid; align-items: stretch; }
+          .iv-bulk-actions { display: grid; grid-template-columns: 1fr; align-items: stretch; }
+          .iv-action-group { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+          .iv-action-group .iv-bulk-select,
+          .iv-action-group button { width: 100%; justify-content: center; }
+          .iv-action-group-tags { grid-template-columns: 1fr 1fr; }
+          .iv-action-group-tags .iv-bulk-select { grid-column: 1 / -1; }
+          .iv-action-group-danger { grid-template-columns: 1fr; }
+          .iv-feature-grid { grid-template-columns: 1fr !important; }
+        }
         @keyframes iv-spin { to { transform: rotate(360deg); } }
       `}</style>
       {/* Header */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 12 }}>
+      <div className="iv-header">
         <h1 style={{ fontSize: 26, fontWeight: 700, color: "#f8fafc", margin: 0, display: "flex", alignItems: "center", gap: 10 }}>
           <Eye size={28} color="#f472b6" /> Editor interactivo
         </h1>
@@ -290,14 +524,16 @@ export function InteractiveViewTool() {
         </div>
       </div>
 
-      <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
+      <div className="iv-tabs">
         <button onClick={() => setView("products")} style={viewToggleStyle(view === "products")}><Package size={iconSize} /> Productos</button>
+        <button onClick={() => setView("featured")} style={viewToggleStyle(view === "featured")}><GalleryHorizontalEnd size={iconSize} /> Destacados</button>
         <button onClick={() => setView("categories")} style={viewToggleStyle(view === "categories")}><FolderTree size={iconSize} /> Categorías</button>
+        <button onClick={() => setView("collections")} style={viewToggleStyle(view === "collections")}><Layers size={iconSize} /> Colecciones</button>
       </div>
 
       {/* Search + filter */}
-      {view === "products" && <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
-        <div style={{ flex: "1 1 360px", minWidth: 220, position: "relative" }}>
+      {view === "products" && <div className="iv-filterbar">
+        <div className="iv-searchbox">
           <Search size={16} color="#64748b" style={{ position: "absolute", left: 14, top: 13, pointerEvents: "none" }} />
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar por nombre, ID, marca..."
             style={{ width: "100%", height: 42, padding: "0 44px 0 38px", border: `1px solid ${search ? "#f472b6" : C.darkLine}`, borderRadius: 999, fontSize: 15, outline: "none", fontFamily: "inherit", background: C.white, boxSizing: "border-box", boxShadow: search ? "0 0 0 3px rgba(244,114,182,0.14)" : "none" }} />
@@ -324,6 +560,14 @@ export function InteractiveViewTool() {
           width={210}
           onChange={(value) => setVisibilityFilter(value as typeof visibilityFilter)}
         />
+        <FilterMenu
+          label="Tag"
+          value={tagFilter}
+          options={tagOptions}
+          defaultValue="__all"
+          width={210}
+          onChange={setTagFilter}
+        />
         <button onClick={() => setEditing(makeNewProduct())} style={btnStyle("primary")}><Plus size={iconSize} /> Agregar artículo</button>
       </div>}
 
@@ -332,13 +576,20 @@ export function InteractiveViewTool() {
           <span style={{ color: "#cbd5e1", fontSize: 13, fontWeight: 700 }}>Filtros activos:</span>
           {search.trim() && <FilterChip label={`Búsqueda: ${search}`} onClear={() => setSearch("")} />}
           {catFilter !== "__all" && activeCategory && <FilterChip label={activeCategory.label} color={activeCategory.color} onClear={() => setCatFilter("__all")} />}
+          {tagFilter !== "__all" && activeTag && <FilterChip label={`Tag: ${activeTag.label}`} color={C.plum} onClear={() => setTagFilter("__all")} />}
           {visibilityFilter !== "all" && activeVisibility && <FilterChip label={activeVisibility.label} tone={activeVisibility.tone} onClear={() => setVisibilityFilter("all")} />}
+          {tagFilter !== "__all" && (
+            <>
+              <button onClick={() => setProductsWithActiveTagVisibility(true)} disabled={bulkSaving} style={{ ...btnStyle("secondaryDark"), height: 30, fontSize: 13, padding: "0 10px" }}><Eye size={13} /> Mostrar tag</button>
+              <button onClick={() => setProductsWithActiveTagVisibility(false)} disabled={bulkSaving} style={{ ...btnStyle("secondaryDark"), height: 30, fontSize: 13, padding: "0 10px" }}><EyeOff size={13} /> Ocultar tag</button>
+            </>
+          )}
           <button onClick={clearProductFilters} style={{ ...btnStyle("secondaryDark"), height: 30, fontSize: 13, padding: "0 10px" }}>Limpiar filtros</button>
         </div>
       )}
 
       {view === "products" && (
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap", background: C.surface, border: `1px solid ${C.darkLine}`, borderRadius: 10, padding: "10px 12px", marginBottom: 14 }}>
+        <div className="iv-bulkbar">
           <label style={{ display: "inline-flex", alignItems: "center", gap: 8, color: "#e2e8f0", fontSize: 14, fontWeight: 600, cursor: filtered.length > 0 ? "pointer" : "default" }}>
             <input
               type="checkbox"
@@ -349,22 +600,65 @@ export function InteractiveViewTool() {
             />
             {allFilteredSelected ? "Quitar selección visible" : `Seleccionar visibles (${filtered.length})`}
           </label>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          <div className="iv-bulk-actions">
             <span style={{ color: "#cbd5e1", fontSize: 14 }}>{selectedProducts.length} seleccionados</span>
-            <button
-              onClick={clearSelection}
-              disabled={selectedProducts.length === 0}
-              style={{ ...btnStyle("secondaryDark"), height: 34, opacity: selectedProducts.length === 0 ? 0.45 : 1, cursor: selectedProducts.length === 0 ? "not-allowed" : "pointer" }}
-            >
-              Limpiar
-            </button>
-            <button
-              onClick={() => requestDelete(selectedProducts, "bulk")}
-              disabled={selectedProducts.length === 0}
-              style={{ ...btnStyle("danger"), height: 34, opacity: selectedProducts.length === 0 ? 0.45 : 1, cursor: selectedProducts.length === 0 ? "not-allowed" : "pointer" }}
-            >
-              <Trash2 size={14} /> Eliminar seleccionados
-            </button>
+            <div className="iv-action-group">
+              <button
+                onClick={clearSelection}
+                disabled={selectedProducts.length === 0}
+                style={{ ...btnStyle("secondaryDark"), height: 34, opacity: selectedProducts.length === 0 ? 0.45 : 1, cursor: selectedProducts.length === 0 ? "not-allowed" : "pointer" }}
+              >
+                <X size={14} /> Limpiar
+              </button>
+              <button
+                onClick={() => setSelectedVisibility(true)}
+                disabled={selectedProducts.length === 0 || bulkSaving}
+                style={{ ...btnStyle("secondaryDark"), height: 34, opacity: selectedProducts.length === 0 ? 0.45 : 1 }}
+              >
+                <Eye size={14} /> Mostrar
+              </button>
+              <button
+                onClick={() => setSelectedVisibility(false)}
+                disabled={selectedProducts.length === 0 || bulkSaving}
+                style={{ ...btnStyle("secondaryDark"), height: 34, opacity: selectedProducts.length === 0 ? 0.45 : 1 }}
+              >
+                <EyeOff size={14} /> Ocultar
+              </button>
+            </div>
+            <div className="iv-action-group iv-action-group-tags">
+              <select
+                className="iv-bulk-select"
+                value={bulkTag}
+                onChange={(event) => setBulkTag(event.target.value)}
+                disabled={selectedProducts.length === 0 || bulkSaving}
+              >
+                <option value="">Elegir tag</option>
+                {allTags.map((tag) => <option key={tag} value={tag}>{tag}</option>)}
+              </select>
+              <button
+                onClick={addTagToSelected}
+                disabled={selectedProducts.length === 0 || !bulkTag || bulkSaving}
+                style={{ ...btnStyle("secondaryDark"), height: 34, opacity: selectedProducts.length === 0 || !bulkTag ? 0.45 : 1 }}
+              >
+                <Tag size={14} /> Agregar tag
+              </button>
+              <button
+                onClick={removeTagFromSelected}
+                disabled={selectedProducts.length === 0 || !bulkTag || bulkSaving}
+                style={{ ...btnStyle("secondaryDark"), height: 34, opacity: selectedProducts.length === 0 || !bulkTag ? 0.45 : 1 }}
+              >
+                <TagOffIcon size={14} /> Quitar tag
+              </button>
+            </div>
+            <div className="iv-action-group iv-action-group-danger">
+              <button
+                onClick={() => requestDelete(selectedProducts, "bulk")}
+                disabled={selectedProducts.length === 0}
+                style={{ ...btnStyle("danger"), height: 34, opacity: selectedProducts.length === 0 ? 0.45 : 1, cursor: selectedProducts.length === 0 ? "not-allowed" : "pointer" }}
+              >
+                <Trash2 size={14} /> Eliminar seleccionados
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -418,8 +712,45 @@ export function InteractiveViewTool() {
         />
       )}
 
+      {view === "collections" && (
+        <CollectionManager
+          collections={collections}
+          products={prods}
+          client={client}
+          onCreate={() => setEditingCollection(makeNewCollection())}
+          onEdit={setEditingCollection}
+          onDeleted={(id) => setCollections((current) => current.filter((collection) => collection._id !== id))}
+          onDemoCreated={(created) => setCollections((current) => {
+            const existing = new Set(current.map((collection) => canonicalId(collection._id)));
+            return [...current, ...created.filter((collection) => !existing.has(canonicalId(collection._id)))];
+          })}
+        />
+      )}
+
+      {view === "featured" && (
+        <FeaturedGalleryManager
+          gallery={featuredGallery}
+          client={client}
+          onSaved={setFeaturedGallery}
+        />
+      )}
+
       {/* Edit drawer */}
       {editing && <EditDrawer prod={editing} client={client} subcats={subcats} allTags={allTags} onClose={() => setEditing(null)} onSaved={handleSaved} />}
+      {editingCollection && (
+        <CollectionEditor
+          collection={editingCollection}
+          products={prods}
+          client={client}
+          onClose={() => setEditingCollection(null)}
+          onSaved={(saved) => {
+            setCollections((current) => current.some((collection) => collection._id === saved._id)
+              ? current.map((collection) => collection._id === saved._id ? saved : collection)
+              : [saved, ...current]);
+            setEditingCollection(null);
+          }}
+        />
+      )}
       {confirmDelete && (
         <ConfirmDeleteModal
           request={confirmDelete}
@@ -623,7 +954,7 @@ function FilterMenu({ label, value, options, defaultValue, width, onChange }: {
   const active = value !== defaultValue;
 
   return (
-    <div style={{ position: "relative", width, flex: `0 0 ${width}px` }} onBlur={(e) => {
+    <div className="iv-filter-control" style={{ "--iv-filter-width": `${width}px`, position: "relative", width } as React.CSSProperties} onBlur={(e) => {
       if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setOpen(false);
     }}>
       <button
@@ -732,6 +1063,15 @@ function FilterChip({ label, color, tone, onClear }: { label: string; color?: st
   );
 }
 
+function TagOffIcon({ size = 14 }: { size?: number }) {
+  return (
+    <span style={{ width: size, height: size, display: "inline-flex", alignItems: "center", justifyContent: "center", position: "relative", flexShrink: 0 }}>
+      <Tag size={size} />
+      <span style={{ position: "absolute", width: Math.round(size * 1.35), height: 2, borderRadius: 999, background: "currentColor", transform: "rotate(-38deg)" }} />
+    </span>
+  );
+}
+
 function MiniToggle({ on, icon, onClick, disabled, title }: { on: boolean; icon: React.ReactNode; onClick: () => void; disabled: boolean; title: string }) {
   return (
     <button onClick={onClick} disabled={disabled} title={title}
@@ -739,6 +1079,692 @@ function MiniToggle({ on, icon, onClick, disabled, title }: { on: boolean; icon:
       {icon}
     </button>
   );
+}
+
+function FeaturedGalleryManager({
+  gallery,
+  client,
+  onSaved,
+}: {
+  gallery: SFeaturedGallery;
+  client: ReturnType<typeof useClient>;
+  onSaved: (gallery: SFeaturedGallery) => void;
+}) {
+  const [draft, setDraft] = useState<SFeaturedGallery>(() => JSON.parse(JSON.stringify(gallery)));
+  const [selectedKey, setSelectedKey] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState<"image" | "thumbnail" | "">("");
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const thumbInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const next = JSON.parse(JSON.stringify(gallery)) as SFeaturedGallery;
+    setDraft(next);
+    setSelectedKey(next.items?.[0]?._key || "");
+  }, [gallery]);
+
+  const sortedItems = useMemo(
+    () => [...(draft.items || [])].sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0)),
+    [draft.items]
+  );
+  const selectedItem = sortedItems.find((item) => item._key === selectedKey) || sortedItems[0] || null;
+  const activeCount = sortedItems.filter((item) => item.active !== false).length;
+
+  const setField = <K extends keyof SFeaturedGallery>(field: K, value: SFeaturedGallery[K]) => {
+    setDraft((current) => ({ ...current, [field]: value }));
+  };
+
+  const setItem = (key: string, patch: Partial<SFeaturedGalleryItem>) => {
+    setDraft((current) => ({
+      ...current,
+      items: (current.items || []).map((item) => item._key === key ? { ...item, ...patch } : item),
+    }));
+  };
+
+  const addItem = () => {
+    const item = { ...makeNewFeaturedItem(), orden: sortedItems.length };
+    setDraft((current) => ({ ...current, items: [...(current.items || []), item] }));
+    setSelectedKey(item._key);
+  };
+
+  const removeItem = (key: string) => {
+    const item = sortedItems.find((entry) => entry._key === key);
+    if (!item || !window.confirm(`¿Eliminar la card "${item.titulo || "sin título"}"?`)) return;
+    setDraft((current) => {
+      const nextItems = (current.items || [])
+        .filter((entry) => entry._key !== key)
+        .map((entry, index) => ({ ...entry, orden: index }));
+      setSelectedKey(nextItems[0]?._key || "");
+      return { ...current, items: nextItems };
+    });
+  };
+
+  const moveItem = (key: string, direction: -1 | 1) => {
+    setDraft((current) => {
+      const next = [...(current.items || [])].sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0));
+      const index = next.findIndex((item) => item._key === key);
+      const target = index + direction;
+      if (index < 0 || target < 0 || target >= next.length) return current;
+      const [item] = next.splice(index, 1);
+      next.splice(target, 0, item);
+      return { ...current, items: next.map((entry, order) => ({ ...entry, orden: order })) };
+    });
+  };
+
+  const uploadImage = async (kind: "image" | "thumbnail", files: FileList | null) => {
+    if (!selectedItem || !files?.[0]) return;
+    setUploading(kind);
+    try {
+      const asset = await client.assets.upload("image", files[0], { filename: files[0].name });
+      const image = { _key: uid(), _type: "image", asset: { _ref: asset._id, url: asset.url } };
+      setItem(selectedItem._key, kind === "image" ? { imagen: image } : { youtubeThumbnail: image });
+    } finally {
+      setUploading("");
+      if (kind === "image" && imageInputRef.current) imageInputRef.current.value = "";
+      if (kind === "thumbnail" && thumbInputRef.current) thumbInputRef.current.value = "";
+    }
+  };
+
+  const toImageDoc = (image?: SImg) => {
+    if (!image?.asset?._ref) return undefined;
+    return { _type: "image", asset: { _type: "reference", _ref: image.asset._ref } };
+  };
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      const items = sortedItems.map((item, index) => {
+        const mediaType = item.mediaType || "image";
+        const doc: Record<string, unknown> = {
+          _key: item._key || uid(),
+          _type: "featuredGalleryItem",
+          titulo: item.titulo?.trim() || "Card destacada",
+          descripcion: item.descripcion || "",
+          mediaType,
+          mediaOrientation: item.mediaOrientation || (mediaType === "youtube" ? "horizontal" : "vertical"),
+          alt: item.alt || "",
+          focalPosition: item.focalPosition || "",
+          youtubeUrl: item.youtubeUrl || "",
+          meta: item.meta || "",
+          ctaText: item.ctaText || "",
+          ctaHref: item.ctaHref || "",
+          ctaAction: item.ctaAction || "whatsapp",
+          whatsappMessage: item.whatsappMessage || "",
+          targetSection: item.targetSection || "catalogo",
+          active: item.active !== false,
+          orden: index,
+        };
+        const image = toImageDoc(item.imagen);
+        const thumb = toImageDoc(item.youtubeThumbnail);
+        if (image) doc.imagen = image;
+        if (thumb) doc.youtubeThumbnail = thumb;
+        return doc;
+      });
+
+      const data = {
+        titulo: draft.titulo || "Ideas listas para celebrar",
+        subtitulo: draft.subtitulo || "",
+        active: draft.active !== false,
+        items,
+      };
+
+      await client.createIfNotExists({ _id: "featuredGallery", _type: "featuredGallery" });
+      await client.patch("featuredGallery").set(data).commit();
+      onSaved({
+        _id: "featuredGallery",
+        titulo: data.titulo,
+        subtitulo: data.subtitulo,
+        active: data.active,
+        items: sortedItems.map((item, index) => ({ ...item, orden: index })),
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div style={{ display: "grid", gap: 14 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", background: C.surface, border: `1px solid ${C.darkLine}`, borderRadius: 12, padding: 14 }}>
+        <div>
+          <h2 style={{ margin: 0, color: "#f8fafc", fontSize: 20, display: "flex", alignItems: "center", gap: 8 }}>
+            <GalleryHorizontalEnd size={20} color="#f472b6" /> Galería destacada
+          </h2>
+          <p style={{ margin: "4px 0 0", color: "#cbd5e1", fontSize: 14 }}>
+            Edita el título, estado y cards de la sección de novedades destacadas sin salir de la vista interactiva.
+          </p>
+        </div>
+        <button onClick={save} disabled={saving} style={{ ...btnStyle("save"), opacity: saving ? 0.72 : 1 }}>
+          {saving ? <Loader2 size={iconSize} style={{ animation: "iv-spin 0.8s linear infinite" }} /> : <Save size={iconSize} />}
+          {saving ? "Guardando..." : "Guardar sección"}
+        </button>
+      </div>
+
+      <div className="iv-feature-grid" style={{ display: "grid", gridTemplateColumns: "minmax(260px, 0.35fr) minmax(0, 0.65fr)", gap: 14 }}>
+        <div style={{ display: "grid", gap: 12, alignContent: "start" }}>
+          <div style={{ background: C.white, borderRadius: 12, padding: 14, display: "grid", gap: 12 }}>
+            <Field label="Título de sección">
+              <input value={draft.titulo || ""} onChange={(event) => setField("titulo", event.target.value)} style={inputStyle(C.white, "#d1d5db")} />
+            </Field>
+            <Field label="Descripción breve">
+              <textarea value={draft.subtitulo || ""} onChange={(event) => setField("subtitulo", event.target.value)} rows={3} style={{ ...inputStyle(C.white, "#d1d5db"), height: "auto", padding: "8px 12px" }} />
+            </Field>
+            <ToggleField label="Sección activa" help="Si está desactivada no se muestra en la web." value={draft.active !== false} onChange={(value) => setField("active", value)} />
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+              <CountBox label="Cards" value={sortedItems.length} />
+              <CountBox label="Activas" value={activeCount} />
+            </div>
+            <button onClick={addItem} style={{ ...btnStyle("primary"), justifyContent: "center" }}><Plus size={iconSize} /> Agregar card</button>
+          </div>
+
+          <div style={{ display: "grid", gap: 8 }}>
+            {sortedItems.map((item, index) => {
+              const thumb = imageUrl(item.mediaType === "youtube" ? item.youtubeThumbnail : item.imagen, client, 160, 120);
+              const selected = selectedItem?._key === item._key;
+              return (
+                <button
+                  key={item._key}
+                  onClick={() => setSelectedKey(item._key)}
+                  style={{ display: "grid", gridTemplateColumns: "70px minmax(0, 1fr)", gap: 10, alignItems: "center", textAlign: "left", border: `1px solid ${selected ? "#f9a8d4" : C.darkLine}`, background: selected ? "#fff1f7" : C.surface, borderRadius: 12, padding: 8, cursor: "pointer", fontFamily: "inherit" }}
+                >
+                  <span style={{ height: 54, borderRadius: 9, overflow: "hidden", background: "#eef2f7", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    {thumb ? <img src={thumb} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <ImageIcon size={20} color="#8792a5" />}
+                  </span>
+                  <span style={{ minWidth: 0 }}>
+                    <span style={{ display: "block", color: selected ? C.plum : "#f8fafc", fontWeight: 800, fontSize: 14, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {index + 1}. {item.titulo || "Card sin título"}
+                    </span>
+                    <span style={{ display: "block", color: selected ? C.inkSoft : "#94a3b8", fontSize: 12, marginTop: 2 }}>
+                      {item.mediaType === "youtube" ? "YouTube" : "Imagen"} · {item.active === false ? "oculta" : "activa"}
+                    </span>
+                  </span>
+                </button>
+              );
+            })}
+            {sortedItems.length === 0 && <EmptyState icon={<GalleryHorizontalEnd size={24} />} text="Todavía no hay cards destacadas." />}
+          </div>
+        </div>
+
+        <div style={{ background: C.white, borderRadius: 12, padding: 14, minHeight: 420 }}>
+          {selectedItem ? (
+            <div style={{ display: "grid", gap: 14 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                <div style={{ minWidth: 0 }}>
+                  <h3 style={{ margin: 0, color: C.ink, fontSize: 20 }}>{selectedItem.titulo || "Card sin título"}</h3>
+                  <div style={{ color: C.inkSoft, fontSize: 13 }}>{selectedItem.mediaType === "youtube" ? "Video de YouTube" : "Imagen destacada"}</div>
+                </div>
+                <div style={{ display: "flex", gap: 6 }}>
+                  <button onClick={() => moveItem(selectedItem._key, -1)} style={{ ...btnStyle("secondary"), width: 36, height: 34, padding: 0, justifyContent: "center" }} title="Subir orden"><ChevronDown size={14} style={{ transform: "rotate(180deg)" }} /></button>
+                  <button onClick={() => moveItem(selectedItem._key, 1)} style={{ ...btnStyle("secondary"), width: 36, height: 34, padding: 0, justifyContent: "center" }} title="Bajar orden"><ChevronDown size={14} /></button>
+                  <button onClick={() => removeItem(selectedItem._key)} style={{ ...btnStyle("danger"), width: 36, height: 34, padding: 0, justifyContent: "center" }} title="Eliminar card"><Trash2 size={14} /></button>
+                </div>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
+                <Field label="Título">
+                  <input value={selectedItem.titulo || ""} onChange={(event) => setItem(selectedItem._key, { titulo: event.target.value })} style={inputStyle(C.white, "#d1d5db")} />
+                </Field>
+                <Field label="Meta / mini título">
+                  <input value={selectedItem.meta || ""} onChange={(event) => setItem(selectedItem._key, { meta: event.target.value })} style={inputStyle(C.white, "#d1d5db")} placeholder="Ej: Nuevo, Video, Campaña escolar" />
+                </Field>
+              </div>
+
+              <Field label="Descripción">
+                <textarea value={selectedItem.descripcion || ""} onChange={(event) => setItem(selectedItem._key, { descripcion: event.target.value })} rows={3} style={{ ...inputStyle(C.white, "#d1d5db"), height: "auto", padding: "8px 12px" }} />
+              </Field>
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 12 }}>
+                <Field label="Tipo de media">
+                  <select value={selectedItem.mediaType || "image"} onChange={(event) => setItem(selectedItem._key, { mediaType: event.target.value as FeaturedMediaType })} style={inputStyle(C.white, "#d1d5db")}>
+                    <option value="image">Imagen</option>
+                    <option value="youtube">Video de YouTube</option>
+                  </select>
+                </Field>
+                <Field label="Formato">
+                  <select value={selectedItem.mediaOrientation || "vertical"} onChange={(event) => setItem(selectedItem._key, { mediaOrientation: event.target.value as FeaturedOrientation })} style={inputStyle(C.white, "#d1d5db")}>
+                    <option value="vertical">Vertical / historia</option>
+                    <option value="horizontal">Horizontal</option>
+                  </select>
+                </Field>
+                <ToggleField label="Card activa" value={selectedItem.active !== false} onChange={(value) => setItem(selectedItem._key, { active: value })} />
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 12 }}>
+                {selectedItem.mediaType !== "youtube" ? (
+                  <MediaPicker
+                    label="Imagen"
+                    image={selectedItem.imagen}
+                    client={client}
+                    uploading={uploading === "image"}
+                    inputRef={imageInputRef}
+                    onUpload={(files) => uploadImage("image", files)}
+                    onRemove={() => setItem(selectedItem._key, { imagen: undefined })}
+                  />
+                ) : (
+                  <>
+                    <Field label="Link de YouTube">
+                      <input value={selectedItem.youtubeUrl || ""} onChange={(event) => setItem(selectedItem._key, { youtubeUrl: event.target.value })} style={inputStyle(C.white, "#d1d5db")} placeholder="https://youtu.be/..." />
+                    </Field>
+                    <MediaPicker
+                      label="Thumbnail opcional"
+                      image={selectedItem.youtubeThumbnail}
+                      client={client}
+                      uploading={uploading === "thumbnail"}
+                      inputRef={thumbInputRef}
+                      onUpload={(files) => uploadImage("thumbnail", files)}
+                      onRemove={() => setItem(selectedItem._key, { youtubeThumbnail: undefined })}
+                    />
+                  </>
+                )}
+                <Field label="Texto alternativo / foco">
+                  <div style={{ display: "grid", gap: 8 }}>
+                    <input value={selectedItem.alt || ""} onChange={(event) => setItem(selectedItem._key, { alt: event.target.value })} style={inputStyle(C.white, "#d1d5db")} placeholder="Texto alternativo" />
+                    <input value={selectedItem.focalPosition || ""} onChange={(event) => setItem(selectedItem._key, { focalPosition: event.target.value })} style={inputStyle(C.white, "#d1d5db")} placeholder="50% 35%, center..." />
+                  </div>
+                </Field>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 12 }}>
+                <Field label="Texto CTA">
+                  <input value={selectedItem.ctaText || ""} onChange={(event) => setItem(selectedItem._key, { ctaText: event.target.value })} style={inputStyle(C.white, "#d1d5db")} />
+                </Field>
+                <Field label="Acción CTA">
+                  <select value={selectedItem.ctaAction || "whatsapp"} onChange={(event) => setItem(selectedItem._key, { ctaAction: event.target.value as FeaturedCtaAction })} style={inputStyle(C.white, "#d1d5db")}>
+                    <option value="whatsapp">WhatsApp</option>
+                    <option value="scroll">Scroll interno</option>
+                  </select>
+                </Field>
+                {selectedItem.ctaAction === "scroll" ? (
+                  <Field label="Sección destino">
+                    <select value={selectedItem.targetSection || "catalogo"} onChange={(event) => setItem(selectedItem._key, { targetSection: event.target.value })} style={inputStyle(C.white, "#d1d5db")}>
+                      <option value="destacados">Novedades</option>
+                      <option value="catalogo">Catálogo</option>
+                      <option value="horarios">Horarios</option>
+                      <option value="contacto">Contacto</option>
+                    </select>
+                  </Field>
+                ) : (
+                  <Field label="Mensaje WhatsApp">
+                    <input value={selectedItem.whatsappMessage || ""} onChange={(event) => setItem(selectedItem._key, { whatsappMessage: event.target.value })} style={inputStyle(C.white, "#d1d5db")} />
+                  </Field>
+                )}
+              </div>
+
+              <Field label="URL CTA opcional">
+                <input value={selectedItem.ctaHref || ""} onChange={(event) => setItem(selectedItem._key, { ctaHref: event.target.value })} style={inputStyle(C.white, "#d1d5db")} placeholder="https://..." />
+              </Field>
+            </div>
+          ) : (
+            <EmptyState icon={<GalleryHorizontalEnd size={24} />} text="Agrega una card para empezar a editar la sección." />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MediaPicker({
+  label,
+  image,
+  client,
+  uploading,
+  inputRef,
+  onUpload,
+  onRemove,
+}: {
+  label: string;
+  image?: SImg;
+  client: ReturnType<typeof useClient>;
+  uploading: boolean;
+  inputRef: React.RefObject<HTMLInputElement | null>;
+  onUpload: (files: FileList | null) => void;
+  onRemove: () => void;
+}) {
+  const preview = imageUrl(image, client, 520, 360);
+
+  return (
+    <div>
+      <label style={{ display: "block", fontSize: 16, fontWeight: 600, color: C.inkSoft, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em" }}>{label}</label>
+      <input ref={inputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={(event) => onUpload(event.target.files)} />
+      <div style={{ border: "1px solid #d1d5db", borderRadius: 12, overflow: "hidden", background: "#f8fafc" }}>
+        <button onClick={() => inputRef.current?.click()} style={{ width: "100%", aspectRatio: "16 / 10", border: "none", padding: 0, background: "#eef2f7", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          {uploading ? <Loader2 size={22} color={C.plum} style={{ animation: "iv-spin 0.8s linear infinite" }} /> : preview ? <img src={preview} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <ImagePlus size={28} color="#8792a5" />}
+        </button>
+        <div style={{ display: "flex", gap: 8, padding: 8 }}>
+          <button onClick={() => inputRef.current?.click()} style={{ ...btnStyle("secondary"), height: 32, fontSize: 13, padding: "0 10px" }}><Upload size={13} /> Subir</button>
+          {preview && <button onClick={onRemove} style={{ ...btnStyle("danger"), height: 32, fontSize: 13, padding: "0 10px" }}><Trash2 size={13} /> Quitar</button>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CollectionManager({
+  collections,
+  products,
+  client,
+  onCreate,
+  onEdit,
+  onDeleted,
+  onDemoCreated,
+}: {
+  collections: SCollection[];
+  products: SProd[];
+  client: ReturnType<typeof useClient>;
+  onCreate: () => void;
+  onEdit: (collection: SCollection) => void;
+  onDeleted: (id: string) => void;
+  onDemoCreated: (collections: SCollection[]) => void;
+}) {
+  const [savingDemo, setSavingDemo] = useState(false);
+  const [deletingId, setDeletingId] = useState("");
+
+  const createDemoCollections = async () => {
+    setSavingDemo(true);
+    try {
+      const existingSlugs = new Set(collections.map((collection) => collection.slug?.current).filter(Boolean));
+      const visibleProducts = products.filter((product) => product.visible !== false && !product._id.startsWith("drafts."));
+      const created: SCollection[] = [];
+
+      for (const demo of DEMO_COLLECTIONS) {
+        if (existingSlugs.has(demo.slug)) continue;
+        const picked = pickProductsByKeywords(visibleProducts, demo.keywords).slice(0, 8);
+        const doc = {
+          _id: demo.id,
+          _type: "album",
+          titulo: demo.title,
+          subtitulo: demo.subtitle,
+          etiqueta: demo.label,
+          slug: { _type: "slug", current: demo.slug },
+          themeColor: demo.color,
+          visible: true,
+          orden: created.length,
+          items: picked.map((product) => ({
+            _key: uid(),
+            _type: "albumItem",
+            visible: true,
+            producto: { _type: "reference", _ref: canonicalId(product._id) },
+          })),
+        };
+        await client.createIfNotExists(doc);
+        created.push({
+          _id: demo.id,
+          titulo: demo.title,
+          subtitulo: demo.subtitle,
+          etiqueta: demo.label,
+          slug: { current: demo.slug },
+          themeColor: demo.color,
+          visible: true,
+          orden: created.length,
+          items: picked.map((product) => ({ _key: uid(), visible: true, producto: product })),
+        });
+      }
+
+      onDemoCreated(created);
+    } finally {
+      setSavingDemo(false);
+    }
+  };
+
+  const deleteCollection = async (collection: SCollection) => {
+    if (!window.confirm(`¿Eliminar la colección "${collection.titulo}"?`)) return;
+    setDeletingId(collection._id);
+    try {
+      await client.delete(collection._id);
+      onDeleted(collection._id);
+    } finally {
+      setDeletingId("");
+    }
+  };
+
+  return (
+    <div style={{ display: "grid", gap: 14 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", background: C.surface, border: `1px solid ${C.darkLine}`, borderRadius: 12, padding: 14 }}>
+        <div>
+          <h2 style={{ margin: 0, color: "#f8fafc", fontSize: 20, display: "flex", alignItems: "center", gap: 8 }}>
+            <Layers size={20} color="#f472b6" /> Colecciones
+          </h2>
+          <p style={{ margin: "4px 0 0", color: "#cbd5e1", fontSize: 14 }}>
+            Crea páginas compartibles como /halloween o /dia-del-padre con productos elegidos del catálogo.
+          </p>
+        </div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <button onClick={createDemoCollections} disabled={savingDemo} style={btnStyle("secondaryDark")}>
+            {savingDemo ? <Loader2 size={iconSize} style={{ animation: "iv-spin 0.8s linear infinite" }} /> : <WandSparkles size={iconSize} />}
+            Crear demos
+          </button>
+          <button onClick={onCreate} style={btnStyle("primary")}><Plus size={iconSize} /> Nueva colección</button>
+        </div>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 12 }}>
+        {collections.map((collection) => {
+          const thumb = imageUrl(collection.portada || collection.items?.find((item) => item.producto?.imagenes?.[0])?.producto?.imagenes?.[0], client, 420, 300);
+          const slug = collection.slug?.current || slugify(collection.titulo);
+          return (
+            <article key={collection._id} style={{ overflow: "hidden", borderRadius: 14, border: `1px solid ${collection.visible === false ? "#fca5a5" : C.darkLine}`, background: C.white, boxShadow: "0 12px 28px rgba(0,0,0,0.24)" }}>
+              <div style={{ height: 150, position: "relative", background: `linear-gradient(135deg, ${collection.themeColor || C.plum}33, #fff7ed)` }}>
+                {thumb ? <img src={thumb} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <Palette size={30} color={collection.themeColor || C.plum} style={{ position: "absolute", left: 18, top: 18 }} />}
+                <span style={{ position: "absolute", left: 12, bottom: 12, padding: "5px 9px", borderRadius: 999, background: collection.visible === false ? "#fee2e2" : "#dcfce7", color: collection.visible === false ? C.red : C.green, fontSize: 12, fontWeight: 800 }}>
+                  {collection.visible === false ? "Oculta" : "Visible"}
+                </span>
+              </div>
+              <div style={{ padding: 14, display: "grid", gap: 8 }}>
+                <div style={{ color: collection.themeColor || C.plum, fontSize: 12, fontWeight: 850, textTransform: "uppercase", letterSpacing: "0.08em" }}>{collection.etiqueta || "Colección"}</div>
+                <h3 style={{ margin: 0, color: C.ink, fontSize: 22, lineHeight: 1.05 }}>{collection.titulo}</h3>
+                <div style={{ color: C.inkSoft, fontSize: 13 }}>/{slug} · {collection.items?.filter((item) => item.visible !== false).length || 0} productos visibles</div>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+                  <a href={`/${slug}`} target="_blank" rel="noreferrer" style={{ ...btnStyle("secondary"), height: 34, textDecoration: "none" }}><ExternalLink size={14} /> Abrir</a>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <button onClick={() => deleteCollection(collection)} disabled={deletingId === collection._id} style={{ ...btnStyle("danger"), height: 34, width: 36, padding: 0, justifyContent: "center" }}>
+                      {deletingId === collection._id ? <Loader2 size={14} style={{ animation: "iv-spin 0.8s linear infinite" }} /> : <Trash2 size={14} />}
+                    </button>
+                    <button onClick={() => onEdit(collection)} style={{ ...btnStyle("primary"), height: 34 }}><Pencil size={14} /> Editar</button>
+                  </div>
+                </div>
+              </div>
+            </article>
+          );
+        })}
+      </div>
+
+      {collections.length === 0 && <EmptyState icon={<Layers size={24} />} text="Todavía no hay colecciones. Puedes crear una o generar las demos." />}
+    </div>
+  );
+}
+
+function CollectionEditor({
+  collection,
+  products,
+  client,
+  onClose,
+  onSaved,
+}: {
+  collection: SCollection;
+  products: SProd[];
+  client: ReturnType<typeof useClient>;
+  onClose: () => void;
+  onSaved: (collection: SCollection) => void;
+}) {
+  const [draft, setDraft] = useState<SCollection>(collection);
+  const [productQuery, setProductQuery] = useState("");
+  const [saving, setSaving] = useState(false);
+  const selectedIds = useMemo(() => new Set((draft.items || []).map((item) => item.producto?._id).filter(Boolean) as string[]), [draft.items]);
+  const filteredProducts = useMemo(() => {
+    const term = normalize(productQuery);
+    return products.filter((product) => {
+      if (!term) return true;
+      return normalize([product.nombre, product.idExcel, product.subcategoria?.nombre, product.subcategoria?.categoria?.nombre, ...(product.tags || [])].filter(Boolean).join(" ")).includes(term);
+    }).slice(0, 80);
+  }, [productQuery, products]);
+
+  const setField = <K extends keyof SCollection>(field: K, value: SCollection[K]) => {
+    setDraft((current) => ({ ...current, [field]: value }));
+  };
+
+  const toggleProduct = (product: SProd) => {
+    setDraft((current) => {
+      const exists = (current.items || []).some((item) => item.producto?._id === product._id);
+      return {
+        ...current,
+        items: exists
+          ? (current.items || []).filter((item) => item.producto?._id !== product._id)
+          : [...(current.items || []), { _key: uid(), visible: true, producto: product }],
+      };
+    });
+  };
+
+  const toggleItemVisible = (productId: string) => {
+    setDraft((current) => ({
+      ...current,
+      items: (current.items || []).map((item) => item.producto?._id === productId ? { ...item, visible: item.visible === false } : item),
+    }));
+  };
+
+  const save = async () => {
+    const title = draft.titulo.trim();
+    if (!title) return;
+    const slug = draft.slug?.current?.trim() || slugify(title);
+    setSaving(true);
+    try {
+      const items = (draft.items || [])
+        .filter((item) => item.producto && !item.producto._id.startsWith("drafts."))
+        .map((item) => ({
+          _key: item._key || uid(),
+          _type: "albumItem",
+          titulo: item.titulo,
+          descripcion: item.descripcion,
+          visible: item.visible !== false,
+          producto: { _type: "reference", _ref: canonicalId(item.producto!._id) },
+        }));
+      const data = {
+        titulo: title,
+        subtitulo: draft.subtitulo || "",
+        etiqueta: draft.etiqueta || "",
+        slug: { _type: "slug", current: slug },
+        themeColor: draft.themeColor || C.plum,
+        visible: draft.visible !== false,
+        orden: draft.orden || 0,
+        items,
+      };
+
+      let savedId = draft._id;
+      if (draft._id === "__new_collection__") {
+        const created = await client.create({ _type: "album", ...data });
+        savedId = created._id;
+      } else {
+        await client.patch(draft._id).set(data).commit();
+      }
+
+      onSaved({
+        ...draft,
+        _id: savedId,
+        titulo: title,
+        slug: { current: slug },
+        themeColor: data.themeColor,
+        visible: data.visible,
+        items: (draft.items || []).filter((item) => item.producto && !item.producto._id.startsWith("drafts.")),
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const slug = draft.slug?.current || slugify(draft.titulo || "coleccion");
+
+  return (
+    <div role="dialog" aria-modal="true" style={{ position: "fixed", inset: 0, zIndex: 90, background: "rgba(15, 18, 31, 0.72)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+      <div style={{ width: "min(1120px, 100%)", maxHeight: "92vh", overflow: "auto", background: C.panel, borderRadius: 14, boxShadow: "0 24px 80px rgba(0,0,0,0.38)" }}>
+        <div style={{ position: "sticky", top: 0, zIndex: 2, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: "16px 18px", background: C.white, borderBottom: "1px solid #e5e7eb" }}>
+          <div>
+            <h2 style={{ margin: 0, color: C.ink, fontSize: 22 }}>Editar colección</h2>
+            <a href={`/${slug}`} target="_blank" rel="noreferrer" style={{ color: C.plum, fontSize: 13, textDecoration: "none" }}>/{slug}</a>
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button onClick={onClose} style={btnStyle("secondary")}><X size={iconSize} /> Cerrar</button>
+            <button onClick={save} disabled={saving || !draft.titulo.trim()} style={{ ...btnStyle("save"), opacity: saving || !draft.titulo.trim() ? 0.6 : 1 }}>
+              {saving ? <Loader2 size={iconSize} style={{ animation: "iv-spin 0.8s linear infinite" }} /> : <Save size={iconSize} />}
+              Guardar
+            </button>
+          </div>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(280px, 0.42fr) minmax(0, 0.58fr)", gap: 16, padding: 18 }}>
+          <div style={{ display: "grid", gap: 12, alignContent: "start" }}>
+            <Field label="Título">
+              <input value={draft.titulo} onChange={(event) => {
+                const value = event.target.value;
+                setDraft((current) => ({ ...current, titulo: value, slug: { current: current.slug?.current || slugify(value) } }));
+              }} style={inputStyle(C.white, "#d1d5db")} placeholder="Ej: Halloween" />
+            </Field>
+            <Field label="Slug">
+              <input value={draft.slug?.current || ""} onChange={(event) => setField("slug", { current: slugify(event.target.value) })} style={inputStyle(C.white, "#d1d5db")} placeholder="halloween" />
+            </Field>
+            <Field label="Etiqueta">
+              <input value={draft.etiqueta || ""} onChange={(event) => setField("etiqueta", event.target.value)} style={inputStyle(C.white, "#d1d5db")} placeholder="Temporada" />
+            </Field>
+            <Field label="Descripción">
+              <textarea value={draft.subtitulo || ""} onChange={(event) => setField("subtitulo", event.target.value)} rows={3} style={{ ...inputStyle(C.white, "#d1d5db"), height: "auto", padding: "8px 12px" }} />
+            </Field>
+            <Field label="Color principal">
+              <input value={draft.themeColor || C.plum} onChange={(event) => setField("themeColor", event.target.value)} style={inputStyle(C.white, "#d1d5db")} placeholder="#D2386C" />
+            </Field>
+            <ToggleField label="Visible en el sitio" value={draft.visible !== false} onChange={(value) => setField("visible", value)} />
+            <div style={{ padding: 12, borderRadius: 12, background: `linear-gradient(135deg, ${draft.themeColor || C.plum}44, #fff7ed)`, border: "1px solid #e5e7eb", color: C.ink }}>
+              <strong>{draft.titulo || "Nombre de colección"}</strong>
+              <div style={{ marginTop: 4, fontSize: 13, color: C.inkSoft }}>{(draft.items || []).filter((item) => item.visible !== false).length} productos visibles</div>
+            </div>
+          </div>
+
+          <div style={{ display: "grid", gap: 12, alignContent: "start" }}>
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <div style={{ flex: 1, position: "relative" }}>
+                <Search size={15} color="#64748b" style={{ position: "absolute", left: 12, top: 11, pointerEvents: "none" }} />
+                <input value={productQuery} onChange={(event) => setProductQuery(event.target.value)} placeholder="Buscar productos para esta colección" style={{ ...inputStyle(C.white, "#d1d5db"), paddingLeft: 34 }} />
+              </div>
+              <span style={{ color: C.inkSoft, fontSize: 13 }}>{selectedIds.size} elegidos</span>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 8, maxHeight: 560, overflow: "auto", paddingRight: 4 }}>
+              {filteredProducts.map((product) => {
+                const selected = selectedIds.has(product._id);
+                const item = (draft.items || []).find((entry) => entry.producto?._id === product._id);
+                const thumb = imageUrl(product.imagenes?.[0], client, 120, 120);
+                return (
+                  <div key={product._id} style={{ display: "grid", gridTemplateColumns: "58px minmax(0, 1fr)", gap: 8, alignItems: "center", padding: 8, borderRadius: 10, background: selected ? "#fff1f7" : C.white, border: `1px solid ${selected ? "#f9a8d4" : "#e5e7eb"}` }}>
+                    <button onClick={() => toggleProduct(product)} style={{ width: 58, height: 58, borderRadius: 9, overflow: "hidden", border: "none", padding: 0, background: "#eef2f7", cursor: "pointer" }}>
+                      {thumb ? <img src={thumb} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <ImageIcon size={20} color="#8792a5" />}
+                    </button>
+                    <div style={{ minWidth: 0 }}>
+                      <button onClick={() => toggleProduct(product)} style={{ display: "block", width: "100%", border: "none", background: "none", padding: 0, color: C.ink, fontWeight: 700, fontSize: 13, textAlign: "left", cursor: "pointer", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{product.nombre}</button>
+                      <div style={{ color: C.inkSoft, fontSize: 12, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{product.subcategoria?.nombre || "Sin subcategoría"}</div>
+                      {selected && (
+                        <button onClick={() => toggleItemVisible(product._id)} style={{ marginTop: 5, ...btnStyle("secondary"), height: 26, fontSize: 12, padding: "0 8px" }}>
+                          {item?.visible === false ? <EyeOff size={12} /> : <Eye size={12} />}
+                          {item?.visible === false ? "Oculto" : "Visible"}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function pickProductsByKeywords(products: SProd[], keywords: string[]) {
+  const normalizedKeywords = keywords.map(normalize);
+  return products
+    .map((product) => {
+      const hay = normalize([product.nombre, product.subcategoria?.nombre, product.subcategoria?.categoria?.nombre, ...(product.tags || [])].filter(Boolean).join(" "));
+      const score = normalizedKeywords.reduce((total, keyword) => total + (hay.includes(keyword) ? 1 : 0), 0);
+      return { product, score };
+    })
+    .sort((a, b) => b.score - a.score)
+    .map((item) => item.product);
 }
 
 function CategoryManager({ cats, subcats, prods, client, onCategoryDeleted, onCategoryCreated, onCategoryUpdated, onSubcategoryDeleted, onSubcategoryCreated, onSubcategoryUpdated }: {

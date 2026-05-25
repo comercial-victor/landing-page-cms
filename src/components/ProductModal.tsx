@@ -61,7 +61,7 @@ export default function ProductModal({ producto, onClose, whatsapp, contact }: P
 
   const requestClose = useCallback(() => {
     setIsVisible(false);
-    window.setTimeout(onClose, 260);
+    window.setTimeout(onClose, 420);
   }, [onClose]);
 
   if (!producto) return null;

@@ -1,8 +1,9 @@
 import siteSettings from "./siteSettings";
-import { featuredGallerySchema, heroSchema, categoriaSchema, subcategoriaSchema, productoSchema } from "./schemas";
+import { albumSchema, featuredGallerySchema, heroSchema, categoriaSchema, subcategoriaSchema, productoSchema } from "./schemas";
 
 export const schemaTypes = [
   siteSettings,
+  albumSchema,
   featuredGallerySchema,
   heroSchema,
   categoriaSchema,

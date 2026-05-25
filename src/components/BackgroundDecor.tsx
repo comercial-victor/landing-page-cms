@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import type { CSSProperties } from "react";
 
 type ConfettiPiece = {
   id: number;
@@ -11,6 +12,16 @@ type ConfettiPiece = {
   color: string;
   shape: string;
   size: number;
+};
+
+type BalloonPiece = {
+  id: number;
+  left: number;
+  drift: number;
+  delay: number;
+  dur: number;
+  scale: number;
+  color: string;
 };
 
 export default function BackgroundDecor() {
@@ -50,7 +61,9 @@ export default function BackgroundDecor() {
   }, []);
 
   const [mounted, setMounted] = useState(false);
+  const [showConfetti, setShowConfetti] = useState(false);
   const [confetti, setConfetti] = useState<ConfettiPiece[]>([]);
+  const [balloons, setBalloons] = useState<BalloonPiece[]>([]);
 
   useEffect(() => {
     setMounted(true);
@@ -69,6 +82,41 @@ export default function BackgroundDecor() {
     setConfetti(pieces);
   }, []);
 
+  useEffect(() => {
+    const update = () => {
+      const heroLimit = Math.min(window.innerHeight * 0.78, 720);
+      setShowConfetti(window.scrollY > heroLimit);
+    };
+
+    update();
+    window.addEventListener("scroll", update, { passive: true });
+    return () => window.removeEventListener("scroll", update);
+  }, []);
+
+  useEffect(() => {
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduceMotion) return;
+
+    const palette = ["#F26F55", "#F3C84D", "#BD2F61", "#26B99D", "#7C6CE4", "#FF9DB4"];
+    const launch = window.setTimeout(() => {
+      setBalloons(Array.from({ length: 16 }, (_, i) => ({
+        id: i,
+        left: 4 + Math.random() * 92,
+        drift: (Math.random() - 0.5) * 180,
+        delay: Math.random() * 0.55,
+        dur: 3.4 + Math.random() * 0.9,
+        scale: 0.72 + Math.random() * 0.62,
+        color: palette[i % palette.length],
+      })));
+    }, 520);
+
+    const cleanup = window.setTimeout(() => setBalloons([]), 5600);
+    return () => {
+      window.clearTimeout(launch);
+      window.clearTimeout(cleanup);
+    };
+  }, []);
+
   return (
     <>
       <div className="bg-decor" aria-hidden="true">
@@ -77,7 +125,7 @@ export default function BackgroundDecor() {
         <div className="blob blob-3" />
         <div className="grain" />
       </div>
-      {mounted && (
+      {mounted && showConfetti && (
         <div className="confetti-layer" aria-hidden="true">
           {confetti.map((p) => (
             <span
@@ -92,6 +140,24 @@ export default function BackgroundDecor() {
                 transform: `scale(${p.size})`,
                 ["--drift" as string]: p.drift + "px",
               }}
+            />
+          ))}
+        </div>
+      )}
+      {mounted && balloons.length > 0 && (
+        <div className="balloon-launch-layer" aria-hidden="true">
+          {balloons.map((balloon) => (
+            <span
+              key={balloon.id}
+              className="load-balloon"
+              style={{
+                left: `${balloon.left}%`,
+                "--balloon-color": balloon.color,
+                "--balloon-drift": `${balloon.drift}px`,
+                "--balloon-delay": `${balloon.delay}s`,
+                "--balloon-duration": `${balloon.dur}s`,
+                "--balloon-scale": balloon.scale,
+              } as CSSProperties}
             />
           ))}
         </div>

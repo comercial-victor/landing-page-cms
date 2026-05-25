@@ -84,6 +84,7 @@ export default function Navbar({
   const links = [
     { href: "/", label: "Inicio" },
     { href: "/#destacados", label: "Novedades" },
+    { href: "/#colecciones", label: "Colecciones" },
     { href: "/catalog", label: "Catálogo" },
     { href: "/#horarios", label: "Horarios" },
     { href: "/#contacto", label: "Ubícanos" },

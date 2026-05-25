@@ -44,7 +44,7 @@ export default function CatalogPreview({ productos, categorias, whatsapp, contac
                 Explora por categoría,<br />elige sin complicarte.
               </h2>
               <p className="section-lede">
-                Una vista rápida de nuestras líneas más buscadas. El catálogo completo tiene filtros, buscador y todos los productos disponibles.
+                Recorre las líneas más buscadas y entra al catálogo completo cuando quieras comparar medidas, colores y disponibilidad.
               </p>
               <a className="btn btn-plum btn-lg" href="/catalog">
                 Ver catálogo completo
