@@ -36,6 +36,7 @@ export default function Navbar({
 }: NavbarProps) {
   const [q, setQ] = useState("");
   const [focused, setFocused] = useState(false);
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [openProduct, setOpenProduct] = useState<ProductoFlat | null>(null);
   const [scrolled, setScrolled] = useState(false);
@@ -83,7 +84,7 @@ export default function Navbar({
 
   const links = [
     { href: "/", label: "Inicio" },
-    { href: "/#destacados", label: "Novedades" },
+    { href: "/#destacados", label: "Destacados" },
     { href: "/#colecciones", label: "Colecciones" },
     { href: "/catalog", label: "Catálogo" },
     { href: "/#horarios", label: "Horarios" },
@@ -101,6 +102,14 @@ export default function Navbar({
 
   const go = (href: string) => {
     setMobileOpen(false);
+    setMobileSearchOpen(false);
+    if (href === "/" && pathname === "/") {
+      window.scrollTo({
+        top: 0,
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+      });
+      return;
+    }
     if (href.startsWith("/#")) {
       if (pathname === "/") {
         scrollToHash(href.slice(1));
@@ -114,8 +123,8 @@ export default function Navbar({
 
   return (
     <>
-      <nav className={`nav-float ${scrolled ? "scrolled" : ""}`}>
-        <div className="nav-float-pill">
+      <nav className={`nav-float ${scrolled ? "scrolled" : ""} ${mobileSearchOpen ? "mobile-search-open" : ""}`}>
+        <div className={`nav-float-pill ${focused || searchValue || mobileSearchOpen ? "search-open" : ""}`}>
           {/* Logo */}
           <button className="nf-logo" onClick={() => go("/")}>
             {brand.logo ? (
@@ -147,7 +156,15 @@ export default function Navbar({
           </div>
 
           {/* Search */}
-          <div className="nf-search">
+          <div
+            className="nf-search"
+            onPointerDown={() => {
+              if (window.innerWidth <= 820) {
+                setMobileSearchOpen(true);
+                window.setTimeout(() => inputRef.current?.focus(), 0);
+              }
+            }}
+          >
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
             <input
               ref={inputRef}
@@ -156,13 +173,16 @@ export default function Navbar({
               value={searchValue}
               onChange={(e) => {
                 if (isCatalogSearch) {
+                  if (window.innerWidth <= 820) setMobileSearchOpen(true);
                   onCatalogSearchChange?.(e.target.value);
                   return;
                 }
                 setQ(e.target.value);
+                if (window.innerWidth <= 820) setMobileSearchOpen(true);
               }}
               onFocus={() => {
                 setFocused(true);
+                if (window.innerWidth <= 820) setMobileSearchOpen(true);
                 if (isCatalogSearch) {
                   const target = document.getElementById("catalogo");
                   if (target && window.scrollY > 40) {
@@ -174,7 +194,10 @@ export default function Navbar({
                   }
                 }
               }}
-              onBlur={() => setTimeout(() => setFocused(false), 200)}
+              onBlur={() => setTimeout(() => {
+                setFocused(false);
+                if (!searchValue) setMobileSearchOpen(false);
+              }, 200)}
               autoComplete="off"
             />
           </div>
@@ -212,7 +235,7 @@ export default function Navbar({
             {results.map((p) => {
               const dp = p.presentaciones?.find((pr) => pr.esDefault && pr.visibleEnWeb && pr.precio);
               return (
-                <div key={p._id} className="search-result" onMouseDown={() => { setOpenProduct(p); setQ(""); }}>
+                <div key={p._id} className="search-result" onMouseDown={() => { setOpenProduct(p); setQ(""); setMobileSearchOpen(false); }}>
                   <div className="search-result-thumb"><ProductImage producto={p} size={44} /></div>
                   <div className="search-result-meta">
                     <div className="search-result-name">{p.nombre}</div>

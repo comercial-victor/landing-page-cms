@@ -77,7 +77,7 @@ export default function ProductModal({ producto, onClose, whatsapp, contact }: P
   const allImages = producto.imagenes || [];
   const hasMultipleImages = allImages.length > 1;
   const currentImgSrc = allImages[activeImgIdx]
-    ? urlFor(allImages[activeImgIdx]).width(800).height(600).url()
+    ? urlFor(allImages[activeImgIdx]).width(1200).url()
     : null;
   const currentLightboxSrc = allImages[activeImgIdx]
     ? originalImageUrl(allImages[activeImgIdx])

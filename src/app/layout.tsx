@@ -2,9 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { getSiteSettings } from "@/lib/queries";
 import { urlFor } from "@/lib/sanity";
-import logoIcon from "./logo.png";
 
-const siteIcon = typeof logoIcon === "string" ? logoIcon : logoIcon.src;
+const siteIcon = "/favicon.svg";
 const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000").replace(/\/$/, "");
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -19,9 +18,9 @@ export async function generateMetadata(): Promise<Metadata> {
       title,
       description,
       icons: {
-        icon: [{ url: siteIcon, type: "image/png" }],
+        icon: [{ url: siteIcon, type: "image/svg+xml" }],
         shortcut: [siteIcon],
-        apple: [{ url: siteIcon, type: "image/png" }],
+        apple: [{ url: siteIcon, type: "image/svg+xml" }],
       },
       openGraph: {
         title,
@@ -45,9 +44,9 @@ export async function generateMetadata(): Promise<Metadata> {
       title: "Comercial Victor",
       description: "Todo para que tu fiesta brille",
       icons: {
-        icon: [{ url: siteIcon, type: "image/png" }],
+        icon: [{ url: siteIcon, type: "image/svg+xml" }],
         shortcut: [siteIcon],
-        apple: [{ url: siteIcon, type: "image/png" }],
+        apple: [{ url: siteIcon, type: "image/svg+xml" }],
       },
     };
   }
