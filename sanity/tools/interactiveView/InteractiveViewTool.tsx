@@ -107,6 +107,8 @@ interface FilterOption {
 const uid = () => Math.random().toString(36).slice(2, 10);
 const normalize = (s: string) => s.toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "").replace(/[^a-z0-9]+/g, " ").trim();
 const slugify = (s: string) => normalize(s).replace(/\s+/g, "-");
+const tokenize = (s: string) => normalize(s).split(" ").filter(Boolean);
+const matchesTokens = (hay: string, tokens: string[]) => tokens.length === 0 || tokens.every((token) => hay.includes(token));
 const COMMON_TAGS = ["popular","nuevo","para-eventos","barra","metalizado","color-blanco","tecnopor","escolar","fiesta-infantil","manualidades","descartable","tela"];
 const DEMO_COLLECTIONS = [
   { id: "collection-halloween", title: "Halloween", slug: "halloween", label: "Temporada", color: "#8B3FD1", keywords: ["halloween", "fiesta", "infantil", "globo", "decoracion", "metalizado"], subtitle: "Ideas para armar una vitrina, mesa o fiesta con un toque misterioso y divertido." },
@@ -544,6 +546,22 @@ export function InteractiveViewTool() {
           .iv-action-group-tags .iv-bulk-select { grid-column: 1 / -1; }
           .iv-action-group-danger { grid-template-columns: 1fr; }
           .iv-feature-grid { grid-template-columns: 1fr !important; }
+        }
+        .iv-collection-modal { align-items: flex-start; }
+        .iv-collection-header { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+        .iv-collection-actions { display: flex; gap: 8px; }
+        .iv-collection-body { display: grid; grid-template-columns: minmax(280px, 0.42fr) minmax(0, 0.58fr); gap: 16px; }
+        .iv-collection-search { display: flex; gap: 8px; align-items: center; }
+        .iv-collection-products { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; max-height: 560px; overflow: auto; padding-right: 4px; }
+        @media (max-width: 980px) {
+          .iv-collection-body { grid-template-columns: 1fr; }
+          .iv-collection-header { flex-wrap: wrap; align-items: flex-start; }
+          .iv-collection-actions { width: 100%; justify-content: flex-end; }
+          .iv-collection-products { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); max-height: 420px; }
+        }
+        @media (max-width: 640px) {
+          .iv-collection-search { flex-direction: column; align-items: stretch; }
+          .iv-collection-products { grid-template-columns: 1fr; max-height: 320px; }
         }
         @keyframes iv-spin { to { transform: rotate(360deg); } }
       `}</style>
@@ -1637,10 +1655,10 @@ function CollectionEditor({
   const selectedIds = useMemo(() => new Set((draft.items || []).map((item) => item.producto?._id).filter(Boolean) as string[]), [draft.items]);
   const coverItemCount = useMemo(() => (draft.items || []).filter((item) => item.mostrarEnPortada).length, [draft.items]);
   const filteredProducts = useMemo(() => {
-    const term = normalize(productQuery);
+    const tokens = tokenize(productQuery);
     return products.filter((product) => {
-      if (!term) return true;
-      return normalize([product.nombre, product.idExcel, product.subcategoria?.nombre, product.subcategoria?.categoria?.nombre, ...(product.tags || [])].filter(Boolean).join(" ")).includes(term);
+      const hay = normalize([product.nombre, product.idExcel, product.subcategoria?.nombre, product.subcategoria?.categoria?.nombre, ...(product.tags || [])].filter(Boolean).join(" "));
+      return matchesTokens(hay, tokens);
     }).slice(0, 80);
   }, [productQuery, products]);
 
@@ -1756,15 +1774,18 @@ function CollectionEditor({
 
   const slug = draft.slug?.current || slugify(draft.titulo || "coleccion");
 
+  const modalTopPadding = STRUCTURE_PANE_HEADER_OFFSET + 20;
+  const modalMaxHeight = `calc(100vh - ${modalTopPadding + 20}px)`;
+
   return (
-    <div role="dialog" aria-modal="true" style={{ position: "fixed", inset: 0, zIndex: 90, background: "rgba(15, 18, 31, 0.72)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-      <div style={{ width: "min(1120px, 100%)", maxHeight: "92vh", overflow: "auto", background: C.panel, borderRadius: 14, boxShadow: "0 24px 80px rgba(0,0,0,0.38)" }}>
-        <div style={{ position: "sticky", top: 0, zIndex: 2, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: "16px 18px", background: C.white, borderBottom: "1px solid #e5e7eb" }}>
+    <div role="dialog" aria-modal="true" className="iv-collection-modal" style={{ position: "fixed", inset: 0, zIndex: 90, background: "rgba(15, 18, 31, 0.72)", display: "flex", justifyContent: "center", padding: `${modalTopPadding}px 20px 20px` }}>
+      <div className="iv-collection-shell" style={{ width: "min(1120px, 100%)", maxHeight: modalMaxHeight, overflow: "auto", background: C.panel, borderRadius: 14, boxShadow: "0 24px 80px rgba(0,0,0,0.38)" }}>
+        <div className="iv-collection-header" style={{ position: "sticky", top: 0, zIndex: 2, padding: "16px 18px", background: C.white, borderBottom: "1px solid #e5e7eb" }}>
           <div>
             <h2 style={{ margin: 0, color: C.ink, fontSize: 22 }}>Editar colección</h2>
             <a href={`/${slug}`} target="_blank" rel="noreferrer" style={{ color: C.plum, fontSize: 13, textDecoration: "none" }}>/{slug}</a>
           </div>
-          <div style={{ display: "flex", gap: 8 }}>
+          <div className="iv-collection-actions">
             <button onClick={onClose} style={btnStyle("secondary")}><X size={iconSize} /> Cerrar</button>
             <button onClick={save} disabled={saving || !draft.titulo.trim()} style={{ ...btnStyle("save"), opacity: saving || !draft.titulo.trim() ? 0.6 : 1 }}>
               {saving ? <Loader2 size={iconSize} style={{ animation: "iv-spin 0.8s linear infinite" }} /> : <Save size={iconSize} />}
@@ -1773,7 +1794,7 @@ function CollectionEditor({
           </div>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "minmax(280px, 0.42fr) minmax(0, 0.58fr)", gap: 16, padding: 18 }}>
+        <div className="iv-collection-body" style={{ padding: 18 }}>
           <div style={{ display: "grid", gap: 12, alignContent: "start" }}>
             <Field label="Título">
               <input value={draft.titulo} onChange={(event) => {
@@ -1825,7 +1846,7 @@ function CollectionEditor({
           </div>
 
           <div style={{ display: "grid", gap: 12, alignContent: "start" }}>
-            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <div className="iv-collection-search">
               <div style={{ flex: 1, position: "relative" }}>
                 <Search size={15} color="#64748b" style={{ position: "absolute", left: 12, top: 11, pointerEvents: "none" }} />
                 <input value={productQuery} onChange={(event) => setProductQuery(event.target.value)} placeholder="Buscar productos para esta colección" style={{ ...inputStyle(C.white, "#d1d5db"), paddingLeft: 34 }} />
@@ -1833,7 +1854,7 @@ function CollectionEditor({
               <span style={{ color: C.inkSoft, fontSize: 13 }}>{selectedIds.size} elegidos</span>
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 8, maxHeight: 560, overflow: "auto", paddingRight: 4 }}>
+            <div className="iv-collection-products">
               {filteredProducts.map((product) => {
                 const selected = selectedIds.has(product._id);
                 const item = (draft.items || []).find((entry) => entry.producto?._id === product._id);
