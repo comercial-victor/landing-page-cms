@@ -102,6 +102,7 @@ export interface CollectionItem {
   titulo?: string;
   descripcion?: string;
   visible?: boolean;
+  mostrarEnPortada?: boolean;
   producto?: ProductoFlat;
 }
 
@@ -145,6 +146,8 @@ export interface Presentacion {
 }
 
 // ─── Producto ────────────────────────────────────────────
+export type DestacadoUbicacion = "preCatalog";
+
 export interface Producto {
   _id: string;
   idExcel?: string;
@@ -159,6 +162,7 @@ export interface Producto {
   imagenes?: SanityImage[];
   visible: boolean;
   destacado?: boolean;
+  destacadoUbicaciones?: DestacadoUbicacion[];
   orden?: number;
   stock?: number | null;
   manejaStock?: boolean;

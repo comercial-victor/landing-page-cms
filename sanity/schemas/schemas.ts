@@ -8,10 +8,10 @@ import {
   Type,
 } from "lucide-react";
 
-// ─── Galería destacada ─────────────────────────────────────────────
+// ─── Novedades ─────────────────────────────────────────────
 export const featuredGallerySchema = defineType({
   name: "featuredGallery",
-  title: "Galería destacada",
+  title: "Novedades",
   type: "document",
   groups: [
     { name: "contenido", title: "Contenido", icon: Type, default: true },
@@ -19,12 +19,12 @@ export const featuredGallerySchema = defineType({
     { name: "estado", title: "Estado", icon: BadgeCheck },
   ],
   initialValue: {
-    titulo: "Ideas listas para celebrar",
+    titulo: "Ideas nuevas para celebrar",
     active: true,
     items: [],
   },
   fields: [
-    defineField({ name: "titulo", title: "Título de la sección", type: "string", group: "contenido", initialValue: "Ideas listas para celebrar" }),
+    defineField({ name: "titulo", title: "Título de la sección", type: "string", group: "contenido", initialValue: "Ideas nuevas para celebrar" }),
     defineField({ name: "subtitulo", title: "Descripción breve de la sección", type: "text", group: "contenido", rows: 2 }),
     defineField({ name: "active", title: "Sección activa", type: "boolean", group: "estado", initialValue: true }),
     defineField({
@@ -150,7 +150,7 @@ export const featuredGallerySchema = defineType({
             type: "string",
             options: {
               list: [
-                { title: "Novedades", value: "destacados" },
+                { title: "Novedades", value: "novedades" },
                 { title: "Catálogo", value: "catalogo" },
                 { title: "Horarios", value: "horarios" },
                 { title: "Contacto / Ubicación", value: "contacto" },
@@ -174,7 +174,7 @@ export const featuredGallerySchema = defineType({
   ],
   preview: {
     select: { title: "titulo", active: "active" },
-    prepare: ({ title, active }) => ({ title: title || "Galería destacada", subtitle: active ? "Activa" : "Inactiva" }),
+    prepare: ({ title, active }) => ({ title: title || "Novedades", subtitle: active ? "Activa" : "Inactiva" }),
   },
 });
 
@@ -215,6 +215,7 @@ export const albumSchema = defineType({
           defineField({ name: "producto", title: "Producto", type: "reference", to: [{ type: "producto" }], validation: (R) => R.required() }),
           defineField({ name: "titulo", title: "Título alternativo opcional", type: "string" }),
           defineField({ name: "descripcion", title: "Descripción corta opcional", type: "text", rows: 2 }),
+          defineField({ name: "mostrarEnPortada", title: "Usar como portada", type: "boolean", description: "Marca hasta 3 productos para que aparezcan como mini portadas de esta colección.", initialValue: false }),
           defineField({ name: "visible", title: "Visible en este álbum", type: "boolean", initialValue: true }),
         ],
         preview: {
@@ -260,10 +261,10 @@ export const heroSchema = defineType({
     trustItems: ["12+ años celebrando", "3.4k fiestas en Lima", "24h entrega exprés"],
     active: true,
     floatingCards: [
-      { _type: "heroFloatingCard", _key: "hero-card-globos", label: "globos", title: "Helio", position: "leftTop", rotation: -5, order: 1, visible: true },
-      { _type: "heroFloatingCard", _key: "hero-card-pinatas", label: "piñatas", title: "Artesanales", position: "rightTop", rotation: 4, order: 2, visible: true },
-      { _type: "heroFloatingCard", _key: "hero-card-packs", label: "packs", title: "Cumpleaños", position: "leftBottom", rotation: 3, order: 3, visible: true },
-      { _type: "heroFloatingCard", _key: "hero-card-escolar", label: "escolar", title: "Útiles", position: "rightBottom", rotation: -3, order: 4, visible: true },
+      { _type: "heroFloatingCard", _key: "hero-card-globos", label: "globos · helio", title: "Decoración lista", position: "leftTop", rotation: -6, order: 1, visible: true },
+      { _type: "heroFloatingCard", _key: "hero-card-decoraciones", label: "decoraciones", title: "Temáticas", position: "rightTop", rotation: 5, order: 2, visible: true },
+      { _type: "heroFloatingCard", _key: "hero-card-packs", label: "packs cumple", title: "Todo coordinado", position: "leftBottom", rotation: 3, order: 3, visible: true },
+      { _type: "heroFloatingCard", _key: "hero-card-mesa", label: "descartables", title: "Mesa y menaje", position: "rightBottom", rotation: -4, order: 4, visible: true },
     ],
   },
   fields: [
@@ -282,9 +283,9 @@ export const heroSchema = defineType({
     }),
     defineField({
       name: "floatingCards",
-      title: "Cards / imágenes flotantes",
+      title: "Cards del Hero",
       group: "visuales",
-      description: "Se muestran como carril debajo del texto del Hero. Aquí eliges la foto, el mini título superior y el título principal de cada card.",
+      description: "Se muestran como cards decorativas sin imagen en el Hero. Úsalas para resumir lo que ofrece la tienda.",
       type: "array",
       of: [{
         type: "object",
@@ -292,10 +293,9 @@ export const heroSchema = defineType({
         fields: [
           defineField({ name: "label", title: "Mini título arriba", type: "string", description: "Texto pequeño superior de la card. Ej: globos, packs, escolar." }),
           defineField({ name: "title", title: "Título principal de la card", type: "string", description: "Texto fuerte de la card. Ej: Helio, Cumpleaños, Útiles." }),
-          defineField({ name: "image", title: "Imagen", type: "image", options: { hotspot: true } }),
           defineField({
             name: "visualFormat",
-            title: "Formato de card",
+            title: "Tamaño de card",
             type: "string",
             options: {
               layout: "radio",
@@ -327,11 +327,10 @@ export const heroSchema = defineType({
           defineField({ name: "visible", title: "Visible", type: "boolean", initialValue: true }),
         ],
         preview: {
-          select: { title: "title", subtitle: "label", media: "image", visible: "visible" },
-          prepare: ({ title, subtitle, media, visible }) => ({
+          select: { title: "title", subtitle: "label", visible: "visible" },
+          prepare: ({ title, subtitle, visible }) => ({
             title: title || subtitle || "Card flotante",
             subtitle: visible ? subtitle : "Oculta",
-            media,
           }),
         },
       }],
@@ -410,7 +409,22 @@ export const productoSchema = defineType({
     defineField({ name: "medidas", title: "Medidas", type: "string", group: "general" }),
     defineField({ name: "observaciones", title: "Observaciones", type: "text", rows: 2, group: "general" }),
     defineField({ name: "visible", title: "¿Visible?", type: "boolean", initialValue: true, group: "general" }),
-    defineField({ name: "destacado", title: "⭐ Destacado", type: "boolean", initialValue: false, group: "general" }),
+    defineField({
+      name: "destacadoUbicaciones",
+      title: "Mostrar en precatálogo",
+      type: "array",
+      group: "general",
+      description: "Marca este producto para que aparezca en las dos filas móviles del bloque previo al catálogo.",
+      of: [{ type: "string" }],
+      options: {
+        layout: "tags",
+        list: [
+          { title: "Precatálogo", value: "preCatalog" },
+        ],
+      },
+      validation: (R) => R.unique(),
+    }),
+    defineField({ name: "destacado", title: "Destacado antiguo", type: "boolean", group: "general", hidden: true, readOnly: true }),
     defineField({ name: "orden", title: "Orden", type: "number", initialValue: 0, group: "general" }),
 
     // Stock at product level

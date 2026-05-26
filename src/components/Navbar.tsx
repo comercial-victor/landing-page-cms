@@ -9,6 +9,7 @@ import { urlFor } from "@/lib/sanity";
 import { ProductImage } from "./ProductHelpers";
 import ProductModal from "./ProductModal";
 import { ContactIcon, getContactColor, getContactHref, type ContactLink } from "@/lib/social";
+import { ArrowRight, Clock, Home, Layers3, MapPin, ShoppingBag, Sparkles } from "lucide-react";
 
 interface Brand {
   nombre: string;
@@ -83,12 +84,12 @@ export default function Navbar({
   }, [isCatalogSearch, q, productos]);
 
   const links = [
-    { href: "/", label: "Inicio" },
-    { href: "/#destacados", label: "Destacados" },
-    { href: "/#colecciones", label: "Colecciones" },
-    { href: "/catalog", label: "Catálogo" },
-    { href: "/#horarios", label: "Horarios" },
-    { href: "/#contacto", label: "Ubícanos" },
+    { href: "/", label: "Inicio", icon: Home },
+    { href: "/#novedades", label: "Novedades", icon: Sparkles },
+    { href: "/#colecciones", label: "Colecciones", icon: Layers3 },
+    { href: "/catalog", label: "Catálogo", icon: ShoppingBag },
+    { href: "/#horarios", label: "Horarios", icon: Clock },
+    { href: "/#contacto", label: "Ubícanos", icon: MapPin },
   ];
 
   const scrollToHash = (hash: string) => {
@@ -144,15 +145,19 @@ export default function Navbar({
 
           {/* Desktop center links */}
           <div className="nf-links">
-            {links.map((l) => (
+            {links.map((l) => {
+              const Icon = l.icon;
+              return (
               <button
                 key={l.href}
                 className={`nf-link ${pathname === l.href ? "active" : ""}`}
                 onClick={() => go(l.href)}
               >
+                <Icon className="nf-link-icon" size={15} strokeWidth={2.4} aria-hidden="true" />
                 {l.label}
               </button>
-            ))}
+              );
+            })}
           </div>
 
           {/* Search */}
@@ -252,12 +257,18 @@ export default function Navbar({
       {/* Mobile overlay */}
       <div className={`nf-mobile-overlay ${mobileOpen ? "open" : ""}`}>
         <div className="nf-mobile-inner">
-          {links.map((l, i) => (
+          {links.map((l, i) => {
+            const Icon = l.icon;
+            return (
             <button key={l.href} className="nf-mobile-link" onClick={() => go(l.href)} style={{ transitionDelay: mobileOpen ? `${i * 70 + 120}ms` : "0ms" }}>
-              {l.label}
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+              <span>
+                <Icon className="nf-link-icon" size={20} strokeWidth={2.35} aria-hidden="true" />
+                {l.label}
+              </span>
+              <ArrowRight size={19} strokeWidth={2.3} aria-hidden="true" />
             </button>
-          ))}
+            );
+          })}
           <div style={{ height: 1, background: "var(--line-strong)", margin: "12px 0" }} />
           {navbarContacts.length > 0 && (
             <div className="nf-mobile-socials">

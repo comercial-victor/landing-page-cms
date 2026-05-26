@@ -12,12 +12,12 @@ import ScrollToTop from "@/components/ScrollToTop";
 import { getPrimaryContact, normalizeSocialLinks } from "@/lib/social";
 
 export default async function HomePage() {
-  const [settings, hero, featuredGallery, productos, destacados, colecciones] = await Promise.all([
+  const [settings, hero, featuredGallery, productos, preCatalogDestacados, colecciones] = await Promise.all([
     getSiteSettings(),
     getHero(),
     getFeaturedGallery(),
     getTodosLosProductos(),
-    getProductosDestacados(),
+    getProductosDestacados("preCatalog"),
     getColecciones(),
   ]);
 
@@ -61,8 +61,12 @@ export default async function HomePage() {
         subtitle={featuredGallery?.subtitulo}
         primaryContact={brand.primaryContact}
       />
-      <Showcase productos={destacados} whatsapp={brand.whatsapp} contact={brand.primaryContact} />
-      <Colecciones colecciones={colecciones} fallbackProductos={destacados.length ? destacados : productos} />
+      <Showcase
+        productos={preCatalogDestacados.length ? preCatalogDestacados : productos.slice(0, 12)}
+        whatsapp={brand.whatsapp}
+        contact={brand.primaryContact}
+      />
+      <Colecciones colecciones={colecciones} fallbackProductos={preCatalogDestacados.length ? preCatalogDestacados : productos} />
       <HorariosUbicacion brand={brand} />
       <Footer brand={brand} />
       <FabWhatsApp contacts={brand.floatingContacts} />

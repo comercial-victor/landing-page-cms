@@ -1,5 +1,5 @@
 import { sanityClient } from "./sanity";
-import type { Collection, Album, SiteSettings, Hero, FeaturedGallery, Categoria, Producto, ProductoFlat } from "@/types";
+import type { Collection, Album, SiteSettings, Hero, FeaturedGallery, Categoria, Producto, ProductoFlat, DestacadoUbicacion } from "@/types";
 
 export async function getSiteSettings(): Promise<SiteSettings | null> {
   return sanityClient.fetch(
@@ -19,7 +19,7 @@ export async function getHero(): Promise<Hero | null> {
       _id, titulo, subtitulo, eyebrow, ctaPrincipalTexto, ctaPrincipalMensaje,
       ctaSecundarioTexto, trustItems, active,
       "floatingCards": floatingCards[visible != false] | order(order asc){
-        _key, label, title, image, visualFormat, position, rotation, order, visible
+        _key, label, title, visualFormat, position, rotation, order, visible
       }
     }`, {}, { cache: "no-store" }
   );
@@ -49,7 +49,7 @@ export async function getCategorias(): Promise<Categoria[]> {
 
 const productoProjection = `{
   _id, idExcel, nombre, slug, descripcion, marca, tags, medidas, observaciones,
-  imagenes, visible, destacado, orden, stock, manejaStock, permiteVentaFraccionada, unidadBase,
+  imagenes, visible, destacado, destacadoUbicaciones, orden, stock, manejaStock, permiteVentaFraccionada, unidadBase,
   whatsappMensaje, migratedFromVariant,
   subcategoria->{ _id, nombre, slug, categoria->{ _id, nombre, slug, color } },
   presentaciones[]{ _key, idExcel, nombre, factorConversion, precio, visibleEnWeb, esDefault }
@@ -63,10 +63,17 @@ export async function getTodosLosProductos(): Promise<ProductoFlat[]> {
   return productos.map(flattenProducto);
 }
 
-export async function getProductosDestacados(): Promise<ProductoFlat[]> {
+export async function getProductosDestacados(ubicacion: DestacadoUbicacion = "preCatalog"): Promise<ProductoFlat[]> {
   const productos: Producto[] = await sanityClient.fetch(
-    `*[_type == "producto" && visible == true && destacado == true] | order(orden asc)[0...8] ${productoProjection}`,
-    {}, { next: { tags: ["producto"] } }
+    `*[
+      _type == "producto" &&
+      visible == true &&
+      (
+        (defined(destacadoUbicaciones) && $ubicacion in destacadoUbicaciones) ||
+        (!defined(destacadoUbicaciones) && destacado == true)
+      )
+    ] | order(orden asc)[0...10] ${productoProjection}`,
+    { ubicacion }, { next: { tags: ["producto"] } }
   );
   return productos.map(flattenProducto);
 }
@@ -78,6 +85,7 @@ export async function getColecciones(): Promise<Collection[]> {
       titulo?: string;
       descripcion?: string;
       visible?: boolean;
+      mostrarEnPortada?: boolean;
       producto?: Producto | null;
     }>;
   };
@@ -86,7 +94,7 @@ export async function getColecciones(): Promise<Collection[]> {
     `*[_type == "album" && visible != false] | order(orden asc){
       _id, titulo, subtitulo, etiqueta, slug, portada, themeColor, visible, orden,
       "items": items[visible != false]{
-        _key, titulo, descripcion, visible,
+        _key, titulo, descripcion, visible, mostrarEnPortada,
         producto-> ${productoProjection}
       }
     }`,
@@ -116,6 +124,7 @@ export async function getColeccionPorSlug(slug: string): Promise<Collection | nu
       titulo?: string;
       descripcion?: string;
       visible?: boolean;
+      mostrarEnPortada?: boolean;
       producto?: Producto | null;
     }>;
   };
@@ -124,7 +133,7 @@ export async function getColeccionPorSlug(slug: string): Promise<Collection | nu
     `*[_type == "album" && visible != false && slug.current == $slug][0]{
       _id, titulo, subtitulo, etiqueta, slug, portada, themeColor, visible, orden,
       "items": items[visible != false]{
-        _key, titulo, descripcion, visible,
+        _key, titulo, descripcion, visible, mostrarEnPortada,
         producto-> ${productoProjection}
       }
     }`,

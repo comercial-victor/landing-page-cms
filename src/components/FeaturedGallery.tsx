@@ -58,7 +58,7 @@ function getItemMedia(item: FeaturedGalleryItem) {
     const video = getYouTubeEmbed(item.youtubeUrl);
     if (!video) return null;
     const thumbnailUrl = item.youtubeThumbnail
-      ? urlFor(item.youtubeThumbnail).width(1200).height(900).fit("crop").url()
+      ? urlFor(item.youtubeThumbnail).width(1200).height(900).fit("crop").auto("format").url()
       : video.thumbnailUrl;
     return { type: "youtube" as const, ...video, thumbnailUrl };
   }
@@ -339,8 +339,7 @@ export default function FeaturedGallery({ items, primaryContact, title, subtitle
 
   return (
     <>
-      <section className="section featured-gallery" id="destacados">
-        <span className="anchor-alias" id="novedades" aria-hidden="true" />
+      <section className="section featured-gallery" id="novedades">
         {activePreviewSrc && (
           <div className="featured-ambient" aria-hidden="true">
             <Image
@@ -356,8 +355,8 @@ export default function FeaturedGallery({ items, primaryContact, title, subtitle
         <div className="container">
           <div className="featured-gallery-head">
             <div>
-              <div className="section-kicker">Galería destacada</div>
-              <h2 className="section-title">{title || "Novedades destacadas"}</h2>
+              <div className="section-kicker">Novedades</div>
+              <h2 className="section-title">{title || "Ideas nuevas para celebrar"}</h2>
             </div>
             <p className="section-lede">
               {subtitle || "Ideas reales de tienda: fotos, videos y propuestas listas para coordinar sin dar vueltas."}
@@ -404,7 +403,7 @@ export default function FeaturedGallery({ items, primaryContact, title, subtitle
                 const distance = Math.min(Math.abs(wrappedOffset), 3);
                 const orientation = getItemOrientation(item);
                 const isHorizontal = orientation === "horizontal";
-                const spacing = isHorizontal ? 238 : 198;
+                const spacing = isHorizontal ? 276 : 232;
 
                 return (
                   <article
@@ -457,11 +456,26 @@ export default function FeaturedGallery({ items, primaryContact, title, subtitle
             </button>
           </div>
 
+          <div className="featured-progress" aria-live="polite">
+            <span className="featured-progress-count">{activeIndex + 1} / {visibleItems.length}</span>
+            <div className="featured-dots" role="tablist" aria-label="Cards de novedades">
+              {visibleItems.map((item, index) => (
+                <button
+                  key={item._key}
+                  className={index === activeIndex ? "active" : ""}
+                  onClick={() => goTo(index)}
+                  aria-label={`Mostrar ${item.titulo}`}
+                  aria-selected={index === activeIndex}
+                  role="tab"
+                />
+              ))}
+            </div>
+          </div>
+
           <div className="focus-rail-info" aria-live="polite">
             <div>
               <div className="focus-rail-meta">
                 <span>{activeItem.meta || (activeItem.mediaType === "youtube" ? "Video destacado" : "Destacado")}</span>
-                <span className="focus-rail-count">{activeIndex + 1} / {visibleItems.length}</span>
               </div>
               <h3>{activeItem.titulo}</h3>
               {activeItem.descripcion && <p>{activeItem.descripcion}</p>}
@@ -472,19 +486,6 @@ export default function FeaturedGallery({ items, primaryContact, title, subtitle
                 {getCtaLabel(activeItem, contactLabel)}
               </button>
             )}
-          </div>
-
-          <div className="featured-dots" role="tablist" aria-label="Cards destacadas">
-            {visibleItems.map((item, index) => (
-              <button
-                key={item._key}
-                className={index === activeIndex ? "active" : ""}
-                onClick={() => goTo(index)}
-                aria-label={`Mostrar ${item.titulo}`}
-                aria-selected={index === activeIndex}
-                role="tab"
-              />
-            ))}
           </div>
         </div>
       </section>

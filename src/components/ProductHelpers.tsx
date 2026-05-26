@@ -20,7 +20,7 @@ export function ProductImage({
       <div className={`placeholder-stripes ${className}`} style={{ "--stripe-a": colorA, "--stripe-b": colorB } as React.CSSProperties}>
         <div style={{ position: "relative", width: "100%", height: "100%" }}>
           <Image
-            src={urlFor(producto.imagenes[0]).width(size ? size * 2 : 720).height(size ? size * 2 : 900).url()}
+            src={urlFor(producto.imagenes[0]).width(size ? size * 2 : 720).height(size ? size * 2 : 900).auto("format").url()}
             alt={producto.nombre}
             fill
             sizes={size ? `${size}px` : "(max-width: 640px) 100vw, (max-width: 1100px) 50vw, 33vw"}

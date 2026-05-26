@@ -37,6 +37,11 @@ export default function Colecciones({ colecciones, fallbackProductos }: Coleccio
         <div className="colecciones-grid">
           {prepared.map((collection, index) => {
             const products = collection.items.map((item) => item.producto).filter(Boolean) as ProductoFlat[];
+            const coverProducts = collection.items
+              .filter((item) => item.visible !== false && item.mostrarEnPortada && item.producto)
+              .map((item) => item.producto)
+              .filter(Boolean) as ProductoFlat[];
+            const previewProducts = (coverProducts.length ? coverProducts : products).slice(0, 3);
             const cover = collection.portada;
             const href = collectionPath(collection);
             const theme = collection.themeColor || "#D2386C";
@@ -53,20 +58,19 @@ export default function Colecciones({ colecciones, fallbackProductos }: Coleccio
                   {cover ? (
                     <span className="coleccion-cover">
                       <Image
-                        src={urlFor(cover).width(720).height(820).fit("crop").url()}
+                        src={urlFor(cover).width(720).height(820).fit("crop").auto("format").url()}
                         alt=""
                         fill
                         sizes="(max-width: 900px) 88vw, 420px"
                         className="coleccion-cover-img"
                       />
                     </span>
-                  ) : (
-                    products.slice(0, 3).map((producto, i) => (
-                      <span key={producto._id} className={`coleccion-mini coleccion-mini-${i}`}>
-                        <ProductImage producto={producto} />
-                      </span>
-                    ))
-                  )}
+                  ) : null}
+                  {previewProducts.map((producto, i) => (
+                    <span key={producto._id} className={`coleccion-mini coleccion-mini-${i}`}>
+                      <ProductImage producto={producto} />
+                    </span>
+                  ))}
                 </span>
                 <span className="coleccion-copy">
                   <span className="coleccion-tag">{collection.etiqueta || "Colección"}</span>

@@ -77,7 +77,7 @@ export default function ProductModal({ producto, onClose, whatsapp, contact }: P
   const allImages = producto.imagenes || [];
   const hasMultipleImages = allImages.length > 1;
   const currentImgSrc = allImages[activeImgIdx]
-    ? urlFor(allImages[activeImgIdx]).width(1200).url()
+    ? urlFor(allImages[activeImgIdx]).width(1200).auto("format").url()
     : null;
   const currentLightboxSrc = allImages[activeImgIdx]
     ? originalImageUrl(allImages[activeImgIdx])
@@ -137,7 +137,7 @@ export default function ProductModal({ producto, onClose, whatsapp, contact }: P
               <div className="gallery-thumbs">
                 {allImages.map((img, i) => (
                   <button key={i} className={`gallery-thumb ${activeImgIdx === i ? "active" : ""}`} onClick={() => setActiveImgIdx(i)}>
-                    <Image src={urlFor(img).width(120).height(120).url()} alt={`Foto ${i + 1}`} width={56} height={56} className="gallery-thumb-img" />
+                    <Image src={urlFor(img).width(120).height(120).auto("format").url()} alt={`Foto ${i + 1}`} width={56} height={56} className="gallery-thumb-img" />
                   </button>
                 ))}
               </div>

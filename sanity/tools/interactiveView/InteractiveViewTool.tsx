@@ -36,7 +36,7 @@ interface SPres { _key: string; nombre?: string; factorConversion?: number; prec
 interface SSubcat { _id: string; idExcel?: string; nombre: string; activo?: boolean; categoria?: { _id: string; nombre: string; color?: string } }
 interface SProd {
   _id: string; idExcel?: string; nombre: string; descripcion?: string; marca?: string;
-  visible?: boolean; destacado?: boolean; medidas?: string; observaciones?: string; tags?: string[];
+  visible?: boolean; destacado?: boolean; destacadoUbicaciones?: DestacadoUbicacion[]; medidas?: string; observaciones?: string; tags?: string[];
   unidadBase?: string; manejaStock?: boolean; permiteVentaFraccionada?: boolean;
   stock?: number | null; migratedFromVariant?: string;
   subcategoria?: SSubcat; presentaciones?: SPres[];
@@ -48,6 +48,7 @@ interface SCollectionItem {
   titulo?: string;
   descripcion?: string;
   visible?: boolean;
+  mostrarEnPortada?: boolean;
   producto?: SProd;
 }
 interface SCollection {
@@ -65,6 +66,7 @@ interface SCollection {
 type FeaturedMediaType = "image" | "youtube";
 type FeaturedOrientation = "vertical" | "horizontal";
 type FeaturedCtaAction = "whatsapp" | "scroll";
+type DestacadoUbicacion = "preCatalog";
 interface SFeaturedGalleryItem {
   _key: string;
   titulo: string;
@@ -124,6 +126,7 @@ function makeNewProduct(): SProd {
     marca: "Genérico",
     visible: true,
     destacado: false,
+    destacadoUbicaciones: [],
     medidas: "",
     observaciones: "",
     tags: [],
@@ -153,7 +156,7 @@ function makeNewCollection(): SCollection {
 function makeDefaultFeaturedGallery(): SFeaturedGallery {
   return {
     _id: "featuredGallery",
-    titulo: "Ideas listas para celebrar",
+    titulo: "Ideas nuevas para celebrar",
     subtitulo: "",
     active: true,
     items: [],
@@ -183,6 +186,37 @@ function imageUrl(img: SImg | undefined, client: ReturnType<typeof useClient>, w
   if (!ref) return null;
   const file = ref.replace("image-", "").replace(/-(\w+)$/, ".$1");
   return `https://cdn.sanity.io/images/${client.config().projectId}/${client.config().dataset}/${file}?w=${width}&h=${height}&fit=crop&auto=format`;
+}
+
+async function convertImageToAvif(file: File): Promise<File> {
+  if (!file.type.startsWith("image/") || file.type === "image/avif" || file.type === "image/gif" || file.type === "image/svg+xml") {
+    return file;
+  }
+
+  const formData = new FormData();
+  formData.append("file", file);
+  const response = await fetch("/api/convert-image", { method: "POST", body: formData });
+  if (!response.ok) {
+    throw new Error("No se pudo convertir la imagen a AVIF.");
+  }
+
+  const blob = await response.blob();
+  if (blob.type !== "image/avif") {
+    throw new Error("El conversor no devolvio una imagen AVIF valida.");
+  }
+
+  const headerFilename = response.headers.get("x-filename");
+  const filename = (headerFilename || file.name.replace(/\.[^.]+$/, "") || "imagen").replace(/\.avif$/i, "");
+  return new File([blob], `${filename}.avif`, { type: "image/avif" });
+}
+
+async function uploadOptimizedImage(client: ReturnType<typeof useClient>, file: File) {
+  if (file.type === "image/gif" || file.type === "image/svg+xml") {
+    return client.assets.upload("image", file, { filename: file.name });
+  }
+
+  const optimized = await convertImageToAvif(file);
+  return client.assets.upload("image", optimized, { filename: optimized.name });
 }
 
 // ── Styles ────────────────────────────────────────────────────────
@@ -221,7 +255,7 @@ export function InteractiveViewTool() {
     setLoading(true);
     const [p, c, sc, col, featured] = await Promise.all([
       client.fetch<SProd[]>(`*[_type=="producto"]|order(nombre asc){
-        _id,idExcel,nombre,descripcion,marca,visible,destacado,medidas,observaciones,tags,
+        _id,idExcel,nombre,descripcion,marca,visible,destacado,destacadoUbicaciones,medidas,observaciones,tags,
         unidadBase,manejaStock,permiteVentaFraccionada,stock,migratedFromVariant,slug,
         subcategoria->{_id,nombre,categoria->{_id,nombre,color}},
         presentaciones[]{_key,nombre,factorConversion,precio,visibleEnWeb,esDefault},
@@ -231,7 +265,7 @@ export function InteractiveViewTool() {
       client.fetch<SSubcat[]>(`*[_type=="subcategoria"]|order(nombre asc){_id,idExcel,nombre,activo,categoria->{_id,nombre,color}}`),
       client.fetch<SCollection[]>(`*[_type=="album"]|order(orden asc, titulo asc){
         _id,titulo,subtitulo,etiqueta,slug,themeColor,visible,orden,portada{asset},
-        items[]{_key,titulo,descripcion,visible,producto->{_id,idExcel,nombre,visible,tags,imagenes[]{_key,asset},subcategoria->{_id,nombre,categoria->{_id,nombre,color}}}}
+        items[]{_key,titulo,descripcion,visible,mostrarEnPortada,producto->{_id,idExcel,nombre,visible,tags,imagenes[]{_key,asset},subcategoria->{_id,nombre,categoria->{_id,nombre,color}}}}
       }`),
       client.fetch<SFeaturedGallery | null>(`*[_type=="featuredGallery" && _id=="featuredGallery"][0]{
         _id,titulo,subtitulo,active,
@@ -526,7 +560,7 @@ export function InteractiveViewTool() {
 
       <div className="iv-tabs">
         <button onClick={() => setView("products")} style={viewToggleStyle(view === "products")}><Package size={iconSize} /> Productos</button>
-        <button onClick={() => setView("featured")} style={viewToggleStyle(view === "featured")}><GalleryHorizontalEnd size={iconSize} /> Destacados</button>
+        <button onClick={() => setView("featured")} style={viewToggleStyle(view === "featured")}><GalleryHorizontalEnd size={iconSize} /> Novedades</button>
         <button onClick={() => setView("categories")} style={viewToggleStyle(view === "categories")}><FolderTree size={iconSize} /> Categorías</button>
         <button onClick={() => setView("collections")} style={viewToggleStyle(view === "collections")}><Layers size={iconSize} /> Colecciones</button>
       </div>
@@ -786,11 +820,20 @@ function MiniCard({
 }) {
   const [saving, setSaving] = useState(false);
   const thumb = imageUrl(p.imagenes?.[0], client, 180, 180);
-  const toggle = async (field: "visible" | "destacado") => {
+  const destacadoUbicaciones = p.destacadoUbicaciones || (p.destacado ? ["preCatalog"] as DestacadoUbicacion[] : []);
+  const isDestacado = destacadoUbicaciones.length > 0;
+  const toggle = async (field: "visible") => {
     setSaving(true);
-    const val = field === "visible" ? p.visible === false : !p[field];
+    const val = p.visible === false;
     await client.patch(p._id).set({ [field]: val }).commit();
     onUpdate({ ...p, [field]: val });
+    setSaving(false);
+  };
+  const toggleDestacado = async () => {
+    setSaving(true);
+    const next: DestacadoUbicacion[] = isDestacado ? [] : ["preCatalog"];
+    await client.patch(p._id).set({ destacadoUbicaciones: next, destacado: next.length > 0 }).commit();
+    onUpdate({ ...p, destacadoUbicaciones: next, destacado: next.length > 0 });
     setSaving(false);
   };
 
@@ -834,7 +877,7 @@ function MiniCard({
       {/* Right: actions */}
       <div style={{ position: "absolute", top: 10, right: 10, display: "flex", gap: 4 }}>
           <MiniToggle on={p.visible !== false} icon={p.visible !== false ? <Eye size={iconSize} /> : <EyeOff size={iconSize} />} onClick={() => toggle("visible")} disabled={saving || deleting} title={p.visible !== false ? "Ocultar" : "Mostrar"} />
-          <MiniToggle on={!!p.destacado} icon={<Star size={iconSize} fill={p.destacado ? "currentColor" : "none"} />} onClick={() => toggle("destacado")} disabled={saving || deleting} title={p.destacado ? "Quitar destacado" : "Destacar"} />
+          <MiniToggle on={isDestacado} icon={<Star size={iconSize} fill={isDestacado ? "currentColor" : "none"} />} onClick={toggleDestacado} disabled={saving || deleting} title={isDestacado ? "Quitar destacados" : "Destacar en precatálogo"} />
       </div>
       <div style={{ position: "absolute", right: 10, bottom: 10, display: "flex", gap: 4 }}>
           <button onClick={onRequestDelete} disabled={saving || deleting} title="Eliminar producto" style={{ ...btnStyle("danger"), height: 34, width: 36, padding: 0, justifyContent: "center", opacity: deleting ? 0.65 : 1 }}>
@@ -1155,7 +1198,7 @@ function FeaturedGalleryManager({
     if (!selectedItem || !files?.[0]) return;
     setUploading(kind);
     try {
-      const asset = await client.assets.upload("image", files[0], { filename: files[0].name });
+      const asset = await uploadOptimizedImage(client, files[0]);
       const image = { _key: uid(), _type: "image", asset: { _ref: asset._id, url: asset.url } };
       setItem(selectedItem._key, kind === "image" ? { imagen: image } : { youtubeThumbnail: image });
     } finally {
@@ -1202,7 +1245,7 @@ function FeaturedGalleryManager({
       });
 
       const data = {
-        titulo: draft.titulo || "Ideas listas para celebrar",
+        titulo: draft.titulo || "Ideas nuevas para celebrar",
         subtitulo: draft.subtitulo || "",
         active: draft.active !== false,
         items,
@@ -1227,7 +1270,7 @@ function FeaturedGalleryManager({
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", background: C.surface, border: `1px solid ${C.darkLine}`, borderRadius: 12, padding: 14 }}>
         <div>
           <h2 style={{ margin: 0, color: "#f8fafc", fontSize: 20, display: "flex", alignItems: "center", gap: 8 }}>
-            <GalleryHorizontalEnd size={20} color="#f472b6" /> Galería destacada
+            <GalleryHorizontalEnd size={20} color="#f472b6" /> Novedades
           </h2>
           <p style={{ margin: "4px 0 0", color: "#cbd5e1", fontSize: 14 }}>
             Edita el título, estado y cards de la sección de novedades destacadas sin salir de la vista interactiva.
@@ -1376,7 +1419,7 @@ function FeaturedGalleryManager({
                 {selectedItem.ctaAction === "scroll" ? (
                   <Field label="Sección destino">
                     <select value={selectedItem.targetSection || "catalogo"} onChange={(event) => setItem(selectedItem._key, { targetSection: event.target.value })} style={inputStyle(C.white, "#d1d5db")}>
-                      <option value="destacados">Novedades</option>
+                      <option value="novedades">Novedades</option>
                       <option value="catalogo">Catálogo</option>
                       <option value="horarios">Horarios</option>
                       <option value="contacto">Contacto</option>
@@ -1478,10 +1521,11 @@ function CollectionManager({
           themeColor: demo.color,
           visible: true,
           orden: created.length,
-          items: picked.map((product) => ({
+          items: picked.map((product, index) => ({
             _key: uid(),
             _type: "albumItem",
             visible: true,
+            mostrarEnPortada: index < 3,
             producto: { _type: "reference", _ref: canonicalId(product._id) },
           })),
         };
@@ -1495,7 +1539,7 @@ function CollectionManager({
           themeColor: demo.color,
           visible: true,
           orden: created.length,
-          items: picked.map((product) => ({ _key: uid(), visible: true, producto: product })),
+          items: picked.map((product, index) => ({ _key: uid(), visible: true, mostrarEnPortada: index < 3, producto: product })),
         });
       }
 
@@ -1588,7 +1632,10 @@ function CollectionEditor({
   const [draft, setDraft] = useState<SCollection>(collection);
   const [productQuery, setProductQuery] = useState("");
   const [saving, setSaving] = useState(false);
+  const [uploadingCover, setUploadingCover] = useState(false);
+  const coverInputRef = useRef<HTMLInputElement>(null);
   const selectedIds = useMemo(() => new Set((draft.items || []).map((item) => item.producto?._id).filter(Boolean) as string[]), [draft.items]);
+  const coverItemCount = useMemo(() => (draft.items || []).filter((item) => item.mostrarEnPortada).length, [draft.items]);
   const filteredProducts = useMemo(() => {
     const term = normalize(productQuery);
     return products.filter((product) => {
@@ -1620,6 +1667,33 @@ function CollectionEditor({
     }));
   };
 
+  const toggleCoverItem = (productId: string) => {
+    setDraft((current) => {
+      const currentCount = (current.items || []).filter((item) => item.mostrarEnPortada).length;
+      return {
+        ...current,
+        items: (current.items || []).map((item) => {
+          if (item.producto?._id !== productId) return item;
+          if (item.mostrarEnPortada) return { ...item, mostrarEnPortada: false };
+          if (currentCount >= 3) return item;
+          return { ...item, mostrarEnPortada: true, visible: true };
+        }),
+      };
+    });
+  };
+
+  const uploadCover = async (files: FileList | null) => {
+    const file = files?.[0];
+    if (!file) return;
+    setUploadingCover(true);
+    try {
+      const asset = await uploadOptimizedImage(client, file);
+      setField("portada", { _type: "image", asset: { _ref: asset._id, url: asset.url } });
+    } finally {
+      setUploadingCover(false);
+    }
+  };
+
   const save = async () => {
     const title = draft.titulo.trim();
     if (!title) return;
@@ -1634,6 +1708,7 @@ function CollectionEditor({
           titulo: item.titulo,
           descripcion: item.descripcion,
           visible: item.visible !== false,
+          mostrarEnPortada: item.mostrarEnPortada === true,
           producto: { _type: "reference", _ref: canonicalId(item.producto!._id) },
         }));
       const data = {
@@ -1646,13 +1721,23 @@ function CollectionEditor({
         orden: draft.orden || 0,
         items,
       };
+      if (draft.portada?.asset?._ref) {
+        Object.assign(data, {
+          portada: {
+            _type: "image",
+            asset: { _type: "reference", _ref: draft.portada.asset._ref },
+          },
+        });
+      }
 
       let savedId = draft._id;
       if (draft._id === "__new_collection__") {
         const created = await client.create({ _type: "album", ...data });
         savedId = created._id;
       } else {
-        await client.patch(draft._id).set(data).commit();
+        const patch = client.patch(draft._id).set(data);
+        if (!draft.portada?.asset?._ref) patch.unset(["portada"]);
+        await patch.commit();
       }
 
       onSaved({
@@ -1708,10 +1793,34 @@ function CollectionEditor({
             <Field label="Color principal">
               <input value={draft.themeColor || C.plum} onChange={(event) => setField("themeColor", event.target.value)} style={inputStyle(C.white, "#d1d5db")} placeholder="#D2386C" />
             </Field>
+            <Field label="Imagen principal de portada" help="Se convierte a AVIF al subirla desde esta herramienta. Si no subes una, se usan los productos marcados como portada.">
+              <div style={{ display: "grid", gap: 8 }}>
+                <button
+                  type="button"
+                  onClick={() => coverInputRef.current?.click()}
+                  style={{ height: 150, border: "1px dashed #cbd5e1", borderRadius: 12, background: C.white, overflow: "hidden", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+                >
+                  {uploadingCover ? (
+                    <Loader2 size={22} color={C.plum} style={{ animation: "iv-spin 0.8s linear infinite" }} />
+                  ) : draft.portada ? (
+                    <img src={imageUrl(draft.portada, client, 520, 320) || ""} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  ) : (
+                    <ImagePlus size={28} color="#8792a5" />
+                  )}
+                </button>
+                <input ref={coverInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={(event) => uploadCover(event.target.files)} />
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button type="button" onClick={() => coverInputRef.current?.click()} style={{ ...btnStyle("secondary"), height: 32, fontSize: 13, padding: "0 10px" }}><Upload size={13} /> Subir</button>
+                  {draft.portada && (
+                    <button type="button" onClick={() => setField("portada", undefined)} style={{ ...btnStyle("danger"), height: 32, fontSize: 13, padding: "0 10px" }}><Trash2 size={13} /> Quitar</button>
+                  )}
+                </div>
+              </div>
+            </Field>
             <ToggleField label="Visible en el sitio" value={draft.visible !== false} onChange={(value) => setField("visible", value)} />
             <div style={{ padding: 12, borderRadius: 12, background: `linear-gradient(135deg, ${draft.themeColor || C.plum}44, #fff7ed)`, border: "1px solid #e5e7eb", color: C.ink }}>
               <strong>{draft.titulo || "Nombre de colección"}</strong>
-              <div style={{ marginTop: 4, fontSize: 13, color: C.inkSoft }}>{(draft.items || []).filter((item) => item.visible !== false).length} productos visibles</div>
+              <div style={{ marginTop: 4, fontSize: 13, color: C.inkSoft }}>{(draft.items || []).filter((item) => item.visible !== false).length} productos visibles · {coverItemCount}/3 portadas</div>
             </div>
           </div>
 
@@ -1729,6 +1838,7 @@ function CollectionEditor({
                 const selected = selectedIds.has(product._id);
                 const item = (draft.items || []).find((entry) => entry.producto?._id === product._id);
                 const thumb = imageUrl(product.imagenes?.[0], client, 120, 120);
+                const isCoverItem = item?.mostrarEnPortada === true;
                 return (
                   <div key={product._id} style={{ display: "grid", gridTemplateColumns: "58px minmax(0, 1fr)", gap: 8, alignItems: "center", padding: 8, borderRadius: 10, background: selected ? "#fff1f7" : C.white, border: `1px solid ${selected ? "#f9a8d4" : "#e5e7eb"}` }}>
                     <button onClick={() => toggleProduct(product)} style={{ width: 58, height: 58, borderRadius: 9, overflow: "hidden", border: "none", padding: 0, background: "#eef2f7", cursor: "pointer" }}>
@@ -1738,10 +1848,21 @@ function CollectionEditor({
                       <button onClick={() => toggleProduct(product)} style={{ display: "block", width: "100%", border: "none", background: "none", padding: 0, color: C.ink, fontWeight: 700, fontSize: 13, textAlign: "left", cursor: "pointer", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{product.nombre}</button>
                       <div style={{ color: C.inkSoft, fontSize: 12, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{product.subcategoria?.nombre || "Sin subcategoría"}</div>
                       {selected && (
-                        <button onClick={() => toggleItemVisible(product._id)} style={{ marginTop: 5, ...btnStyle("secondary"), height: 26, fontSize: 12, padding: "0 8px" }}>
-                          {item?.visible === false ? <EyeOff size={12} /> : <Eye size={12} />}
-                          {item?.visible === false ? "Oculto" : "Visible"}
-                        </button>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginTop: 5 }}>
+                          <button onClick={() => toggleItemVisible(product._id)} style={{ ...btnStyle("secondary"), height: 26, fontSize: 12, padding: "0 8px" }}>
+                            {item?.visible === false ? <EyeOff size={12} /> : <Eye size={12} />}
+                            {item?.visible === false ? "Oculto" : "Visible"}
+                          </button>
+                          <button
+                            onClick={() => toggleCoverItem(product._id)}
+                            disabled={!isCoverItem && coverItemCount >= 3}
+                            title={!isCoverItem && coverItemCount >= 3 ? "Máximo 3 productos como portada" : "Usar este producto como portada"}
+                            style={{ ...btnStyle(isCoverItem ? "primary" : "secondary"), height: 26, fontSize: 12, padding: "0 8px", opacity: !isCoverItem && coverItemCount >= 3 ? 0.55 : 1 }}
+                          >
+                            <Star size={12} fill={isCoverItem ? "currentColor" : "none"} />
+                            Portada
+                          </button>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -2244,6 +2365,7 @@ const changed = (field: string) => {
         setSaving(false);
         return;
       }
+      const saveDestacadoUbicaciones = draft.destacadoUbicaciones || (draft.destacado ? ["preCatalog"] as DestacadoUbicacion[] : []);
 
       const doc: Record<string, unknown> = {
         nombre: cleanName,
@@ -2252,7 +2374,8 @@ const changed = (field: string) => {
         medidas: draft.medidas || "",
         observaciones: draft.observaciones || "",
         visible: draft.visible,
-        destacado: draft.destacado,
+        destacado: saveDestacadoUbicaciones.length > 0,
+        destacadoUbicaciones: saveDestacadoUbicaciones,
         tags: draft.tags || [],
         unidadBase: draft.unidadBase || "unidad",
         manejaStock: draft.manejaStock,
@@ -2303,7 +2426,7 @@ const changed = (field: string) => {
 
       // Re-fetch to get resolved refs
       const updated = await client.fetch<SProd>(`*[_id==$id][0]{
-        _id,idExcel,nombre,descripcion,marca,visible,destacado,medidas,observaciones,tags,
+        _id,idExcel,nombre,descripcion,marca,visible,destacado,destacadoUbicaciones,medidas,observaciones,tags,
         unidadBase,manejaStock,permiteVentaFraccionada,stock,migratedFromVariant,slug,
         subcategoria->{_id,nombre,categoria->{_id,nombre,color}},
         presentaciones[]{_key,nombre,factorConversion,precio,visibleEnWeb,esDefault},
@@ -2324,7 +2447,7 @@ const changed = (field: string) => {
     if (!files) return;
     for (const file of Array.from(files)) {
       try {
-        const asset = await client.assets.upload("image", file, { filename: file.name });
+        const asset = await uploadOptimizedImage(client, file);
         setDraft(d => ({
           ...d,
           imagenes: [...(d.imagenes || []), { _key: uid(), _type: "image", asset: { _ref: asset._id, url: asset.url } }],
@@ -2347,6 +2470,13 @@ const changed = (field: string) => {
     setNewTag("");
   };
   const removeTag = (tag: string) => set("tags", (draft.tags || []).filter(t => t !== tag));
+  const selectedDestacados = draft.destacadoUbicaciones || (draft.destacado ? ["preCatalog"] as DestacadoUbicacion[] : []);
+  const toggleDestacadoUbicacion = (ubicacion: DestacadoUbicacion) => {
+    const next = selectedDestacados.includes(ubicacion)
+      ? selectedDestacados.filter((item) => item !== ubicacion)
+      : [...selectedDestacados, ubicacion];
+    setDraft((current) => ({ ...current, destacadoUbicaciones: next, destacado: next.length > 0 }));
+  };
 
   // Presentaciones
   const addPres = () => setDraft(d => ({ ...d, presentaciones: [...(d.presentaciones || []), { _key: uid(), nombre: "", factorConversion: 1, precio: null, visibleEnWeb: true, esDefault: false }] }));
@@ -2485,7 +2615,36 @@ const changed = (field: string) => {
 
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 10, alignItems: "start" }}>
                 <ToggleField label="Visible" help="Si está activo, el artículo aparece en la web y en el catálogo." value={!!draft.visible} onChange={v => set("visible", v)} modified={changed("visible")} />
-                <ToggleField label="Destacado" help="Muestra el artículo en zonas de productos destacados o novedades." value={!!draft.destacado} onChange={v => set("destacado", v)} modified={changed("destacado")} />
+                <Field label="Mostrar en precatálogo" help="Hace que el artículo aparezca en las dos filas móviles previas al catálogo." modified={changed("destacadoUbicaciones") || changed("destacado")}>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", background: fieldBg("destacadoUbicaciones"), border: `1px solid ${fieldBorder("destacadoUbicaciones")}`, borderRadius: 10, padding: 8 }}>
+                    {([
+                      ["preCatalog", "Precatálogo"],
+                    ] as const).map(([value, label]) => {
+                      const active = selectedDestacados.includes(value);
+                      return (
+                        <button
+                          key={value}
+                          type="button"
+                          onClick={() => toggleDestacadoUbicacion(value)}
+                          style={{
+                            height: 34,
+                            padding: "0 12px",
+                            borderRadius: 999,
+                            border: `1px solid ${active ? C.plum : "#d1d5db"}`,
+                            background: active ? "rgba(210,56,108,0.12)" : C.white,
+                            color: active ? C.plum : C.inkSoft,
+                            fontWeight: 700,
+                            fontSize: 14,
+                            fontFamily: "inherit",
+                            cursor: "pointer",
+                          }}
+                        >
+                          {active ? "✓ " : ""}{label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </Field>
                 <ToggleField label="Venta fraccionada" help="Úsalo cuando puede venderse por partes, metros, unidades sueltas, etc." value={!!draft.permiteVentaFraccionada} onChange={v => set("permiteVentaFraccionada", v)} modified={changed("permiteVentaFraccionada")} />
                 <ToggleField label="Maneja stock" help="Actívalo si quieres controlar existencias. Desactívalo para artículos bajo pedido o solo cotización." value={!!draft.manejaStock} onChange={v => set("manejaStock", v)} modified={changed("manejaStock")} />
                 <Field label="Unidad base" modified={changed("unidadBase")} help="Es la unidad mínima para contar o vender: unidad, metro, vaso, paquete, caja.">
