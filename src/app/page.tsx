@@ -52,7 +52,7 @@ export default async function HomePage() {
 
   return (
     <>
-      <BackgroundDecor />
+      <BackgroundDecor launchBalloons />
       <Navbar brand={brand} productos={productos} />
       <Hero hero={hero} brand={brand} />
       <FeaturedGallery

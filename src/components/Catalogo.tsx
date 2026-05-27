@@ -21,9 +21,26 @@ interface CatalogoProps {
   hideLocalSearch?: boolean;
   searchAllCategories?: boolean;
   initialCategorySlug?: string;
+  initialSubcategorySlug?: string;
   kicker?: string;
   title?: ReactNode;
   lede?: string;
+}
+
+interface SubcategoryFilter {
+  _id: string;
+  nombre: string;
+  slug: string;
+  count: number;
+}
+
+interface CategoryFilter {
+  _id: string;
+  nombre: string;
+  slug: string;
+  color: string;
+  count: number;
+  subcategories: SubcategoryFilter[];
 }
 
 function ProductCard({ producto }: { producto: ProductoFlat }) {
@@ -55,6 +72,14 @@ function ProductCard({ producto }: { producto: ProductoFlat }) {
   );
 }
 
+function catalogUrl(categorySlug?: string, subcategorySlug?: string) {
+  const params = new URLSearchParams();
+  if (categorySlug) params.set("category", categorySlug);
+  if (subcategorySlug) params.set("subcategory", subcategorySlug);
+  const query = params.toString();
+  return query ? `/catalog?${query}` : "/catalog";
+}
+
 export default function Catalogo({
   productos,
   categorias,
@@ -66,11 +91,16 @@ export default function Catalogo({
   hideLocalSearch = false,
   searchAllCategories = false,
   initialCategorySlug,
+  initialSubcategorySlug,
   kicker = "Catálogo completo",
   title,
   lede = "Filtra por categoría o subcategoría. Cualquier producto se cotiza por WhatsApp con un toque.",
 }: CatalogoProps) {
+  void brand;
+
   const [catId, setCatId] = useState<string>("__all");
+  const [subcatId, setSubcatId] = useState<string>("__all");
+  const [expandedCatId, setExpandedCatId] = useState<string>("__none");
   const [cols, setCols] = useState<1 | 2 | 3>(3);
   const [query, setQuery] = useState("");
   const activeQuery = externalQuery ?? query;
@@ -85,32 +115,104 @@ export default function Catalogo({
 
   const showCollections = Boolean(visibleCollections.length);
 
-  const catCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
-    productos.forEach((p) => {
-      counts[p._categoriaId] = (counts[p._categoriaId] || 0) + 1;
+  const categoryGroups = useMemo<CategoryFilter[]>(() => {
+    const byCategory = new Map<string, CategoryFilter & { subMap: Map<string, SubcategoryFilter> }>();
+
+    categorias.forEach((cat) => {
+      byCategory.set(cat._id, {
+        _id: cat._id,
+        nombre: cat.nombre,
+        slug: cat.slug?.current || "",
+        color: cat.color || "var(--plum)",
+        count: 0,
+        subcategories: [],
+        subMap: new Map(),
+      });
     });
-    return counts;
-  }, [productos]);
+
+    productos.forEach((producto) => {
+      if (!producto._categoriaId) return;
+
+      let group = byCategory.get(producto._categoriaId);
+      if (!group) {
+        group = {
+          _id: producto._categoriaId,
+          nombre: producto._categoria || "Sin categoría",
+          slug: producto._categoriaSlug || "",
+          color: producto._categoriaColor || "var(--plum)",
+          count: 0,
+          subcategories: [],
+          subMap: new Map(),
+        };
+        byCategory.set(producto._categoriaId, group);
+      }
+
+      group.count += 1;
+
+      if (!producto._subcategoriaId) return;
+      const existing = group.subMap.get(producto._subcategoriaId);
+      if (existing) {
+        existing.count += 1;
+        return;
+      }
+
+      group.subMap.set(producto._subcategoriaId, {
+        _id: producto._subcategoriaId,
+        nombre: producto._subcategoria || "Sin subcategoría",
+        slug: producto._subcategoriaSlug || producto._subcategoriaId,
+        count: 1,
+      });
+    });
+
+    return Array.from(byCategory.values())
+      .filter((group) => group.count > 0)
+      .map((group) => ({
+        _id: group._id,
+        nombre: group.nombre,
+        slug: group.slug,
+        color: group.color,
+        count: group.count,
+        subcategories: Array.from(group.subMap.values()).sort((a, b) => a.nombre.localeCompare(b.nombre, "es")),
+      }));
+  }, [categorias, productos]);
+
+  const activeCategory = useMemo(
+    () => categoryGroups.find((group) => group._id === catId),
+    [categoryGroups, catId],
+  );
+
+  const expandedCategory = useMemo(
+    () => categoryGroups.find((group) => group._id === expandedCatId),
+    [categoryGroups, expandedCatId],
+  );
+
+  const activeSubcategory = useMemo(
+    () => activeCategory?.subcategories.find((subcat) => subcat._id === subcatId),
+    [activeCategory, subcatId],
+  );
 
   const filtrados = useMemo(() => {
     const byTaxonomy = searchAllCategories
       ? productos
-      : productos.filter((p) => (catId === "__all" ? true : p._categoriaId === catId));
+      : productos.filter((producto) => {
+          if (catId !== "__all" && producto._categoriaId !== catId) return false;
+          if (subcatId !== "__all" && producto._subcategoriaId !== subcatId) return false;
+          return true;
+        });
 
-    return rankBySearch(byTaxonomy, activeQuery, (p) => [
-      p.nombre,
-      p.idExcel,
-      p.descripcion,
-      p.marca,
-      p.medidas,
-      p.observaciones,
-      p._categoria,
-      p._subcategoria,
-      ...(p.tags || []),
-      ...(p.presentaciones || []).map((presentacion) => presentacion.nombre),
+    return rankBySearch(byTaxonomy, activeQuery, (producto) => [
+      producto.nombre,
+      producto.idExcel,
+      producto.descripcion,
+      producto.marca,
+      producto.medidas,
+      producto.observaciones,
+      producto._categoria,
+      producto._subcategoria,
+      ...(producto.tags || []),
+      ...(producto.presentaciones || []).map((presentacion) => presentacion.nombre),
     ]);
-  }, [productos, catId, activeQuery, searchAllCategories]);
+  }, [productos, catId, subcatId, activeQuery, searchAllCategories]);
 
   const columnToggle = (
     <div className="col-toggle" role="group" aria-label="Columnas">
@@ -150,15 +252,48 @@ export default function Catalogo({
   useEffect(() => {
     if (searchAllCategories) {
       setCatId("__all");
+      setSubcatId("__all");
       return;
     }
-    if (!initialCategorySlug) {
-      setCatId("__all");
-      return;
+
+    let nextCatId = "__all";
+    let nextSubcatId = "__all";
+
+    if (initialCategorySlug) {
+      const categoryMatch = categoryGroups.find((cat) => cat.slug === initialCategorySlug);
+      if (categoryMatch) nextCatId = categoryMatch._id;
     }
-    const match = categorias.find((cat) => cat.slug?.current === initialCategorySlug);
-    setCatId(match?._id || "__all");
-  }, [categorias, initialCategorySlug, searchAllCategories]);
+
+    if (initialSubcategorySlug) {
+      const ownerCategory = categoryGroups.find((cat) =>
+        cat.subcategories.some((subcat) => subcat.slug === initialSubcategorySlug),
+      );
+      const subcategoryMatch = ownerCategory?.subcategories.find((subcat) => subcat.slug === initialSubcategorySlug);
+
+      if (ownerCategory && subcategoryMatch) {
+        nextCatId = ownerCategory._id;
+        nextSubcatId = subcategoryMatch._id;
+      }
+    }
+
+    setCatId(nextCatId);
+    setSubcatId(nextSubcatId);
+    setExpandedCatId(nextCatId === "__all" ? "__none" : nextCatId);
+  }, [categoryGroups, initialCategorySlug, initialSubcategorySlug, searchAllCategories]);
+
+  useEffect(() => {
+    if (subcatId === "__all") return;
+    if (activeCategory?.subcategories.some((subcat) => subcat._id === subcatId)) return;
+    setSubcatId("__all");
+  }, [activeCategory, subcatId]);
+
+  useEffect(() => {
+    if (expandedCatId === "__none") return;
+    if (categoryGroups.some((cat) => cat._id === expandedCatId)) return;
+    setExpandedCatId("__none");
+  }, [categoryGroups, expandedCatId]);
+
+  const taxonomyLabel = activeSubcategory?.nombre || activeCategory?.nombre;
 
   return (
     <>
@@ -201,7 +336,7 @@ export default function Catalogo({
                 ) : (
                   <>
                     <Link
-                      className={`cat-item ${catId === "__all" ? "active" : ""}`}
+                      className={`cat-item ${catId === "__all" && subcatId === "__all" ? "active" : ""}`}
                       href="/catalog"
                     >
                       <span className="cat-item-dot" style={{ background: "var(--plum)" }} />
@@ -209,27 +344,86 @@ export default function Catalogo({
                       <span className="cat-item-count">{productos.length}</span>
                     </Link>
 
-                    {categorias.map((cat) => {
-                      const n = catCounts[cat._id] || 0;
+                    {categoryGroups.map((cat) => {
                       const isActive = catId === cat._id;
-                      const target = cat.slug?.current ? `/catalog?category=${cat.slug.current}` : "/catalog";
+                      const isExpanded = expandedCatId === cat._id;
+                      const target = catalogUrl(cat.slug);
 
                       return (
-                        <div key={cat._id}>
-                          <Link
-                            className={`cat-item ${isActive ? "active" : ""}`}
-                            href={target}
+                        <div key={cat._id} className={`cat-group ${isActive ? "active" : ""} ${isExpanded ? "expanded" : ""}`}>
+                          <button
+                            className={`cat-item cat-item-category ${isActive ? "active" : ""} ${isExpanded ? "expanded" : ""}`}
+                            type="button"
+                            aria-expanded={isExpanded}
+                            aria-controls={`subcat-panel-${cat._id}`}
+                            onClick={() => setExpandedCatId(isExpanded ? "__none" : cat._id)}
                           >
                             <span className="cat-item-dot" style={{ background: cat.color }} />
                             <span className="cat-item-name">{cat.nombre}</span>
-                            <span className="cat-item-count">{n}</span>
-                          </Link>
+                            <span className="cat-item-count">{cat.count}</span>
+                            {cat.subcategories.length > 0 && (
+                              <span className="cat-item-chev" aria-hidden="true">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="m6 9 6 6 6-6" />
+                                </svg>
+                              </span>
+                            )}
+                          </button>
+
+                          {isExpanded && cat.subcategories.length > 0 && (
+                            <div id={`subcat-panel-${cat._id}`} className="subcat-panel subcat-panel-desktop" aria-label={`Subcategorías de ${cat.nombre}`}>
+                              <Link
+                                className={`subcat-btn subcat-btn-all ${isActive && subcatId === "__all" ? "active" : ""}`}
+                                href={target}
+                                aria-current={isActive && subcatId === "__all" ? "page" : undefined}
+                              >
+                                <span className="subcat-btn-name">Ver todo en {cat.nombre}</span>
+                                <span className="subcat-btn-count">{cat.count}</span>
+                              </Link>
+                              {cat.subcategories.map((subcat) => (
+                                <Link
+                                  key={subcat._id}
+                                  className={`subcat-btn ${subcatId === subcat._id ? "active" : ""}`}
+                                  href={catalogUrl(cat.slug, subcat.slug)}
+                                  aria-current={subcatId === subcat._id ? "page" : undefined}
+                                >
+                                  <span className="subcat-btn-name">{subcat.nombre}</span>
+                                  <span className="subcat-btn-count">{subcat.count}</span>
+                                </Link>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       );
                     })}
                   </>
                 )}
               </div>
+
+              {!showCollections && expandedCategory?.subcategories.length ? (
+                <div className="mobile-subcat-rail" aria-label={`Subcategorías de ${expandedCategory.nombre}`}>
+                  <Link
+                    className={`mobile-subcat-chip ${catId === expandedCategory._id && subcatId === "__all" ? "active" : ""}`}
+                    href={catalogUrl(expandedCategory.slug)}
+                    aria-current={catId === expandedCategory._id && subcatId === "__all" ? "page" : undefined}
+                  >
+                    Todo en {expandedCategory.nombre}
+                    <span>{expandedCategory.count}</span>
+                  </Link>
+                  {expandedCategory.subcategories.map((subcat) => (
+                    <Link
+                      key={subcat._id}
+                      className={`mobile-subcat-chip ${subcatId === subcat._id ? "active" : ""}`}
+                      href={catalogUrl(expandedCategory.slug, subcat.slug)}
+                      aria-current={subcatId === subcat._id ? "page" : undefined}
+                    >
+                      {subcat.nombre}
+                      <span>{subcat.count}</span>
+                    </Link>
+                  ))}
+                </div>
+              ) : null}
+
               <div className="cat-sidebar-columns">
                 <span>Vista</span>
                 {columnToggle}
@@ -261,8 +455,8 @@ export default function Catalogo({
                   {searchAllCategories && activeQuery.trim() && (
                     <span> en <strong style={{ color: "var(--plum)" }}>todas las categorías</strong></span>
                   )}
-                  {!searchAllCategories && catId !== "__all" && (
-                    <span> en <strong style={{ color: "var(--plum)" }}>{categorias.find(c => c._id === catId)?.nombre}</strong></span>
+                  {!searchAllCategories && taxonomyLabel && (
+                    <span> en <strong style={{ color: "var(--plum)" }}>{taxonomyLabel}</strong></span>
                   )}
                 </div>
                 <div className="catalog-toolbar-columns">{columnToggle}</div>

@@ -24,7 +24,11 @@ type BalloonPiece = {
   color: string;
 };
 
-export default function BackgroundDecor() {
+type BackgroundDecorProps = {
+  launchBalloons?: boolean;
+};
+
+export default function BackgroundDecor({ launchBalloons = false }: BackgroundDecorProps) {
   // Click burst effect
   useEffect(() => {
     const palette = ["#D2386C", "#FF7A59", "#FFD23F", "#3DD6B5", "#8B5CF6", "#4BA3FF"];
@@ -94,6 +98,8 @@ export default function BackgroundDecor() {
   }, []);
 
   useEffect(() => {
+    if (!launchBalloons) return;
+
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (reduceMotion) return;
 
@@ -103,19 +109,19 @@ export default function BackgroundDecor() {
         id: i,
         left: 4 + Math.random() * 92,
         drift: (Math.random() - 0.5) * 180,
-        delay: Math.random() * 0.55,
-        dur: 3.4 + Math.random() * 0.9,
+        delay: Math.random() * 0.35,
+        dur: 2.55 + Math.random() * 0.55,
         scale: 0.72 + Math.random() * 0.62,
         color: palette[i % palette.length],
       })));
-    }, 520);
+    }, 260);
 
-    const cleanup = window.setTimeout(() => setBalloons([]), 5600);
+    const cleanup = window.setTimeout(() => setBalloons([]), 4200);
     return () => {
       window.clearTimeout(launch);
       window.clearTimeout(cleanup);
     };
-  }, []);
+  }, [launchBalloons]);
 
   if (!mounted) return null;
 

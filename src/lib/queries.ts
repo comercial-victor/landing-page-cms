@@ -9,7 +9,7 @@ export async function getSiteSettings(): Promise<SiteSettings | null> {
       socialLinks[]{ _key, platform, label, url, phone, active, showInFooter, showFloating, showInNavbar, color, isPrimaryCta },
       storeStatus{ enabled, mode, openingTime, message, validUntil },
       horarios[]{ dia, hora, cerrado }, seoTitle, seoDescription, seoImage
-    }`, {}, { next: { tags: ["siteSettings"], revalidate: 3600 } }
+    }`, {}, { cache: "no-store" }
   );
 }
 
@@ -21,7 +21,7 @@ export async function getHero(): Promise<Hero | null> {
       "floatingCards": floatingCards[visible != false] | order(order asc){
         _key, label, title, visualFormat, position, rotation, order, visible
       }
-    }`, {}, { next: { tags: ["hero"], revalidate: 3600 } }
+    }`, {}, { cache: "no-store" }
   );
 }
 
@@ -35,7 +35,7 @@ export async function getFeaturedGallery(): Promise<FeaturedGallery | null> {
       } | order(orden asc)
     }`,
     {},
-    { next: { tags: ["featuredGallery"], revalidate: 3600 } }
+    { cache: "no-store" }
   );
 }
 
@@ -241,5 +241,6 @@ function flattenProducto(p: Producto): ProductoFlat {
     _categoriaColor: cat?.color || "#8B5CF6",
     _subcategoria: sub?.nombre || "",
     _subcategoriaId: sub?._id || "",
+    _subcategoriaSlug: sub?.slug?.current || "",
   };
 }

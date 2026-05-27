@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Categoria, ProductoFlat, SanityImage } from "@/types";
 import type { ContactLink } from "@/lib/social";
 import BackgroundDecor from "./BackgroundDecor";
@@ -35,14 +35,21 @@ export default function CatalogPageClient({
   categorias,
   initialQuery = "",
   initialCategorySlug,
+  initialSubcategorySlug,
 }: {
   brand: CatalogBrand;
   productos: ProductoFlat[];
   categorias: Categoria[];
   initialQuery?: string;
   initialCategorySlug?: string;
+  initialSubcategorySlug?: string;
 }) {
   const [catalogQuery, setCatalogQuery] = useState(initialQuery);
+
+  useEffect(() => {
+    setCatalogQuery(initialQuery);
+  }, [initialQuery]);
+
   const floatingContacts = useMemo(
     () => (brand.floatingContacts.length ? brand.floatingContacts : brand.socialLinks),
     [brand.floatingContacts, brand.socialLinks],
@@ -63,9 +70,11 @@ export default function CatalogPageClient({
           productos={productos}
           categorias={categorias}
           brand={brand}
-          externalQuery={initialQuery}
-          searchAllCategories={Boolean(initialQuery)}
-          initialCategorySlug={initialQuery ? undefined : initialCategorySlug}
+          externalQuery={catalogQuery}
+          onExternalQueryChange={setCatalogQuery}
+          searchAllCategories={Boolean(catalogQuery.trim())}
+          initialCategorySlug={catalogQuery.trim() ? undefined : initialCategorySlug}
+          initialSubcategorySlug={catalogQuery.trim() ? undefined : initialSubcategorySlug}
           hideLocalSearch
         />
       </main>

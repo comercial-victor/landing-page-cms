@@ -5,11 +5,12 @@ import { getPrimaryContact, normalizeSocialLinks } from "@/lib/social";
 export default async function CatalogPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ query?: string; category?: string }>;
+  searchParams?: Promise<{ query?: string; category?: string; subcategory?: string }>;
 }) {
   const params = await searchParams;
   const initialQuery = params?.query?.trim() || "";
   const initialCategorySlug = params?.category?.trim() || "";
+  const initialSubcategorySlug = params?.subcategory?.trim() || "";
   const [settings, productos, categorias] = await Promise.all([
     getSiteSettings(),
     getTodosLosProductos(),
@@ -47,6 +48,7 @@ export default async function CatalogPage({
       categorias={categorias}
       initialQuery={initialQuery}
       initialCategorySlug={initialCategorySlug || undefined}
+      initialSubcategorySlug={initialSubcategorySlug || undefined}
     />
   );
 }

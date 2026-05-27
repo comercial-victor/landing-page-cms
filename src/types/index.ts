@@ -181,4 +181,5 @@ export interface ProductoFlat extends Producto {
   _categoriaColor: string;
   _subcategoria: string;
   _subcategoriaId: string;
+  _subcategoriaSlug: string;
 }

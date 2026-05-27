@@ -47,6 +47,8 @@ export default function Navbar({
   const pathname = usePathname();
   const isCatalogSearch = searchMode === "catalog";
   const searchValue = isCatalogSearch ? catalogSearchValue : q;
+  const hasSearchText = searchValue.trim().length > 0;
+  const mobileSearchActive = mobileSearchOpen || hasSearchText;
   const primaryContact = brand.primaryContact || {
     platform: "whatsapp" as const,
     phone: brand.whatsapp,
@@ -73,7 +75,7 @@ export default function Navbar({
     const onPointerDown = (event: PointerEvent) => {
       if (searchWrapRef.current?.contains(event.target as Node)) return;
       setSearchOpen(false);
-      setMobileSearchOpen(false);
+      if (!searchValue.trim()) setMobileSearchOpen(false);
     };
     document.addEventListener("pointerdown", onPointerDown);
     return () => document.removeEventListener("pointerdown", onPointerDown);
@@ -140,14 +142,17 @@ export default function Navbar({
   };
 
   const submitSearch = () => {
+    const isMobile = window.innerWidth <= 820;
     const term = searchValue.trim();
-    if (!term) {
-      if (window.innerWidth <= 820 && !mobileSearchOpen) {
-        setMobileSearchOpen(true);
-        window.setTimeout(focusSearchInput, 0);
-      }
+
+    if (isMobile && !mobileSearchOpen) {
+      setMobileSearchOpen(true);
+      window.setTimeout(focusSearchInput, 0);
       return;
     }
+
+    if (!term) return;
+
     const params = new URLSearchParams({ query: term });
     setMobileSearchOpen(false);
     setSearchOpen(false);
@@ -164,8 +169,8 @@ export default function Navbar({
 
   return (
     <>
-      <nav className={`nav-float ${scrolled ? "scrolled" : ""} ${mobileSearchOpen ? "mobile-search-open" : ""}`}>
-        <div className={`nav-float-pill ${searchOpen || searchValue || mobileSearchOpen ? "search-open" : ""}`}>
+      <nav className={`nav-float ${scrolled ? "scrolled" : ""} ${mobileSearchActive ? "mobile-search-open" : ""}`}>
+        <div className={`nav-float-pill ${searchOpen || hasSearchText || mobileSearchActive ? "search-open" : ""}`}>
           {/* Logo */}
           <button className="nf-logo" onClick={() => go("/")}>
             <Image
