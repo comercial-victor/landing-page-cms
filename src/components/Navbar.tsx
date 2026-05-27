@@ -188,16 +188,6 @@ export default function Navbar({
               onFocus={() => {
                 setFocused(true);
                 if (window.innerWidth <= 820) setMobileSearchOpen(true);
-                if (isCatalogSearch) {
-                  const target = document.getElementById("catalogo");
-                  if (target && window.scrollY > 40) {
-                    const offset = window.innerWidth < 700 ? 80 : 98;
-                    window.scrollTo({
-                      top: Math.max(0, target.getBoundingClientRect().top + window.scrollY - offset),
-                      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
-                    });
-                  }
-                }
               }}
               onBlur={() => setTimeout(() => {
                 setFocused(false);

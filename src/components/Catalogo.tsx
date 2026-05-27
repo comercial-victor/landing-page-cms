@@ -129,19 +129,39 @@ export default function Catalogo({
     setExpanded(expanded === id ? null : id);
   };
 
+  const columnToggle = (
+    <div className="col-toggle" role="group" aria-label="Columnas">
+      <button className={`col-toggle-one ${cols === 1 ? "active" : ""}`} onClick={() => setCols(1)} aria-label="Una columna">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="7" y="4" width="10" height="16" rx="1.5" /></svg>
+      </button>
+      <button className={cols === 2 ? "active" : ""} onClick={() => setCols(2)} aria-label="Dos columnas">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="4" width="7" height="16" rx="1.5" /><rect x="14" y="4" width="7" height="16" rx="1.5" /></svg>
+      </button>
+      <button className={`col-toggle-three ${cols === 3 ? "active" : ""}`} onClick={() => setCols(3)} aria-label="Tres columnas">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="2" y="4" width="5" height="16" rx="1.2" /><rect x="9.5" y="4" width="5" height="16" rx="1.2" /><rect x="17" y="4" width="5" height="16" rx="1.2" /></svg>
+      </button>
+    </div>
+  );
+
   useEffect(() => {
-    const media = window.matchMedia("(max-width: 640px)");
-    const syncMobileColumns = () => {
+    const phone = window.matchMedia("(max-width: 640px)");
+    const tablet = window.matchMedia("(max-width: 900px)");
+    const syncResponsiveColumns = () => {
       setCols((current) => {
-        if (media.matches && current === 3) return 1;
-        if (!media.matches && current === 1) return 3;
+        if (phone.matches && current === 3) return 1;
+        if (!phone.matches && tablet.matches && current === 1) return 2;
+        if (!tablet.matches && current === 1) return 3;
         return current;
       });
     };
 
-    syncMobileColumns();
-    media.addEventListener("change", syncMobileColumns);
-    return () => media.removeEventListener("change", syncMobileColumns);
+    syncResponsiveColumns();
+    phone.addEventListener("change", syncResponsiveColumns);
+    tablet.addEventListener("change", syncResponsiveColumns);
+    return () => {
+      phone.removeEventListener("change", syncResponsiveColumns);
+      tablet.removeEventListener("change", syncResponsiveColumns);
+    };
   }, []);
 
   return (
@@ -218,6 +238,10 @@ export default function Catalogo({
                   );
                 })}
               </div>
+              <div className="cat-sidebar-columns">
+                <span>Vista</span>
+                {columnToggle}
+              </div>
             </aside>
 
             {/* Products */}
@@ -237,7 +261,7 @@ export default function Catalogo({
                     />
                   </label>
                 )}
-                <div style={{ fontSize: 14, color: "var(--ink-soft)" }}>
+                <div className="catalog-result-count" style={{ fontSize: 14, color: "var(--ink-soft)" }}>
                   <strong style={{ color: "var(--ink)" }}>{filtrados.length}</strong> productos
                   {activeQuery.trim() && (
                     <span> para <strong style={{ color: "var(--plum)" }}>{activeQuery.trim()}</strong></span>
@@ -246,17 +270,7 @@ export default function Catalogo({
                     <span> en <strong style={{ color: "var(--plum)" }}>{categorias.find(c => c._id === catId)?.nombre}</strong></span>
                   )}
                 </div>
-                <div className="col-toggle" role="group" aria-label="Columnas">
-                  <button className={`col-toggle-one ${cols === 1 ? "active" : ""}`} onClick={() => setCols(1)} aria-label="Una columna">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="7" y="4" width="10" height="16" rx="1.5" /></svg>
-                  </button>
-                  <button className={cols === 2 ? "active" : ""} onClick={() => setCols(2)} aria-label="Dos columnas">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="4" width="7" height="16" rx="1.5" /><rect x="14" y="4" width="7" height="16" rx="1.5" /></svg>
-                  </button>
-                  <button className={`col-toggle-three ${cols === 3 ? "active" : ""}`} onClick={() => setCols(3)} aria-label="Tres columnas">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="2" y="4" width="5" height="16" rx="1.2" /><rect x="9.5" y="4" width="5" height="16" rx="1.2" /><rect x="17" y="4" width="5" height="16" rx="1.2" /></svg>
-                  </button>
-                </div>
+                <div className="catalog-toolbar-columns">{columnToggle}</div>
               </div>
 
               {filtrados.length === 0 ? (

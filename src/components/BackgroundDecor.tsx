@@ -117,6 +117,8 @@ export default function BackgroundDecor() {
     };
   }, []);
 
+  if (!mounted) return null;
+
   return (
     <>
       <div className="bg-decor" aria-hidden="true">
@@ -125,7 +127,7 @@ export default function BackgroundDecor() {
         <div className="blob blob-3" />
         <div className="grain" />
       </div>
-      {mounted && showConfetti && (
+      {showConfetti && (
         <div className="confetti-layer" aria-hidden="true">
           {confetti.map((p) => (
             <span
@@ -144,7 +146,7 @@ export default function BackgroundDecor() {
           ))}
         </div>
       )}
-      {mounted && balloons.length > 0 && (
+      {balloons.length > 0 && (
         <div className="balloon-launch-layer" aria-hidden="true">
           {balloons.map((balloon) => (
             <span
