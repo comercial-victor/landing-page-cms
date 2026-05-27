@@ -2,7 +2,14 @@ import { getCategorias, getSiteSettings, getTodosLosProductos } from "@/lib/quer
 import CatalogPageClient from "@/components/CatalogPageClient";
 import { getPrimaryContact, normalizeSocialLinks } from "@/lib/social";
 
-export default async function CatalogPage() {
+export default async function CatalogPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ query?: string; category?: string }>;
+}) {
+  const params = await searchParams;
+  const initialQuery = params?.query?.trim() || "";
+  const initialCategorySlug = params?.category?.trim() || "";
   const [settings, productos, categorias] = await Promise.all([
     getSiteSettings(),
     getTodosLosProductos(),
@@ -34,6 +41,12 @@ export default async function CatalogPage() {
   };
 
   return (
-    <CatalogPageClient brand={brand} productos={productos} categorias={categorias} />
+    <CatalogPageClient
+      brand={brand}
+      productos={productos}
+      categorias={categorias}
+      initialQuery={initialQuery}
+      initialCategorySlug={initialCategorySlug || undefined}
+    />
   );
 }

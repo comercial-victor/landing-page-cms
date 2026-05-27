@@ -4,8 +4,9 @@ import { useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import type { Categoria, ProductoFlat } from "@/types";
 import { ProductImage } from "./ProductHelpers";
-import ProductModal from "./ProductModal";
 import type { ContactLink } from "@/lib/social";
+import Link from "next/link";
+import { productPath } from "@/lib/products";
 
 interface CatalogPreviewProps {
   productos: ProductoFlat[];
@@ -15,7 +16,6 @@ interface CatalogPreviewProps {
 }
 
 export default function CatalogPreview({ productos, categorias, whatsapp, contact }: CatalogPreviewProps) {
-  const [openProduct, setOpenProduct] = useState<ProductoFlat | null>(null);
   const [paused, setPaused] = useState(false);
 
   const featured = useMemo(() => {
@@ -55,7 +55,7 @@ export default function CatalogPreview({ productos, categorias, whatsapp, contac
             </div>
 
             <div
-              className={`catalog-preview-rails ${paused || openProduct ? "paused" : ""}`}
+              className={`catalog-preview-rails ${paused ? "paused" : ""}`}
               onMouseEnter={() => setPaused(true)}
               onMouseLeave={() => setPaused(false)}
               onFocus={() => setPaused(true)}
@@ -67,11 +67,10 @@ export default function CatalogPreview({ productos, categorias, whatsapp, contac
                 return (
                   <div key={row} className={`catalog-rail catalog-rail-${row === 0 ? "right" : "left"}`}>
                     {loopItems.map((producto, index) => (
-                      <button
+                      <Link
                         key={`${producto._id}-${row}-${index}`}
                         className="catalog-rail-card"
-                        type="button"
-                        onClick={() => setOpenProduct(producto)}
+                        href={productPath(producto)}
                         aria-label={`Ver ${producto.nombre}`}
                         style={{ "--cat-color": producto._categoriaColor } as CSSProperties}
                       >
@@ -84,7 +83,7 @@ export default function CatalogPreview({ productos, categorias, whatsapp, contac
                           <span>{producto._categoria || producto._subcategoria}</span>
                           <strong>{producto.nombre}</strong>
                         </span>
-                      </button>
+                      </Link>
                     ))}
                   </div>
                 );
@@ -94,7 +93,6 @@ export default function CatalogPreview({ productos, categorias, whatsapp, contac
         </div>
       </section>
 
-      <ProductModal producto={openProduct} onClose={() => setOpenProduct(null)} whatsapp={whatsapp} contact={contact} />
     </>
   );
 }

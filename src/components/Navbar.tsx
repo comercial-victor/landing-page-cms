@@ -2,13 +2,14 @@
 import { useState, useRef, useMemo, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
+import Link from "next/link";
 import type { CSSProperties } from "react";
 import type { ProductoFlat, SanityImage } from "@/types";
 import { fmtSoles } from "@/lib/utils";
 import { urlFor } from "@/lib/sanity";
 import { ProductImage } from "./ProductHelpers";
-import ProductModal from "./ProductModal";
 import { ContactIcon, getContactColor, getContactHref, type ContactLink } from "@/lib/social";
+import { productPath } from "@/lib/products";
 import { ArrowRight, Clock, Home, Layers3, MapPin, ShoppingBag, Sparkles } from "lucide-react";
 
 interface Brand {
@@ -36,12 +37,12 @@ export default function Navbar({
   onCatalogSearchChange,
 }: NavbarProps) {
   const [q, setQ] = useState("");
-  const [focused, setFocused] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [openProduct, setOpenProduct] = useState<ProductoFlat | null>(null);
   const [scrolled, setScrolled] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const searchWrapRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
   const isCatalogSearch = searchMode === "catalog";
   const searchValue = isCatalogSearch ? catalogSearchValue : q;
@@ -66,22 +67,32 @@ export default function Navbar({
     return () => { document.body.style.overflow = ""; };
   }, [mobileOpen]);
 
+  useEffect(() => {
+    if (!searchOpen) return;
+    const onPointerDown = (event: PointerEvent) => {
+      if (searchWrapRef.current?.contains(event.target as Node)) return;
+      setSearchOpen(false);
+      if (window.innerWidth > 820 && !searchValue) setMobileSearchOpen(false);
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+  }, [searchOpen, searchValue]);
+
   const normalize = (v: string) => {
     const b = v.toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "").replace(/[^a-z0-9]+/g, " ").trim();
     return { s: b, c: b.replace(/\s+/g, "") };
   };
 
   const results = useMemo(() => {
-    if (isCatalogSearch) return [];
-    if (!q.trim()) return [];
-    const n = normalize(q);
+    if (!searchValue.trim()) return [];
+    const n = normalize(searchValue);
     const toks = n.s ? n.s.split(" ") : [];
     return productos.filter((p) => {
       const h = normalize([p.nombre, p._categoria, p._subcategoria].join(" "));
       if (h.s.includes(n.s) || h.c.includes(n.c)) return true;
       return toks.length > 0 && toks.every((t) => h.s.includes(t));
     }).slice(0, 8);
-  }, [isCatalogSearch, q, productos]);
+  }, [searchValue, productos]);
 
   const links = [
     { href: "/", label: "Inicio", icon: Home },
@@ -126,10 +137,33 @@ export default function Navbar({
     inputRef.current?.focus({ preventScroll: true });
   };
 
+  const submitSearch = () => {
+    const term = searchValue.trim();
+    if (!term) {
+      if (window.innerWidth <= 820 && !mobileSearchOpen) {
+        setMobileSearchOpen(true);
+        window.setTimeout(focusSearchInput, 0);
+      }
+      return;
+    }
+    const params = new URLSearchParams({ query: term });
+    setMobileSearchOpen(false);
+    setSearchOpen(false);
+    window.location.href = `/catalog?${params.toString()}`;
+  };
+
+  const clearSearch = () => {
+    if (isCatalogSearch) {
+      onCatalogSearchChange?.("");
+    } else {
+      setQ("");
+    }
+  };
+
   return (
     <>
       <nav className={`nav-float ${scrolled ? "scrolled" : ""} ${mobileSearchOpen ? "mobile-search-open" : ""}`}>
-        <div className={`nav-float-pill ${focused || searchValue || mobileSearchOpen ? "search-open" : ""}`}>
+        <div className={`nav-float-pill ${searchOpen || searchValue || mobileSearchOpen ? "search-open" : ""}`}>
           {/* Logo */}
           <button className="nf-logo" onClick={() => go("/")}>
             {brand.logo ? (
@@ -165,17 +199,19 @@ export default function Navbar({
           </div>
 
           {/* Search */}
-          <div
-            className="nf-search"
-            onPointerDown={(event) => {
-              if (window.innerWidth <= 820) {
-                event.preventDefault();
-                setMobileSearchOpen(true);
-                window.setTimeout(focusSearchInput, 0);
-              }
-            }}
-          >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <div ref={searchWrapRef} className="nf-search-wrap">
+            <div
+              className="nf-search"
+              onPointerDown={(event) => {
+                if (window.innerWidth <= 820) {
+                  const target = event.target as HTMLElement;
+                  if (target.closest("button")) return;
+                  event.preventDefault();
+                  setMobileSearchOpen(true);
+                  window.setTimeout(focusSearchInput, 0);
+                }
+              }}
+            >
             <input
               ref={inputRef}
               type="text"
@@ -189,20 +225,81 @@ export default function Navbar({
                 }
                 setQ(e.target.value);
                 if (window.innerWidth <= 820) setMobileSearchOpen(true);
+                setSearchOpen(true);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  submitSearch();
+                }
+                if (e.key === "Escape") {
+                  setSearchOpen(false);
+                  inputRef.current?.blur();
+                }
               }}
               onFocus={() => {
-                setFocused(true);
+                setSearchOpen(true);
                 if (window.innerWidth <= 820) {
                   setMobileSearchOpen(true);
                   window.setTimeout(focusSearchInput, 0);
                 }
               }}
-              onBlur={() => setTimeout(() => {
-                setFocused(false);
-                if (window.innerWidth > 820 && !searchValue) setMobileSearchOpen(false);
-              }, 200)}
               autoComplete="off"
             />
+            {searchValue && (
+              <button
+                className="nf-search-clear"
+                type="button"
+                aria-label="Limpiar búsqueda"
+                onClick={() => {
+                  clearSearch();
+                  window.setTimeout(focusSearchInput, 0);
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12" /></svg>
+              </button>
+            )}
+            <button
+              className="nf-search-submit"
+              type="button"
+              aria-label="Buscar"
+              onClick={submitSearch}
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            </button>
+            </div>
+
+            {/* Search results */}
+            {searchOpen && results.length > 0 && (
+              <div className="search-results nf-results">
+                {results.map((p) => {
+                  const dp = p.presentaciones?.find((pr) => pr.esDefault && pr.visibleEnWeb && pr.precio);
+                  return (
+                    <Link
+                      key={p._id}
+                      className="search-result"
+                      href={productPath(p)}
+                      onClick={() => {
+                        if (isCatalogSearch) {
+                          onCatalogSearchChange?.("");
+                        } else {
+                          setQ("");
+                        }
+                        setMobileSearchOpen(false);
+                        setSearchOpen(false);
+                      }}
+                    >
+                      <div className="search-result-thumb"><ProductImage producto={p} size={44} /></div>
+                      <div className="search-result-meta">
+                        <div className="search-result-name">{p.nombre}</div>
+                        <div className="search-result-cat">{p._subcategoria}</div>
+                      </div>
+                      {dp?.precio && <div className="search-result-price">{fmtSoles(dp.precio)}</div>}
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* Desktop social CTAs */}
@@ -232,24 +329,6 @@ export default function Navbar({
           </button>
         </div>
 
-        {/* Search results */}
-        {!isCatalogSearch && focused && results.length > 0 && (
-          <div className="search-results nf-results">
-            {results.map((p) => {
-              const dp = p.presentaciones?.find((pr) => pr.esDefault && pr.visibleEnWeb && pr.precio);
-              return (
-                <div key={p._id} className="search-result" onMouseDown={() => { setOpenProduct(p); setQ(""); setMobileSearchOpen(false); }}>
-                  <div className="search-result-thumb"><ProductImage producto={p} size={44} /></div>
-                  <div className="search-result-meta">
-                    <div className="search-result-name">{p.nombre}</div>
-                    <div className="search-result-cat">{p._subcategoria}</div>
-                  </div>
-                  {dp?.precio && <div className="search-result-price">{fmtSoles(dp.precio)}</div>}
-                </div>
-              );
-            })}
-          </div>
-        )}
       </nav>
 
       {/* Mobile overlay */}
@@ -288,8 +367,6 @@ export default function Navbar({
           )}
         </div>
       </div>
-
-      <ProductModal producto={openProduct} onClose={() => setOpenProduct(null)} whatsapp={brand.whatsapp} contact={primaryContact} />
     </>
   );
 }

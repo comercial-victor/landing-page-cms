@@ -172,6 +172,14 @@ export async function getProductoPorSlug(slug: string): Promise<ProductoFlat | n
   return producto ? flattenProducto(producto) : null;
 }
 
+export async function getProductoSlugs(): Promise<string[]> {
+  return sanityClient.fetch(
+    `*[_type == "producto" && visible == true && defined(slug.current)].slug.current`,
+    {},
+    { next: { tags: ["producto"] } }
+  );
+}
+
 function flattenProducto(p: Producto): ProductoFlat {
   const sub = p.subcategoria;
   const cat = sub?.categoria;

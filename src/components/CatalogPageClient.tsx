@@ -33,12 +33,16 @@ export default function CatalogPageClient({
   brand,
   productos,
   categorias,
+  initialQuery = "",
+  initialCategorySlug,
 }: {
   brand: CatalogBrand;
   productos: ProductoFlat[];
   categorias: Categoria[];
+  initialQuery?: string;
+  initialCategorySlug?: string;
 }) {
-  const [catalogQuery, setCatalogQuery] = useState("");
+  const [catalogQuery, setCatalogQuery] = useState(initialQuery);
   const floatingContacts = useMemo(
     () => (brand.floatingContacts.length ? brand.floatingContacts : brand.socialLinks),
     [brand.floatingContacts, brand.socialLinks],
@@ -59,8 +63,9 @@ export default function CatalogPageClient({
           productos={productos}
           categorias={categorias}
           brand={brand}
-          externalQuery={catalogQuery}
-          onExternalQueryChange={setCatalogQuery}
+          externalQuery={initialQuery}
+          searchAllCategories={Boolean(initialQuery)}
+          initialCategorySlug={initialQuery ? undefined : initialCategorySlug}
           hideLocalSearch
         />
       </main>

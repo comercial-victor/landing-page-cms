@@ -55,6 +55,7 @@ export default async function CollectionRoutePage({ params }: { params: Promise<
     <CollectionPageClient
       brand={brand}
       collection={collection}
+      allProductos={allProducts}
       productos={productos}
       collections={colecciones}
       categorias={categorias}

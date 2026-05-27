@@ -1,11 +1,12 @@
 "use client";
 
 import { useRef, useState } from "react";
-import type { CSSProperties, PointerEvent } from "react";
+import type { CSSProperties, PointerEvent, MouseEvent } from "react";
 import type { ProductoFlat } from "@/types";
 import { ProductImage } from "./ProductHelpers";
-import ProductModal from "./ProductModal";
 import type { ContactLink } from "@/lib/social";
+import Link from "next/link";
+import { productPath } from "@/lib/products";
 
 interface ShowcaseProps {
   productos: ProductoFlat[];
@@ -17,23 +18,23 @@ function ProductRailCard({
   producto,
   index,
   row,
-  onOpen,
+  onClick,
 }: {
   producto: ProductoFlat;
   index: number;
   row: number;
-  onOpen: (producto: ProductoFlat) => void;
+  onClick?: (event: MouseEvent<HTMLAnchorElement>) => void;
 }) {
   const format = index % 3 === 1 ? "horizontal" : "vertical";
   const rotation = [-4, 3, -2, 4, -3][(index + row) % 5];
 
   return (
-    <button
+    <Link
       className={`hero-rail-card hero-rail-card-${format} product-rail-card`}
-      type="button"
-      onClick={() => onOpen(producto)}
+      href={productPath(producto)}
       aria-label={`Ver ${producto.nombre}`}
       style={{ "--hero-rotate": `${rotation}deg` } as CSSProperties}
+      onClick={onClick}
     >
       <span className="hero-rail-media">
         <ProductImage producto={producto} className="hero-rail-product-img" />
@@ -42,12 +43,11 @@ function ProductRailCard({
         <span>{producto._categoria || producto._subcategoria || "Producto"}</span>
         <strong>{producto.nombre}</strong>
       </span>
-    </button>
+    </Link>
   );
 }
 
 export default function Showcase({ productos, whatsapp = "51987654321", contact }: ShowcaseProps) {
-  const [openProduct, setOpenProduct] = useState<ProductoFlat | null>(null);
   const [railDrag, setRailDrag] = useState(0);
   const [isRailDragging, setIsRailDragging] = useState(false);
   const [isRailSettling, setIsRailSettling] = useState(false);
@@ -108,11 +108,6 @@ export default function Showcase({ productos, whatsapp = "51987654321", contact 
     }
   };
 
-  const openRailProduct = (producto: ProductoFlat) => {
-    if (clickGuardRef.current) return;
-    setOpenProduct(producto);
-  };
-
   return (
     <>
       <section className="section precatalog-section" id="pre-catalogo">
@@ -132,7 +127,7 @@ export default function Showcase({ productos, whatsapp = "51987654321", contact 
             </div>
 
             <div
-              className={`hero-rail-wrap precatalog-rail ${openProduct ? "is-modal-open" : ""} ${isRailDragging ? "is-dragging" : ""} ${isRailSettling ? "is-settling" : ""}`}
+              className={`hero-rail-wrap precatalog-rail ${isRailDragging ? "is-dragging" : ""} ${isRailSettling ? "is-settling" : ""}`}
               style={{ "--hero-drag": `${railDrag}px` } as CSSProperties}
               onPointerDown={handleRailPointerDown}
               onPointerMove={handleRailPointerMove}
@@ -154,7 +149,9 @@ export default function Showcase({ productos, whatsapp = "51987654321", contact 
                         producto={producto}
                         index={index}
                         row={row}
-                        onOpen={openRailProduct}
+                        onClick={(event) => {
+                          if (clickGuardRef.current) event.preventDefault();
+                        }}
                       />
                     ))}
                   </div>
@@ -164,13 +161,6 @@ export default function Showcase({ productos, whatsapp = "51987654321", contact 
           </div>
         </div>
       </section>
-
-      <ProductModal
-        producto={openProduct}
-        onClose={() => setOpenProduct(null)}
-        whatsapp={whatsapp}
-        contact={contact}
-      />
     </>
   );
 }

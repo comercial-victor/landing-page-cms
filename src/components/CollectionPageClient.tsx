@@ -33,12 +33,14 @@ interface CollectionBrand {
 export default function CollectionPageClient({
   brand,
   collection,
+  allProductos,
   productos,
   collections,
   categorias,
 }: {
   brand: CollectionBrand;
   collection: Collection;
+  allProductos: ProductoFlat[];
   productos: ProductoFlat[];
   collections: Collection[];
   categorias: Categoria[];
@@ -55,7 +57,7 @@ export default function CollectionPageClient({
       <BackgroundDecor />
       <Navbar
         brand={brand}
-        productos={productos}
+        productos={allProductos}
         searchMode="catalog"
         catalogSearchValue={catalogQuery}
         onCatalogSearchChange={setCatalogQuery}
@@ -84,8 +86,6 @@ export default function CollectionPageClient({
           collections={collections}
           activeCollectionId={collection._id}
           brand={brand}
-          externalQuery={catalogQuery}
-          onExternalQueryChange={setCatalogQuery}
           hideLocalSearch
           kicker="Productos de la colección"
           title={<>Elige, cotiza<br />y comparte.</>}
