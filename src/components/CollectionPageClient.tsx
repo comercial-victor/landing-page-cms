@@ -34,11 +34,13 @@ export default function CollectionPageClient({
   brand,
   collection,
   productos,
+  collections,
   categorias,
 }: {
   brand: CollectionBrand;
   collection: Collection;
   productos: ProductoFlat[];
+  collections: Collection[];
   categorias: Categoria[];
 }) {
   const [catalogQuery, setCatalogQuery] = useState("");
@@ -79,6 +81,8 @@ export default function CollectionPageClient({
         <Catalogo
           productos={productos}
           categorias={categorias}
+          collections={collections}
+          activeCollectionId={collection._id}
           brand={brand}
           externalQuery={catalogQuery}
           onExternalQueryChange={setCatalogQuery}

@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import CollectionPageClient from "@/components/CollectionPageClient";
 import type { ProductoFlat } from "@/types";
 import { buildDemoCollectionBySlug, demoCollectionDefinitions } from "@/lib/collections";
-import { getCategorias, getColeccionPorSlug, getColeccionSlugs, getSiteSettings, getTodosLosProductos } from "@/lib/queries";
+import { getCategorias, getColeccionPorSlug, getColeccionSlugs, getColecciones, getSiteSettings, getTodosLosProductos } from "@/lib/queries";
 import { getPrimaryContact, normalizeSocialLinks } from "@/lib/social";
 
 export async function generateStaticParams() {
@@ -13,10 +13,11 @@ export async function generateStaticParams() {
 
 export default async function CollectionRoutePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const [settings, allProducts, categorias, sanityCollection] = await Promise.all([
+  const [settings, allProducts, categorias, colecciones, sanityCollection] = await Promise.all([
     getSiteSettings(),
     getTodosLosProductos(),
     getCategorias(),
+    getColecciones(),
     getColeccionPorSlug(slug),
   ]);
 
@@ -55,6 +56,7 @@ export default async function CollectionRoutePage({ params }: { params: Promise<
       brand={brand}
       collection={collection}
       productos={productos}
+      collections={colecciones}
       categorias={categorias}
     />
   );

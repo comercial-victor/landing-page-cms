@@ -2,14 +2,18 @@
 
 import { useEffect, useState, useMemo } from "react";
 import type { ReactNode } from "react";
-import type { ProductoFlat, Categoria } from "@/types";
+import Link from "next/link";
+import type { ProductoFlat, Categoria, Collection } from "@/types";
 import { ProductImage, Badges, PriceDisplay } from "./ProductHelpers";
 import ProductModal from "./ProductModal";
 import type { ContactLink } from "@/lib/social";
+import { collectionPath } from "@/lib/collections";
 
 interface CatalogoProps {
   productos: ProductoFlat[];
   categorias: Categoria[];
+  collections?: Collection[];
+  activeCollectionId?: string;
   brand: { whatsapp: string; primaryContact?: ContactLink };
   externalQuery?: string;
   onExternalQueryChange?: (value: string) => void;
@@ -54,6 +58,8 @@ function ProductCard({ producto, onOpen }: { producto: ProductoFlat; onOpen: (p:
 export default function Catalogo({
   productos,
   categorias,
+  collections,
+  activeCollectionId,
   brand,
   externalQuery,
   onExternalQueryChange,
@@ -70,6 +76,15 @@ export default function Catalogo({
   const [query, setQuery] = useState("");
   const activeQuery = externalQuery ?? query;
   const setActiveQuery = onExternalQueryChange ?? setQuery;
+
+  const visibleCollections = useMemo(() => {
+    if (!collections) return [];
+    return collections
+      .filter((collection) => collection.visible !== false)
+      .filter((collection) => collection.items?.some((item) => item.producto));
+  }, [collections]);
+
+  const showCollections = Boolean(visibleCollections.length);
 
   // Build subcategories map from products
   const subcatMap = useMemo(() => {
@@ -181,62 +196,84 @@ export default function Catalogo({
           <div className="catalogo-layout">
             {/* Sidebar */}
             <aside className="cat-sidebar">
-              <div className="cat-sidebar-title">Categorías</div>
+              <div className="cat-sidebar-title">{showCollections ? "Colecciones activas" : "Categorías"}</div>
               <div className="cat-list">
-                {/* All */}
-                <button
-                  className={`cat-item ${catId === "__all" ? "active" : ""}`}
-                  onClick={() => handleCatClick("__all")}
-                >
-                  <span className="cat-item-dot" style={{ background: "var(--plum)" }} />
-                  <span className="cat-item-name">Todos</span>
-                  <span className="cat-item-count">{productos.length}</span>
-                </button>
+                {showCollections ? (
+                  visibleCollections.map((collection) => {
+                    const count = collection.items?.filter((item) => item.producto).length ?? 0;
+                    const isActive = activeCollectionId === collection._id;
+                    const theme = collection.themeColor || "#D2386C";
 
-                {categorias.map((cat) => {
-                  const n = catCounts[cat._id] || 0;
-                  const isExp = expanded === cat._id;
-                  const isActive = catId === cat._id;
-                  const subcats = subcatMap[cat._id] || [];
-
-                  return (
-                    <div key={cat._id}>
-                      <button
-                        className={`cat-item ${isActive ? "active" : ""} ${isExp ? "expanded" : ""}`}
-                        onClick={() => handleCatClick(cat._id)}
+                    return (
+                      <Link
+                        key={collection._id}
+                        href={collectionPath(collection)}
+                        className={`cat-item ${isActive ? "active" : ""}`}
+                        aria-current={isActive ? "page" : undefined}
                       >
-                        <span className="cat-item-dot" style={{ background: cat.color }} />
-                        <span className="cat-item-name">{cat.nombre}</span>
-                        <span className="cat-item-count">{n}</span>
-                        <svg className="cat-item-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                          <polyline points="6 9 12 15 18 9" />
-                        </svg>
-                      </button>
+                        <span className="cat-item-dot" style={{ background: theme }} />
+                        <span className="cat-item-name">{collection.titulo}</span>
+                        <span className="cat-item-count">{count}</span>
+                      </Link>
+                    );
+                  })
+                ) : (
+                  <>
+                    <button
+                      className={`cat-item ${catId === "__all" ? "active" : ""}`}
+                      onClick={() => handleCatClick("__all")}
+                    >
+                      <span className="cat-item-dot" style={{ background: "var(--plum)" }} />
+                      <span className="cat-item-name">Todos</span>
+                      <span className="cat-item-count">{productos.length}</span>
+                    </button>
 
-                      {isExp && subcats.length > 1 && (
-                        <div className="subcat-panel">
+                    {categorias.map((cat) => {
+                      const n = catCounts[cat._id] || 0;
+                      const isExp = expanded === cat._id;
+                      const isActive = catId === cat._id;
+                      const subcats = subcatMap[cat._id] || [];
+
+                      return (
+                        <div key={cat._id}>
                           <button
-                            className={`subcat-btn ${subId === "__all" ? "active" : ""}`}
-                            onClick={() => setSubId("__all")}
+                            className={`cat-item ${isActive ? "active" : ""} ${isExp ? "expanded" : ""}`}
+                            onClick={() => handleCatClick(cat._id)}
                           >
-                            Todas
-                            <span style={{ marginLeft: "auto", opacity: 0.6 }}>{n}</span>
+                            <span className="cat-item-dot" style={{ background: cat.color }} />
+                            <span className="cat-item-name">{cat.nombre}</span>
+                            <span className="cat-item-count">{n}</span>
+                            <svg className="cat-item-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="6 9 12 15 18 9" />
+                            </svg>
                           </button>
-                          {subcats.map((s) => (
-                            <button
-                              key={s.id}
-                              className={`subcat-btn ${subId === s.id ? "active" : ""}`}
-                              onClick={() => setSubId(s.id)}
-                            >
-                              {s.nombre}
-                              <span style={{ marginLeft: "auto", opacity: 0.6 }}>{subCounts[s.id] || 0}</span>
-                            </button>
-                          ))}
+
+                          {isExp && subcats.length > 1 && (
+                            <div className="subcat-panel">
+                              <button
+                                className={`subcat-btn ${subId === "__all" ? "active" : ""}`}
+                                onClick={() => setSubId("__all")}
+                              >
+                                Todas
+                                <span style={{ marginLeft: "auto", opacity: 0.6 }}>{n}</span>
+                              </button>
+                              {subcats.map((s) => (
+                                <button
+                                  key={s.id}
+                                  className={`subcat-btn ${subId === s.id ? "active" : ""}`}
+                                  onClick={() => setSubId(s.id)}
+                                >
+                                  {s.nombre}
+                                  <span style={{ marginLeft: "auto", opacity: 0.6 }}>{subCounts[s.id] || 0}</span>
+                                </button>
+                              ))}
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
-                  );
-                })}
+                      );
+                    })}
+                  </>
+                )}
               </div>
               <div className="cat-sidebar-columns">
                 <span>Vista</span>
