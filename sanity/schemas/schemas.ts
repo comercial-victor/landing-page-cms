@@ -8,6 +8,41 @@ import {
   Type,
 } from "lucide-react";
 
+const PRODUCT_SLUG_MAX_LENGTH = 96;
+
+function slugifyForUrl(value: string): string {
+  return value
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9\s-]/g, "")
+    .trim()
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-");
+}
+
+function productIdSuffix(value?: unknown): string {
+  const raw = String(value || "")
+    .replace(/^drafts\./, "")
+    .replace(/^prod[-_.]/i, "")
+    .replace(/^producto[-_.]/i, "");
+  const compact = slugifyForUrl(raw).replace(/-/g, "");
+  if (!compact) return "";
+  return /^[a-z]/.test(compact) ? compact : `p${compact}`;
+}
+
+function productSlugWithId(nombre?: unknown, id?: unknown): string {
+  const base = slugifyForUrl(String(nombre || "producto"));
+  const suffix = productIdSuffix(id);
+  if (!suffix) return base.slice(0, PRODUCT_SLUG_MAX_LENGTH);
+
+  const safeBase = base
+    .slice(0, Math.max(1, PRODUCT_SLUG_MAX_LENGTH - suffix.length - 1))
+    .replace(/-+$/g, "");
+
+  return `${safeBase}-${suffix}`;
+}
+
 // ─── Novedades ─────────────────────────────────────────────
 export const featuredGallerySchema = defineType({
   name: "featuredGallery",
@@ -397,7 +432,19 @@ export const productoSchema = defineType({
     // General
     defineField({ name: "idExcel", title: "ID Excel", type: "string", group: "general", readOnly: true }),
     defineField({ name: "nombre", title: "Nombre del producto", type: "string", group: "general", validation: (R) => R.required(), description: "Nombre específico y completo. Ej: Block Navarrete A4 cuadriculado x50" }),
-    defineField({ name: "slug", title: "Slug (URL)", type: "slug", group: "general", options: { source: "nombre", maxLength: 96 }, validation: (R) => R.required() }),
+    defineField({
+      name: "slug",
+      title: "Slug (URL)",
+      type: "slug",
+      group: "general",
+      description: "Se genera como nombre-del-producto-pID. Ejemplo: globo-9-blanco-p0012.",
+      options: {
+        source: (doc: { nombre?: unknown; idExcel?: unknown; _id?: unknown }) => productSlugWithId(doc.nombre, doc.idExcel || doc._id),
+        maxLength: PRODUCT_SLUG_MAX_LENGTH,
+        slugify: (input) => slugifyForUrl(input).slice(0, PRODUCT_SLUG_MAX_LENGTH),
+      },
+      validation: (R) => R.required(),
+    }),
     defineField({ name: "descripcion", title: "Descripción", type: "text", rows: 3, group: "general" }),
     defineField({ name: "subcategoria", title: "Subcategoría principal", type: "reference", to: [{ type: "subcategoria" }], group: "general", validation: (R) => R.required() }),
     defineField({ name: "categoriasExtra", title: "Subcategorías adicionales", type: "array", of: [{ type: "reference", to: [{ type: "subcategoria" }] }], group: "general" }),
@@ -450,7 +497,7 @@ export const productoSchema = defineType({
           defineField({ name: "nombre", title: "Nombre", type: "string", validation: (R) => R.required() }),
           defineField({ name: "factorConversion", title: "Factor conversión", type: "number", validation: (R) => R.required().min(0.01) }),
           defineField({ name: "precio", title: "Precio (S/)", type: "number" }),
-          defineField({ name: "visibleEnWeb", title: "Visible", type: "boolean", initialValue: true }),
+          defineField({ name: "visibleEnWeb", title: "Visible en web (heredado)", type: "boolean", initialValue: true, hidden: true, description: "Campo heredado. La visibilidad web se controla desde el producto completo." }),
           defineField({ name: "esDefault", title: "Principal", type: "boolean", initialValue: false }),
         ],
         preview: {

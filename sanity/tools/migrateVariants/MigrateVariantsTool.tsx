@@ -30,9 +30,29 @@ interface MigrationProgress {
   phase: string;
 }
 
+const PRODUCT_SLUG_MAX_LENGTH = 96;
 const uid = () => Math.random().toString(36).slice(2, 10);
-const docIdPart = (s: string) => s.replace(/[^A-Za-z0-9_.-]/g, "-");
+const legacyDocIdPart = (s: string) => s.replace(/[^A-Za-z0-9_.-]/g, "-");
+const docIdPart = (s: string) => s.replace(/^drafts\./, "").replace(/[^A-Za-z0-9_-]/g, "-").replace(/-+/g, "-").replace(/^-+|-+$/g, "");
+const publicMigratedProductId = (parentId: string, variantKey: string) => `prod-migrated-${docIdPart(parentId)}-${docIdPart(variantKey)}`;
+const migratedExcelId = (parentIdOrExcel: string, variantKey: string) => `M-${docIdPart(parentIdOrExcel).replace(/^prod-?/i, "")}-${docIdPart(variantKey)}`.toUpperCase();
 const slugify = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9\s-]/g, "").trim().replace(/\s+/g, "-").replace(/-+/g, "-");
+const productIdSuffix = (value?: string) => {
+  const compact = slugify(value || "")
+    .replace(/^drafts-/, "")
+    .replace(/^prod-?/, "")
+    .replace(/^producto-?/, "")
+    .replace(/-/g, "");
+  if (!compact) return "";
+  return /^[a-z]/.test(compact) ? compact : `p${compact}`;
+};
+const productSlugWithId = (nombre: string, id?: string) => {
+  const base = slugify(nombre || "producto");
+  const suffix = productIdSuffix(id);
+  if (!suffix) return base.slice(0, PRODUCT_SLUG_MAX_LENGTH);
+  const safeBase = base.slice(0, Math.max(1, PRODUCT_SLUG_MAX_LENGTH - suffix.length - 1)).replace(/-+$/g, "");
+  return `${safeBase}-${suffix}`;
+};
 const compareText = (s: string) =>
   s.toLowerCase()
     .normalize("NFD")
@@ -94,7 +114,7 @@ const restoreGlobo9CromadoDoc = {
   _type: "producto",
   idExcel: "P-0313",
   nombre: "Globo #9 cromado",
-  slug: { _type: "slug", current: "globo-9-cromado" },
+  slug: { _type: "slug", current: "globo-9-cromado-p0313" },
   descripcion: "",
   destacado: false,
   manejaStock: true,
@@ -395,21 +415,27 @@ export function MigrateVariantsTool() {
 
         const variants = parent.variantes || [];
         const migrationKeys = variants.map(v => `${parent._id}::${v._key}`);
-        const expectedIds = variants.map(v => `producto.migrated.${docIdPart(parent._id)}.${docIdPart(v._key)}`);
+        const expectedIds = variants.flatMap(v => [
+          publicMigratedProductId(parent._id, v._key),
+          `producto.migrated.${legacyDocIdPart(parent._id)}.${legacyDocIdPart(v._key)}`,
+        ]);
         const existingMigrated = await withTimeout(writeClient.fetch<{ _id: string; migratedFromVariant?: string }[]>(
           `*[_type=="producto" && (_id in $ids || migratedFromVariant in $keys)]{_id,migratedFromVariant}`,
           { ids: expectedIds, keys: migrationKeys },
         ), `La revisión de duplicados de "${parent.nombre}"`, 20000);
         const existingKeys = new Set(existingMigrated.map(doc => doc.migratedFromVariant).filter(Boolean));
+        const existingIds = new Set(existingMigrated.map(doc => doc._id));
 
         const createdNames: string[] = [];
 
         for (const v of variants) {
           const newName = buildNewName(parent, v);
-          const newSlug = slugify(newName);
           const migratedFromVariant = `${parent._id}::${v._key}`;
+          const newId = publicMigratedProductId(parent._id, v._key);
+          const newIdExcel = migratedExcelId(parent.idExcel || parent._id, v._key);
+          const newSlug = productSlugWithId(newName, newIdExcel);
 
-          if (existingKeys.has(migratedFromVariant)) {
+          if (existingKeys.has(migratedFromVariant) || existingIds.has(newId)) {
             skippedExisting++;
             appendLog(`Ya existía: "${newName}". No se duplica.`);
             continue;
@@ -446,7 +472,9 @@ export function MigrateVariantsTool() {
           }];
 
           const doc: Record<string, unknown> = {
+            _id: newId,
             _type: "producto",
+            idExcel: newIdExcel,
             nombre: newName,
             slug: { _type: "slug", current: newSlug },
             subcategoria: { _type: "reference", _ref: parent.subcategoria._id },

@@ -26,15 +26,13 @@ export default function Footer({ brand }: { brand: Brand }) {
           <div className="footer-v2-grid">
             <div className="footer-v2-brand-col">
               <div className="footer-brand-row">
-                {brand.logo && (
-                  <Image
-                    src={urlFor(brand.logo).width(80).height(80).fit("crop").url()}
-                    alt={brand.nombre}
-                    width={40}
-                    height={40}
-                    style={{ borderRadius: "50%", objectFit: "cover" }}
-                  />
-                )}
+                <Image
+                  src={brand.logo ? urlFor(brand.logo).width(80).height(80).fit("crop").url() : "/logo-comercial-victor.png"}
+                  alt={brand.nombre}
+                  width={40}
+                  height={40}
+                  style={{ borderRadius: "50%", objectFit: "cover" }}
+                />
                 <div className="footer-brand serif footer-brand-gradient">{brand.nombre}</div>
               </div>
               <p className="footer-v2-desc">

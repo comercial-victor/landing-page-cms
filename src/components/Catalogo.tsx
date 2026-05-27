@@ -8,6 +8,7 @@ import { ProductImage, Badges, PriceDisplay } from "./ProductHelpers";
 import type { ContactLink } from "@/lib/social";
 import { collectionPath } from "@/lib/collections";
 import { productPath } from "@/lib/products";
+import { rankBySearch } from "@/lib/search";
 
 interface CatalogoProps {
   productos: ProductoFlat[];
@@ -93,17 +94,22 @@ export default function Catalogo({
   }, [productos]);
 
   const filtrados = useMemo(() => {
-    const normalize = (value: string) =>
-      value.toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "");
-    const term = normalize(activeQuery.trim());
     const byTaxonomy = searchAllCategories
       ? productos
       : productos.filter((p) => (catId === "__all" ? true : p._categoriaId === catId));
 
-    if (!term) return byTaxonomy;
-    return byTaxonomy.filter((p) =>
-      normalize([p.nombre, p.descripcion, p.marca, p._categoria, p._subcategoria].filter(Boolean).join(" ")).includes(term)
-    );
+    return rankBySearch(byTaxonomy, activeQuery, (p) => [
+      p.nombre,
+      p.idExcel,
+      p.descripcion,
+      p.marca,
+      p.medidas,
+      p.observaciones,
+      p._categoria,
+      p._subcategoria,
+      ...(p.tags || []),
+      ...(p.presentaciones || []).map((presentacion) => presentacion.nombre),
+    ]);
   }, [productos, catId, activeQuery, searchAllCategories]);
 
   const columnToggle = (

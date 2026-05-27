@@ -8,9 +8,8 @@ import ScrollToTop from "@/components/ScrollToTop";
 import ProductDetailClient from "@/components/ProductDetailClient";
 import { getProductoPorSlug, getProductoSlugs, getSiteSettings, getTodosLosProductos } from "@/lib/queries";
 import { getPrimaryContact, normalizeSocialLinks } from "@/lib/social";
+import { brandShareImage, siteUrl } from "@/lib/metadata";
 import { urlFor } from "@/lib/sanity";
-
-const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000").replace(/\/$/, "");
 
 export async function generateStaticParams() {
   const slugs = await getProductoSlugs();
@@ -29,28 +28,31 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const siteName = settings?.nombre || "Comercial Victor";
   const title = `${producto.nombre} | ${siteName}`;
   const description = producto.descripcion || settings?.seoDescription || settings?.tagline || "";
-  const ogImage = producto.imagenes?.[0]
-    ? urlFor(producto.imagenes[0]).width(1200).height(630).fit("crop").url()
-    : settings?.seoImage
-      ? urlFor(settings.seoImage).width(1200).height(630).fit("crop").url()
-      : undefined;
+  const canonicalUrl = `${siteUrl}/producto/${slug}`;
+  const image = producto.imagenes?.[0]
+    ? urlFor(producto.imagenes[0]).width(1200).height(630).fit("crop").auto("format").url()
+    : brandShareImage(settings);
 
   return {
     title,
     description,
+    alternates: {
+      canonical: canonicalUrl,
+    },
     openGraph: {
       title,
       description,
-      url: `${siteUrl}/producto/${slug}`,
+      url: canonicalUrl,
       siteName,
       type: "website",
-      images: ogImage ? [{ url: ogImage, width: 1200, height: 630, alt: producto.nombre }] : undefined,
+      locale: "es_PE",
+      images: [{ url: image, width: 1200, height: 630, alt: producto.nombre }],
     },
     twitter: {
       card: "summary_large_image",
       title,
       description,
-      images: ogImage ? [ogImage] : undefined,
+      images: [image],
     },
   };
 }

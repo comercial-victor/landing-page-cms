@@ -4,22 +4,19 @@ import Image from "next/image";
 import Link from "next/link";
 import type { Collection, ProductoFlat } from "@/types";
 import { urlFor } from "@/lib/sanity";
-import { buildDemoCollections, collectionPath } from "@/lib/collections";
+import { collectionPath } from "@/lib/collections";
 import { ProductImage } from "./ProductHelpers";
 
 interface ColeccionesProps {
   colecciones: Collection[];
-  fallbackProductos: ProductoFlat[];
 }
 
-export default function Colecciones({ colecciones, fallbackProductos }: ColeccionesProps) {
+export default function Colecciones({ colecciones }: ColeccionesProps) {
   const visibleCollections = colecciones
     .filter((collection) => collection.visible !== false)
     .filter((collection) => collection.items?.some((item) => item.producto));
 
-  const prepared = visibleCollections.length ? visibleCollections : buildDemoCollections(fallbackProductos);
-
-  if (!prepared.length) return null;
+  if (!visibleCollections.length) return null;
 
   return (
     <section className="section colecciones-section" id="colecciones">
@@ -35,7 +32,7 @@ export default function Colecciones({ colecciones, fallbackProductos }: Coleccio
         </div>
 
         <div className="colecciones-grid">
-          {prepared.map((collection, index) => {
+          {visibleCollections.map((collection, index) => {
             const products = collection.items.map((item) => item.producto).filter(Boolean) as ProductoFlat[];
             const coverProducts = collection.items
               .filter((item) => item.visible !== false && item.mostrarEnPortada && item.producto)

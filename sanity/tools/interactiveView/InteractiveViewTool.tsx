@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useClient } from "sanity";
+import { rankBySearch, searchScore } from "../../../src/lib/search";
 import {
   AlertTriangle,
   ChevronDown,
@@ -104,9 +105,26 @@ interface FilterOption {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────
+const PRODUCT_SLUG_MAX_LENGTH = 96;
 const uid = () => Math.random().toString(36).slice(2, 10);
 const normalize = (s: string) => s.toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "").replace(/[^a-z0-9]+/g, " ").trim();
 const slugify = (s: string) => normalize(s).replace(/\s+/g, "-");
+const productIdSuffix = (value?: string) => {
+  const compact = slugify(value || "")
+    .replace(/^drafts-/, "")
+    .replace(/^prod-?/, "")
+    .replace(/^producto-?/, "")
+    .replace(/-/g, "");
+  if (!compact) return "";
+  return /^[a-z]/.test(compact) ? compact : `p${compact}`;
+};
+const productSlugWithId = (nombre: string, id?: string) => {
+  const base = slugify(nombre || "producto");
+  const suffix = productIdSuffix(id);
+  if (!suffix) return base.slice(0, PRODUCT_SLUG_MAX_LENGTH);
+  const safeBase = base.slice(0, Math.max(1, PRODUCT_SLUG_MAX_LENGTH - suffix.length - 1)).replace(/-+$/g, "");
+  return `${safeBase}-${suffix}`;
+};
 const tokenize = (s: string) => normalize(s).split(" ").filter(Boolean);
 const matchesTokens = (hay: string, tokens: string[]) => tokens.length === 0 || tokens.every((token) => hay.includes(token));
 const COMMON_TAGS = ["popular","nuevo","para-eventos","barra","metalizado","color-blanco","tecnopor","escolar","fiesta-infantil","manualidades","descartable","tela"];
@@ -256,7 +274,12 @@ export function InteractiveViewTool() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     const [p, c, sc, col, featured] = await Promise.all([
-      client.fetch<SProd[]>(`*[_type=="producto"]|order(nombre asc){
+      client.fetch<SProd[]>(`*[
+        _type == "producto" &&
+        !(_id in path("drafts.**")) &&
+        !(_id in path("versions.**")) &&
+        !(_id in path("producto.migrated.**"))
+      ]|order(nombre asc){
         _id,idExcel,nombre,descripcion,marca,visible,destacado,destacadoUbicaciones,medidas,observaciones,tags,
         unidadBase,manejaStock,permiteVentaFraccionada,stock,migratedFromVariant,slug,
         subcategoria->{_id,nombre,categoria->{_id,nombre,color}},
@@ -305,11 +328,18 @@ export function InteractiveViewTool() {
       r = r.filter(p => (counts.get(normalize([p.idExcel, p.nombre].filter(Boolean).join(" "))) || 0) > 1);
     }
     if (search.trim()) {
-      const tokens = normalize(search).split(" ").filter(Boolean);
-      r = r.filter(p => {
-        const hay = normalize([p.nombre, p.idExcel, p.marca, p.subcategoria?.nombre, p.subcategoria?.categoria?.nombre, ...(p.tags || [])].filter(Boolean).join(" "));
-        return tokens.every(t => hay.includes(t));
-      });
+      r = rankBySearch(r, search, (p) => [
+        p.nombre,
+        p.idExcel,
+        p.descripcion,
+        p.marca,
+        p.medidas,
+        p.observaciones,
+        p.subcategoria?.nombre,
+        p.subcategoria?.categoria?.nombre,
+        ...(p.tags || []),
+        ...(p.presentaciones || []).map((presentacion) => presentacion.nombre),
+      ]);
     }
     return r;
   }, [prods, catFilter, tagFilter, search, visibilityFilter]);
@@ -1655,11 +1685,18 @@ function CollectionEditor({
   const selectedIds = useMemo(() => new Set((draft.items || []).map((item) => item.producto?._id).filter(Boolean) as string[]), [draft.items]);
   const coverItemCount = useMemo(() => (draft.items || []).filter((item) => item.mostrarEnPortada).length, [draft.items]);
   const filteredProducts = useMemo(() => {
-    const tokens = tokenize(productQuery);
-    return products.filter((product) => {
-      const hay = normalize([product.nombre, product.idExcel, product.subcategoria?.nombre, product.subcategoria?.categoria?.nombre, ...(product.tags || [])].filter(Boolean).join(" "));
-      return matchesTokens(hay, tokens);
-    }).slice(0, 80);
+    return rankBySearch(products, productQuery, (product) => [
+      product.nombre,
+      product.idExcel,
+      product.descripcion,
+      product.marca,
+      product.medidas,
+      product.observaciones,
+      product.subcategoria?.nombre,
+      product.subcategoria?.categoria?.nombre,
+      ...(product.tags || []),
+      ...(product.presentaciones || []).map((presentacion) => presentacion.nombre),
+    ]).slice(0, 80);
   }, [productQuery, products]);
 
   const setField = <K extends keyof SCollection>(field: K, value: SCollection[K]) => {
@@ -1898,11 +1935,19 @@ function CollectionEditor({
 }
 
 function pickProductsByKeywords(products: SProd[], keywords: string[]) {
-  const normalizedKeywords = keywords.map(normalize);
   return products
     .map((product) => {
-      const hay = normalize([product.nombre, product.subcategoria?.nombre, product.subcategoria?.categoria?.nombre, ...(product.tags || [])].filter(Boolean).join(" "));
-      const score = normalizedKeywords.reduce((total, keyword) => total + (hay.includes(keyword) ? 1 : 0), 0);
+      const score = keywords.reduce((total, keyword) => total + searchScore(keyword, [
+        product.nombre,
+        product.idExcel,
+        product.descripcion,
+        product.marca,
+        product.medidas,
+        product.observaciones,
+        product.subcategoria?.nombre,
+        product.subcategoria?.categoria?.nombre,
+        ...(product.tags || []),
+      ]), 0);
       return { product, score };
     })
     .sort((a, b) => b.score - a.score)
@@ -2387,6 +2432,9 @@ const changed = (field: string) => {
         return;
       }
       const saveDestacadoUbicaciones = draft.destacadoUbicaciones || (draft.destacado ? ["preCatalog"] as DestacadoUbicacion[] : []);
+      const manualId = `M-${Date.now().toString(36)}-${uid()}`;
+      const productId = isNew ? `prod-${manualId}` : canonicalId(draft._id);
+      const productCode = draft.idExcel || (isNew ? manualId : productId);
 
       const doc: Record<string, unknown> = {
         nombre: cleanName,
@@ -2402,7 +2450,7 @@ const changed = (field: string) => {
         manejaStock: draft.manejaStock,
         permiteVentaFraccionada: draft.permiteVentaFraccionada,
         subcategoria: { _type: "reference", _ref: subcatId },
-        slug: { _type: "slug", current: slugify(cleanName) },
+        slug: { _type: "slug", current: productSlugWithId(cleanName, productCode) },
       };
 
       // Stock at product level
@@ -2440,7 +2488,7 @@ const changed = (field: string) => {
       console.log("Guardando doc:", JSON.stringify(doc, null, 2));
 
       const saved = isNew
-        ? await client.create({ _type: "producto", ...doc })
+        ? await client.create({ _id: productId, _type: "producto", idExcel: productCode, ...doc })
         : await (shouldUnsetImages
             ? client.patch(draft._id).set(doc).unset(["imagenes"]).commit()
             : client.patch(draft._id).set(doc).commit());
@@ -2687,7 +2735,7 @@ const changed = (field: string) => {
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               <EditorHint
                 title="Cuándo usar presentaciones"
-                body="Usa presentaciones para definir cómo se vende o cotiza el artículo. Ej: unidad, paquete, rollo, metro o caja. Si se vende por partes, activa Venta fraccionada en General."
+                body="Usa presentaciones para definir cómo se vende o cotiza el artículo. Ej: unidad, paquete, rollo, metro o caja. La visibilidad se controla desde el producto completo: si el producto está visible, se muestran todas sus presentaciones; si está oculto, no se muestra ninguna."
               />
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <span style={{ fontSize: 15, color: C.inkSoft }}>{draft.presentaciones?.length || 0} presentaciones</span>
@@ -2707,7 +2755,6 @@ const changed = (field: string) => {
                           // Set this as default, unset others
                           setDraft(d => ({ ...d, presentaciones: (d.presentaciones || []).map(pp => ({ ...pp, esDefault: pp._key === p._key })) }));
                         }} aria-label="Marcar como principal" title="Marcar como principal" style={{ ...btnStyle("secondary"), width: 34, height: 34, padding: 0, justifyContent: "center" }}><Star size={iconSize} fill={p.esDefault ? "currentColor" : "none"} /></button>
-                        <MiniToggle on={p.visibleEnWeb !== false} icon={p.visibleEnWeb !== false ? <Eye size={iconSize} /> : <EyeOff size={iconSize} />} onClick={() => updatePres(p._key, "visibleEnWeb", !p.visibleEnWeb)} disabled={false} title="Visible" />
                         <button onClick={() => removePres(p._key)} aria-label="Eliminar presentación" title="Eliminar presentación" style={{ ...btnStyle("secondary"), width: 34, height: 34, padding: 0, justifyContent: "center", color: C.red }}><Trash2 size={iconSize} /></button>
                       </div>
                     </div>

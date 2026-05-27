@@ -31,7 +31,7 @@ export const demoCollectionDefinitions = [
 ] as const;
 
 export function collectionPath(collection: Pick<Collection, "slug" | "titulo">) {
-  return `/${collection.slug?.current || slugifyCollection(collection.titulo)}`;
+  return `/colecciones/${collection.slug?.current || slugifyCollection(collection.titulo)}`;
 }
 
 export function slugifyCollection(value: string) {

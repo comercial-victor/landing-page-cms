@@ -1,27 +1,23 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { getSiteSettings } from "@/lib/queries";
-import { urlFor } from "@/lib/sanity";
-
-const siteIcon = "/favicon.svg";
-const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000").replace(/\/$/, "");
+import { absoluteUrl, brandShareImage, faviconIcons, siteUrl } from "@/lib/metadata";
 
 export async function generateMetadata(): Promise<Metadata> {
   try {
     const s = await getSiteSettings();
     const title = s?.seoTitle || s?.nombre || "Comercial Victor";
     const description = s?.seoDescription || (s?.tagline ?? "Todo para que tu fiesta brille");
-    const seoImage = s?.seoImage ? urlFor(s.seoImage).width(1200).height(630).fit("crop").url() : undefined;
+    const image = brandShareImage(s);
 
     return {
       metadataBase: new URL(siteUrl),
       title,
       description,
-      icons: {
-        icon: [{ url: siteIcon, type: "image/svg+xml" }],
-        shortcut: [siteIcon],
-        apple: [{ url: siteIcon, type: "image/svg+xml" }],
+      alternates: {
+        canonical: absoluteUrl("/"),
       },
+      icons: faviconIcons,
       openGraph: {
         title,
         description,
@@ -29,24 +25,39 @@ export async function generateMetadata(): Promise<Metadata> {
         siteName: s?.nombre || "Comercial Victor",
         type: "website",
         locale: "es_PE",
-        images: seoImage ? [{ url: seoImage, width: 1200, height: 630, alt: title }] : undefined,
+        images: [{ url: image, width: 1200, height: 630, alt: title }],
       },
       twitter: {
         card: "summary_large_image",
         title,
         description,
-        images: seoImage ? [seoImage] : undefined,
+        images: [image],
       },
     };
   } catch {
+    const title = "Comercial Victor";
+    const description = "Todo para que tu fiesta brille";
+    const image = absoluteUrl("/og-comercial-victor.png");
+
     return {
       metadataBase: new URL(siteUrl),
-      title: "Comercial Victor",
-      description: "Todo para que tu fiesta brille",
-      icons: {
-        icon: [{ url: siteIcon, type: "image/svg+xml" }],
-        shortcut: [siteIcon],
-        apple: [{ url: siteIcon, type: "image/svg+xml" }],
+      title,
+      description,
+      icons: faviconIcons,
+      openGraph: {
+        title,
+        description,
+        url: siteUrl,
+        siteName: title,
+        type: "website",
+        locale: "es_PE",
+        images: [{ url: image, width: 1200, height: 630, alt: title }],
+      },
+      twitter: {
+        card: "summary_large_image",
+        title,
+        description,
+        images: [image],
       },
     };
   }

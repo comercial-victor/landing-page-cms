@@ -145,6 +145,27 @@ export function makeSlug(text: string): string {
     .replace(/[^a-z0-9\s-]/g, "").trim().replace(/\s+/g, "-").replace(/-+/g, "-");
 }
 
+const PRODUCT_SLUG_MAX_LENGTH = 96;
+
+function makeProductIdSuffix(idExcel: string): string {
+  const compactId = makeSlug(idExcel).replace(/-/g, "");
+  if (!compactId) return "";
+  return /^[a-z]/.test(compactId) ? compactId : `p${compactId}`;
+}
+
+export function makeProductSlug(nombre: string, idExcel: string): string {
+  const suffix = makeProductIdSuffix(idExcel);
+  const base = makeSlug(nombre);
+  if (!suffix) return base.slice(0, PRODUCT_SLUG_MAX_LENGTH);
+
+  const reserved = suffix.length + 1;
+  const safeBase = base
+    .slice(0, Math.max(1, PRODUCT_SLUG_MAX_LENGTH - reserved))
+    .replace(/-+$/g, "");
+
+  return `${safeBase}-${suffix}`;
+}
+
 function parseBool(val: string | undefined | null): boolean {
   if (!val) return false;
   return ["sí", "si", "true", "1", "yes"].includes(String(val).toLowerCase().trim());
@@ -305,7 +326,7 @@ export function normalizeCatalog(raw: ParsedCatalog): NormalizedCatalog {
       _type: "producto",
       idExcel: id,
       nombre: p.nombre.trim(),
-      slug: { _type: "slug", current: makeSlug(p.nombre) },
+      slug: { _type: "slug", current: makeProductSlug(p.nombre, id) },
       descripcion: String(p.descripcion || "").trim() || undefined,
       subcategoriaRef: subcatRef,
       marca: String(p.marca || "Genérico").trim(),

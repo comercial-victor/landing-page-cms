@@ -1,0 +1,1 @@
+export { MigrateProductSlugsTool } from "./MigrateProductSlugsTool";

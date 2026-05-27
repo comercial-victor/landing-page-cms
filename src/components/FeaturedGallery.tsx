@@ -187,7 +187,7 @@ function FeaturedMedia({
         fill
         sizes={mode === "modal" ? "(max-width: 900px) 92vw, 980px" : "(max-width: 640px) 78vw, 520px"}
         className={`${mode === "modal" ? "featured-modal-img" : "featured-card-img"} featured-img-contain featured-img-${orientation}`}
-        style={{ objectPosition: media.position }}
+        style={{ objectPosition: mode === "modal" ? "center" : media.position }}
         priority={priority}
         onLoad={onLoaded}
         onError={() => {

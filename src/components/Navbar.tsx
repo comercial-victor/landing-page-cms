@@ -10,6 +10,7 @@ import { urlFor } from "@/lib/sanity";
 import { ProductImage } from "./ProductHelpers";
 import { ContactIcon, getContactColor, getContactHref, type ContactLink } from "@/lib/social";
 import { productPath } from "@/lib/products";
+import { rankBySearch } from "@/lib/search";
 import { ArrowRight, Clock, Home, Layers3, MapPin, ShoppingBag, Sparkles } from "lucide-react";
 
 interface Brand {
@@ -72,32 +73,33 @@ export default function Navbar({
     const onPointerDown = (event: PointerEvent) => {
       if (searchWrapRef.current?.contains(event.target as Node)) return;
       setSearchOpen(false);
-      if (window.innerWidth > 820 && !searchValue) setMobileSearchOpen(false);
+      setMobileSearchOpen(false);
     };
     document.addEventListener("pointerdown", onPointerDown);
     return () => document.removeEventListener("pointerdown", onPointerDown);
   }, [searchOpen, searchValue]);
 
-  const normalize = (v: string) => {
-    const b = v.toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "").replace(/[^a-z0-9]+/g, " ").trim();
-    return { s: b, c: b.replace(/\s+/g, "") };
-  };
-
   const results = useMemo(() => {
     if (!searchValue.trim()) return [];
-    const n = normalize(searchValue);
-    const toks = n.s ? n.s.split(" ") : [];
-    return productos.filter((p) => {
-      const h = normalize([p.nombre, p._categoria, p._subcategoria].join(" "));
-      if (h.s.includes(n.s) || h.c.includes(n.c)) return true;
-      return toks.length > 0 && toks.every((t) => h.s.includes(t));
-    }).slice(0, 8);
+
+    return rankBySearch(productos, searchValue, (p) => [
+      p.nombre,
+      p.idExcel,
+      p.descripcion,
+      p.marca,
+      p.medidas,
+      p.observaciones,
+      p._categoria,
+      p._subcategoria,
+      ...(p.tags || []),
+      ...(p.presentaciones || []).map((presentacion) => presentacion.nombre),
+    ]).slice(0, 8);
   }, [searchValue, productos]);
 
   const links = [
     { href: "/", label: "Inicio", icon: Home },
     { href: "/#novedades", label: "Novedades", icon: Sparkles },
-    { href: "/#colecciones", label: "Colecciones", icon: Layers3 },
+    { href: "/colecciones", label: "Colecciones", icon: Layers3 },
     { href: "/catalog", label: "Catálogo", icon: ShoppingBag },
     { href: "/#horarios", label: "Horarios", icon: Clock },
     { href: "/#contacto", label: "Ubícanos", icon: MapPin },
@@ -166,18 +168,15 @@ export default function Navbar({
         <div className={`nav-float-pill ${searchOpen || searchValue || mobileSearchOpen ? "search-open" : ""}`}>
           {/* Logo */}
           <button className="nf-logo" onClick={() => go("/")}>
-            {brand.logo ? (
-              <Image
-                src={urlFor(brand.logo).width(80).height(80).fit("crop").url()}
-                alt={brand.nombre}
-                width={96}
-                height={96}
-                className="nf-logo-img"
-                style={{ borderRadius: "50%", objectFit: "cover" }}
-              />
-            ) : (
-              <span className="logo-dot" aria-hidden />
-            )}
+            <Image
+              src={brand.logo ? urlFor(brand.logo).width(80).height(80).fit("crop").url() : "/logo-comercial-victor.png"}
+              alt={brand.nombre}
+              width={96}
+              height={96}
+              className="nf-logo-img"
+              style={{ borderRadius: "50%", objectFit: "cover" }}
+              priority
+            />
             <span className="nf-brand serif">{brand.nombre}</span>
           </button>
 
@@ -273,7 +272,7 @@ export default function Navbar({
             {searchOpen && results.length > 0 && (
               <div className="search-results nf-results">
                 {results.map((p) => {
-                  const dp = p.presentaciones?.find((pr) => pr.esDefault && pr.visibleEnWeb && pr.precio);
+                  const dp = p.presentaciones?.find((pr) => pr.esDefault && pr.precio) || p.presentaciones?.find((pr) => pr.precio);
                   return (
                     <Link
                       key={p._id}

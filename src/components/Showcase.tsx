@@ -61,26 +61,27 @@ export default function Showcase({ productos, whatsapp = "51987654321", contact 
     if (event.pointerType === "mouse" && event.button !== 0) return;
 
     dragRef.current = { active: true, startX: event.clientX, startOffset: railDrag, didDrag: false };
-    setIsRailDragging(true);
+    setIsRailDragging(false);
     setIsRailSettling(false);
-
-    try {
-      event.currentTarget.setPointerCapture(event.pointerId);
-    } catch {
-      // Some browsers can drop the pointer before capture; dragging still works without it.
-    }
   };
 
   const handleRailPointerMove = (event: PointerEvent<HTMLDivElement>) => {
     if (!dragRef.current.active) return;
 
     const delta = event.clientX - dragRef.current.startX;
-    if (Math.abs(delta) > 5) {
-      dragRef.current.didDrag = true;
+    if (Math.abs(delta) > 6) {
+      if (!dragRef.current.didDrag) {
+        dragRef.current.didDrag = true;
+        setIsRailDragging(true);
+        try {
+          event.currentTarget.setPointerCapture(event.pointerId);
+        } catch {
+          // Some browsers can drop the pointer before capture; dragging still works without it.
+        }
+      }
       event.preventDefault();
+      setRailDrag(Math.max(-960, Math.min(960, dragRef.current.startOffset + delta)));
     }
-
-    setRailDrag(Math.max(-960, Math.min(960, dragRef.current.startOffset + delta)));
   };
 
   const endRailDrag = (event: PointerEvent<HTMLDivElement>) => {

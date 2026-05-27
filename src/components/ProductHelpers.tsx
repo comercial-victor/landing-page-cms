@@ -56,8 +56,8 @@ export function Badges({ producto }: { producto: ProductoFlat }) {
 }
 
 export function PriceDisplay({ producto, size = "card" }: { producto: ProductoFlat; size?: "card" | "modal" }) {
-  // Find default or first visible presentacion with price
-  const pres = producto.presentaciones?.filter(p => p.visibleEnWeb) || [];
+  // Product visibility is controlled at product level. If this product is visible, show all its presentations.
+  const pres = producto.presentaciones || [];
   const defaultPres = pres.find(p => p.esDefault) || pres.find(p => p.precio != null);
 
   if (!defaultPres || defaultPres.precio == null) {
@@ -80,14 +80,14 @@ export function PriceDisplay({ producto, size = "card" }: { producto: ProductoFl
 }
 
 export function PresentacionesList({ presentaciones }: { presentaciones?: Presentacion[] }) {
-  const visible = presentaciones?.filter(p => p.visibleEnWeb) || [];
-  if (visible.length === 0) return null;
+  const items = presentaciones || [];
+  if (items.length === 0) return null;
 
   return (
     <div style={{ marginTop: 16 }}>
       <div style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: "0.1em", color: "#7c6f8a", marginBottom: 8, fontWeight: 600 }}>Presentaciones</div>
       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-        {visible.map((p) => (
+        {items.map((p) => (
           <div key={p._key} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", background: p.esDefault ? "rgba(210,56,108,0.06)" : "#f9f7f5", borderRadius: 10, border: p.esDefault ? "1.5px solid rgba(210,56,108,0.25)" : "1px solid #e5e0da" }}>
             <span style={{ fontSize: 14, fontWeight: p.esDefault ? 600 : 500, color: "#1F1B2E" }}>
               {p.nombre}

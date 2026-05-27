@@ -1,24 +1,17 @@
-import { getSiteSettings, getHero, getFeaturedGallery, getTodosLosProductos, getProductosDestacados, getColecciones } from "@/lib/queries";
 import BackgroundDecor from "@/components/BackgroundDecor";
 import Navbar from "@/components/Navbar";
-import Hero from "@/components/Hero";
-import FeaturedGallery from "@/components/FeaturedGallery";
-import Showcase from "@/components/Showcase";
 import Colecciones from "@/components/Colecciones";
-import HorariosUbicacion from "@/components/HorariosUbicacion";
 import Footer from "@/components/Footer";
 import FabWhatsApp from "@/components/FabWhatsApp";
 import ScrollToTop from "@/components/ScrollToTop";
+import { getColecciones, getSiteSettings, getTodosLosProductos } from "@/lib/queries";
 import { getPrimaryContact, normalizeSocialLinks } from "@/lib/social";
 
-export default async function HomePage() {
-  const [settings, hero, featuredGallery, productos, preCatalogDestacados, colecciones] = await Promise.all([
+export default async function ColeccionesPage() {
+  const [settings, colecciones, productos] = await Promise.all([
     getSiteSettings(),
-    getHero(),
-    getFeaturedGallery(),
-    getTodosLosProductos(),
-    getProductosDestacados("preCatalog"),
     getColecciones(),
+    getTodosLosProductos(),
   ]);
 
   const socialLinks = normalizeSocialLinks(settings);
@@ -37,14 +30,9 @@ export default async function HomePage() {
     floatingContacts,
     primaryContact,
     direccion: settings?.direccion || "Miraflores, Lima",
-    horarios: settings?.horarios || [
-      { dia: "Lunes a Viernes", hora: "9:00 a.m. – 8:00 p.m." },
-      { dia: "Sábados", hora: "9:00 a.m. – 9:00 p.m." },
-      { dia: "Domingos", hora: "10:00 a.m. – 6:00 p.m." },
-    ],
+    horarios: settings?.horarios || [],
     googleMapsUrl: settings?.googleMapsUrl,
     googleMapsEmbedUrl: settings?.googleMapsEmbedUrl,
-    storeStatus: settings?.storeStatus,
     instagramUrl: settings?.instagramUrl,
     facebookUrl: settings?.facebookUrl,
     tiktokUrl: settings?.tiktokUrl,
@@ -54,22 +42,11 @@ export default async function HomePage() {
     <>
       <BackgroundDecor />
       <Navbar brand={brand} productos={productos} />
-      <Hero hero={hero} brand={brand} />
-      <FeaturedGallery
-        items={featuredGallery?.items || []}
-        title={featuredGallery?.titulo}
-        subtitle={featuredGallery?.subtitulo}
-        primaryContact={brand.primaryContact}
-      />
-      <Showcase
-        productos={preCatalogDestacados.length ? preCatalogDestacados : productos.slice(0, 12)}
-        whatsapp={brand.whatsapp}
-        contact={brand.primaryContact}
-      />
-      <Colecciones colecciones={colecciones} />
-      <HorariosUbicacion brand={brand} />
+      <main className="collections-page">
+        <Colecciones colecciones={colecciones} />
+      </main>
       <Footer brand={brand} />
-      <FabWhatsApp contacts={brand.floatingContacts} />
+      <FabWhatsApp contacts={floatingContacts} />
       <ScrollToTop />
     </>
   );

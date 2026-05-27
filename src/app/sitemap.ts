@@ -1,62 +1,111 @@
 import type { MetadataRoute } from "next";
 import { sanityClient } from "@/lib/sanity";
-import { getColeccionSlugs, getProductoSlugs } from "@/lib/queries";
-import { demoCollectionDefinitions } from "@/lib/collections";
 
-const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000").replace(/\/$/, "");
+export const revalidate = 3600;
+
+const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://comercial-victor.com").replace(/\/$/, "");
+
+type SitemapRow = {
+  slug: string;
+  updatedAt?: string;
+};
 
 type UpdatedRow = {
   _updatedAt?: string;
 };
 
-export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const now = new Date();
-  let catalogLastModified = now;
-  const [collectionSlugs, productSlugs] = await Promise.all([
-    getColeccionSlugs(),
-    getProductoSlugs(),
-  ]);
-  const demoSlugs = demoCollectionDefinitions.map((collection) => collection.slug);
-  const allCollectionSlugs = Array.from(new Set([...collectionSlugs, ...demoSlugs]));
+function toDate(value?: string): Date | undefined {
+  if (!value) return undefined;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? undefined : date;
+}
 
+async function getProductosParaSitemap(): Promise<SitemapRow[]> {
+  return sanityClient.fetch<SitemapRow[]>(
+    `*[
+      _type == "producto" &&
+      visible != false &&
+      defined(slug.current) &&
+      !(_id in path("drafts.**")) &&
+      !(_id in path("versions.**")) &&
+      !(_id in path("producto.migrated.**"))
+    ] | order(_updatedAt desc) {
+      "slug": slug.current,
+      "updatedAt": _updatedAt
+    }`,
+    {},
+    { next: { tags: ["producto"], revalidate: 3600 } }
+  );
+}
+
+async function getColeccionesParaSitemap(): Promise<SitemapRow[]> {
+  return sanityClient.fetch<SitemapRow[]>(
+    `*[
+      _type == "album" &&
+      visible != false &&
+      defined(slug.current) &&
+      !(_id in path("drafts.**")) &&
+      !(_id in path("versions.**")) &&
+      !(_id in path("producto.migrated.**")) &&
+      count(items[visible != false && producto->visible != false]) > 0
+    ] | order(_updatedAt desc) {
+      "slug": slug.current,
+      "updatedAt": _updatedAt
+    }`,
+    {},
+    { next: { tags: ["album", "producto"], revalidate: 3600 } }
+  );
+}
+
+async function getLastModified(types: string[]): Promise<Date | undefined> {
   try {
-    const latestCatalogChange = await sanityClient.fetch<UpdatedRow | null>(
-      `*[_type in ["producto", "categoria", "subcategoria"]]|order(_updatedAt desc)[0]{_updatedAt}`,
-      {},
-      { next: { tags: ["producto", "categoria", "subcategoria"] } }
+    const latestChange = await sanityClient.fetch<UpdatedRow | null>(
+      `*[
+        _type in $types &&
+        !(_id in path("drafts.**")) &&
+      !(_id in path("versions.**")) &&
+      !(_id in path("producto.migrated.**"))
+      ] | order(_updatedAt desc)[0] {
+        _updatedAt
+      }`,
+      { types },
+      { next: { tags: types, revalidate: 3600 } }
     );
 
-    if (latestCatalogChange?._updatedAt) {
-      catalogLastModified = new Date(latestCatalogChange._updatedAt);
-    }
+    return toDate(latestChange?._updatedAt);
   } catch {
-    catalogLastModified = now;
+    return undefined;
   }
+}
+
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const [productos, colecciones, catalogLastModified, collectionsLastModified] = await Promise.all([
+    getProductosParaSitemap(),
+    getColeccionesParaSitemap(),
+    getLastModified(["producto", "categoria", "subcategoria"]),
+    getLastModified(["album", "producto"]),
+  ]);
 
   return [
     {
-      url: siteUrl,
-      lastModified: now,
-      changeFrequency: "weekly",
-      priority: 1,
+      url: `${siteUrl}/`,
+      lastModified: catalogLastModified,
     },
     {
       url: `${siteUrl}/catalog`,
       lastModified: catalogLastModified,
-      changeFrequency: "daily",
-      priority: 0.9,
     },
-    ...allCollectionSlugs.map((slug) => ({
-      url: `${siteUrl}/${slug}`,
-      lastModified: catalogLastModified,
-      changeFrequency: "weekly",
-      priority: 0.7,
+    {
+      url: `${siteUrl}/colecciones`,
+      lastModified: collectionsLastModified,
+    },
+    ...colecciones.map((coleccion) => ({
+      url: `${siteUrl}/colecciones/${coleccion.slug}`,
+      lastModified: toDate(coleccion.updatedAt) || collectionsLastModified,
     })),
-    ...productSlugs.map((slug) => ({
-      url: `${siteUrl}/producto/${slug}`,
-      lastModified: catalogLastModified,
-      changeFrequency: "weekly",
-      priority: 0.8,
+    ...productos.map((producto) => ({
+      url: `${siteUrl}/producto/${producto.slug}`,
+      lastModified: toDate(producto.updatedAt) || catalogLastModified,
     })),
   ];
 }

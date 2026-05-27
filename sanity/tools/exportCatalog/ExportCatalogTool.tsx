@@ -45,7 +45,13 @@ export function ExportCatalogTool() {
       const [cats, subcats, prods] = await Promise.all([
         client.fetch<SCat[]>(`*[_type=="categoria"]|order(orden asc){_id,idExcel,nombre,color,orden,descripcion}`),
         client.fetch<SSubcat[]>(`*[_type=="subcategoria"]|order(nombre asc){_id,idExcel,nombre,orden,categoria->{_id,idExcel}}`),
-        client.fetch<SProd[]>(`*[_type=="producto" && visible==true]|order(nombre asc){
+        client.fetch<SProd[]>(`*[
+          _type == "producto" &&
+          visible != false &&
+          !(_id in path("drafts.**")) &&
+          !(_id in path("versions.**")) &&
+          !(_id in path("producto.migrated.**"))
+        ]|order(nombre asc){
           _id,idExcel,nombre,descripcion,marca,visible,manejaStock,permiteVentaFraccionada,unidadBase,medidas,observaciones,tags,stock,
           subcategoria->{_id,idExcel,nombre,categoria->{_id,idExcel,nombre}},
           presentaciones[]{_key,nombre,factorConversion,precio,visibleEnWeb,esDefault}

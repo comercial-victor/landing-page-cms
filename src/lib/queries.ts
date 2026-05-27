@@ -9,7 +9,7 @@ export async function getSiteSettings(): Promise<SiteSettings | null> {
       socialLinks[]{ _key, platform, label, url, phone, active, showInFooter, showFloating, showInNavbar, color, isPrimaryCta },
       storeStatus{ enabled, mode, openingTime, message, validUntil },
       horarios[]{ dia, hora, cerrado }, seoTitle, seoDescription, seoImage
-    }`, {}, { cache: "no-store" }
+    }`, {}, { next: { tags: ["siteSettings"], revalidate: 3600 } }
   );
 }
 
@@ -21,7 +21,7 @@ export async function getHero(): Promise<Hero | null> {
       "floatingCards": floatingCards[visible != false] | order(order asc){
         _key, label, title, visualFormat, position, rotation, order, visible
       }
-    }`, {}, { cache: "no-store" }
+    }`, {}, { next: { tags: ["hero"], revalidate: 3600 } }
   );
 }
 
@@ -35,7 +35,7 @@ export async function getFeaturedGallery(): Promise<FeaturedGallery | null> {
       } | order(orden asc)
     }`,
     {},
-    { cache: "no-store" }
+    { next: { tags: ["featuredGallery"], revalidate: 3600 } }
   );
 }
 
@@ -57,7 +57,13 @@ const productoProjection = `{
 
 export async function getTodosLosProductos(): Promise<ProductoFlat[]> {
   const productos: Producto[] = await sanityClient.fetch(
-    `*[_type == "producto" && visible == true] | order(orden asc) ${productoProjection}`,
+    `*[
+      _type == "producto" &&
+      visible != false &&
+      !(_id in path("drafts.**")) &&
+      !(_id in path("versions.**")) &&
+      !(_id in path("producto.migrated.**"))
+    ] | order(orden asc) ${productoProjection}`,
     {}, { next: { tags: ["producto"] } }
   );
   return productos.map(flattenProducto);
@@ -67,7 +73,10 @@ export async function getProductosDestacados(ubicacion: DestacadoUbicacion = "pr
   const productos: Producto[] = await sanityClient.fetch(
     `*[
       _type == "producto" &&
-      visible == true &&
+      visible != false &&
+      !(_id in path("drafts.**")) &&
+      !(_id in path("versions.**")) &&
+      !(_id in path("producto.migrated.**")) &&
       (
         (defined(destacadoUbicaciones) && $ubicacion in destacadoUbicaciones) ||
         (!defined(destacadoUbicaciones) && destacado == true)
@@ -91,9 +100,15 @@ export async function getColecciones(): Promise<Collection[]> {
   };
 
   const colecciones: CollectionRaw[] = await sanityClient.fetch(
-    `*[_type == "album" && visible != false] | order(orden asc){
+    `*[
+      _type == "album" &&
+      visible != false &&
+      !(_id in path("drafts.**")) &&
+      !(_id in path("versions.**")) &&
+      !(_id in path("producto.migrated.**"))
+    ] | order(orden asc){
       _id, titulo, subtitulo, etiqueta, slug, portada, themeColor, visible, orden,
-      "items": items[visible != false]{
+      "items": items[visible != false && producto->visible != false]{
         _key, titulo, descripcion, visible, mostrarEnPortada,
         producto-> ${productoProjection}
       }
@@ -102,17 +117,19 @@ export async function getColecciones(): Promise<Collection[]> {
     { next: { tags: ["album", "producto"] } }
   );
 
-  return colecciones.map((collection) => ({
-    ...collection,
-    items: (collection.items || []).reduce<Collection["items"]>((items, item) => {
-      if (!item.producto) return items;
-      items.push({
-        ...item,
-        producto: flattenProducto(item.producto),
-      });
-      return items;
-    }, []),
-  }));
+  return colecciones
+    .map((collection) => ({
+      ...collection,
+      items: (collection.items || []).reduce<Collection["items"]>((items, item) => {
+        if (!item.producto || item.producto.visible === false) return items;
+        items.push({
+          ...item,
+          producto: flattenProducto(item.producto),
+        });
+        return items;
+      }, []),
+    }))
+    .filter((collection) => collection.items.length > 0);
 }
 
 export const getAlbumes = getColecciones;
@@ -130,9 +147,16 @@ export async function getColeccionPorSlug(slug: string): Promise<Collection | nu
   };
 
   const collection: CollectionRaw | null = await sanityClient.fetch(
-    `*[_type == "album" && visible != false && slug.current == $slug][0]{
+    `*[
+      _type == "album" &&
+      visible != false &&
+      slug.current == $slug &&
+      !(_id in path("drafts.**")) &&
+      !(_id in path("versions.**")) &&
+      !(_id in path("producto.migrated.**"))
+    ][0]{
       _id, titulo, subtitulo, etiqueta, slug, portada, themeColor, visible, orden,
-      "items": items[visible != false]{
+      "items": items[visible != false && producto->visible != false]{
         _key, titulo, descripcion, visible, mostrarEnPortada,
         producto-> ${productoProjection}
       }
@@ -143,30 +167,49 @@ export async function getColeccionPorSlug(slug: string): Promise<Collection | nu
 
   if (!collection) return null;
 
+  const items = (collection.items || []).reduce<Collection["items"]>((acc, item) => {
+    if (!item.producto || item.producto.visible === false) return acc;
+    acc.push({
+      ...item,
+      producto: flattenProducto(item.producto),
+    });
+    return acc;
+  }, []);
+
+  if (!items.length) return null;
+
   return {
     ...collection,
-    items: (collection.items || []).reduce<Collection["items"]>((items, item) => {
-      if (!item.producto) return items;
-      items.push({
-        ...item,
-        producto: flattenProducto(item.producto),
-      });
-      return items;
-    }, []),
+    items,
   };
 }
 
 export async function getColeccionSlugs(): Promise<string[]> {
   return sanityClient.fetch(
-    `*[_type == "album" && visible != false && defined(slug.current)].slug.current`,
+    `*[
+      _type == "album" &&
+      visible != false &&
+      defined(slug.current) &&
+      !(_id in path("drafts.**")) &&
+      !(_id in path("versions.**")) &&
+      !(_id in path("producto.migrated.**")) &&
+      count(items[visible != false && producto->visible != false]) > 0
+    ].slug.current`,
     {},
-    { next: { tags: ["album"] } }
+    { next: { tags: ["album", "producto"] } }
   );
 }
 
 export async function getProductoPorSlug(slug: string): Promise<ProductoFlat | null> {
   const producto: Producto | null = await sanityClient.fetch(
-    `*[_type == "producto" && slug.current == $slug && visible == true][0] ${productoProjection}`,
+    `*[
+      _type == "producto" &&
+      slug.current == $slug &&
+      visible != false &&
+      !(_id in path("drafts.**")) &&
+      !(_id in path("versions.**")) &&
+      !(_id in path("producto.migrated.**"))
+    ][0] ${productoProjection}`,
     { slug }, { next: { tags: ["producto"] } }
   );
   return producto ? flattenProducto(producto) : null;
@@ -174,7 +217,14 @@ export async function getProductoPorSlug(slug: string): Promise<ProductoFlat | n
 
 export async function getProductoSlugs(): Promise<string[]> {
   return sanityClient.fetch(
-    `*[_type == "producto" && visible == true && defined(slug.current)].slug.current`,
+    `*[
+      _type == "producto" &&
+      visible != false &&
+      defined(slug.current) &&
+      !(_id in path("drafts.**")) &&
+      !(_id in path("versions.**")) &&
+      !(_id in path("producto.migrated.**"))
+    ].slug.current`,
     {},
     { next: { tags: ["producto"] } }
   );

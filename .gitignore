@@ -6,3 +6,8 @@ node_modules/
 .DS_Store
 *.tsbuildinfo
 next-env.d.ts
+
+# Browser verification/capture profiles
+chrome-*/
+chrome-verify-*/
+verify-*.png

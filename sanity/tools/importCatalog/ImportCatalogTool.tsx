@@ -109,7 +109,12 @@ export function ImportCatalogTool() {
         "subcategorias": *[_type == "subcategoria"] | order(orden asc){
           _id, idExcel, nombre, orden, activo, categoria->{_id, idExcel, nombre}
         },
-        "productos": *[_type == "producto"] | order(orden asc){
+        "productos": *[
+          _type == "producto" &&
+          !(_id in path("drafts.**")) &&
+          !(_id in path("versions.**")) &&
+          !(_id in path("producto.migrated.**"))
+        ] | order(orden asc){
           _id, idExcel, nombre, descripcion, marca, tags, visible, manejaStock,
           permiteVentaFraccionada, unidadBase, medidas, observaciones, stock,
           subcategoria->{_id, idExcel, nombre},
