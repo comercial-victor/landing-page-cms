@@ -122,6 +122,10 @@ export default function Navbar({
     window.location.href = href;
   };
 
+  const focusSearchInput = () => {
+    inputRef.current?.focus({ preventScroll: true });
+  };
+
   return (
     <>
       <nav className={`nav-float ${scrolled ? "scrolled" : ""} ${mobileSearchOpen ? "mobile-search-open" : ""}`}>
@@ -163,10 +167,11 @@ export default function Navbar({
           {/* Search */}
           <div
             className="nf-search"
-            onPointerDown={() => {
+            onPointerDown={(event) => {
               if (window.innerWidth <= 820) {
+                event.preventDefault();
                 setMobileSearchOpen(true);
-                window.setTimeout(() => inputRef.current?.focus(), 0);
+                window.setTimeout(focusSearchInput, 0);
               }
             }}
           >
@@ -187,11 +192,14 @@ export default function Navbar({
               }}
               onFocus={() => {
                 setFocused(true);
-                if (window.innerWidth <= 820) setMobileSearchOpen(true);
+                if (window.innerWidth <= 820) {
+                  setMobileSearchOpen(true);
+                  window.setTimeout(focusSearchInput, 0);
+                }
               }}
               onBlur={() => setTimeout(() => {
                 setFocused(false);
-                if (!searchValue) setMobileSearchOpen(false);
+                if (window.innerWidth > 820 && !searchValue) setMobileSearchOpen(false);
               }, 200)}
               autoComplete="off"
             />

@@ -319,8 +319,21 @@ section.featured-gallery { padding-top: 36px; overflow: hidden; }
 .prod-grid.cols-3 { grid-template-columns: repeat(3, 1fr); }
 @media (max-width: 1100px) { .prod-grid, .prod-grid.cols-3 { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 640px) { .prod-grid, .prod-grid.cols-1, .prod-grid.cols-3 { grid-template-columns: 1fr; gap: 12px; } .prod-grid.cols-2 { grid-template-columns: repeat(2, 1fr); gap: 12px; } }
-.col-toggle { display: flex; background: rgba(31,26,36,0.04); border-radius: 10px; padding: 4px; }
-.col-toggle button { background: transparent; border: none; padding: 6px 10px; border-radius: 8px; cursor: pointer; color: var(--ink-soft); display: flex; gap: 3px; align-items: center; }
+.col-toggle { display: flex; background: rgba(31,26,36,0.04); border-radius: 12px; padding: 6px; }
+.col-toggle button {
+  background: transparent;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  color: var(--ink-soft);
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  min-height: 36px;
+  min-width: 36px;
+}
+.col-toggle svg { width: 16px; height: 16px; }
 .col-toggle button.active { background: #fff; color: var(--plum); box-shadow: 0 2px 4px rgba(0,0,0,0.06); }
 .col-toggle button.col-toggle-one { display: none; }
 .empty-state { padding: 48px 24px; text-align: center; color: var(--ink-soft); font-size: 15px; background: rgba(255,255,255,0.5); border-radius: 20px; border: 1.5px dashed var(--line-strong); }
@@ -2055,7 +2068,7 @@ h1.display em { color: var(--plum); }
 }
 @media (max-width: 900px) {
   .catalog-page { padding-top: 82px; }
-  .catalogo-layout { gap: 18px; }
+  .catalogo-layout { gap: 4px; }
   .cat-sidebar {
     overflow: hidden;
   }
@@ -6078,7 +6091,7 @@ h1.display em::after {
     top: 74px;
     z-index: 42;
     overflow: visible;
-    padding: 0 0 8px;
+    padding: 0 0 1px;
     background: transparent;
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
@@ -6087,8 +6100,8 @@ h1.display em::after {
   :is(.catalog-page, .collection-page) .cat-sidebar-title {
     display: block;
     width: max-content;
-    margin: 0 0 8px;
-    padding: 7px 12px;
+    margin: 0 0 1px;
+    padding: 6px 10px;
     border: 1px solid rgba(31, 27, 46, 0.08);
     border-radius: 999px;
     background: rgba(255, 251, 243, 0.92);
@@ -6105,7 +6118,7 @@ h1.display em::after {
     max-width: 100%;
     overflow-x: auto;
     overflow-y: hidden;
-    padding: 8px;
+    padding: 4px;
     border-radius: 22px;
     background: rgba(255, 255, 255, 0.9);
     box-shadow: 0 14px 34px -28px rgba(31, 27, 46, 0.48);
@@ -6138,13 +6151,13 @@ h1.display em::after {
   :is(.catalog-page, .collection-page) .catalog-toolbar-compact {
     position: sticky;
     top: 154px;
-    z-index: 41;
+    z-index: 46;
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    margin-bottom: 16px;
-    padding: 8px 10px;
+    margin-bottom: 6px;
+    padding: 6px 10px;
     border: 1px solid rgba(31, 27, 46, 0.08);
     border-radius: 0 0 20px 20px;
     background: rgba(255, 251, 243, 0.9);
@@ -6211,6 +6224,12 @@ h1.display em::after {
   :is(.catalog-page, .collection-page) .prod-grid.cols-3 {
     grid-template-columns: 1fr;
     gap: 12px;
+  }
+
+  :is(.catalog-page, .collection-page) .catalog-toolbar-columns .col-toggle button {
+    min-width: 38px;
+    min-height: 38px;
+    padding: 6px 8px;
   }
 }
 

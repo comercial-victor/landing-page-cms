@@ -163,7 +163,7 @@ export default function Catalogo({
     const tablet = window.matchMedia("(max-width: 900px)");
     const syncResponsiveColumns = () => {
       setCols((current) => {
-        if (phone.matches && current === 3) return 1;
+        if (phone.matches && current === 3) return 2;
         if (!phone.matches && tablet.matches && current === 1) return 2;
         if (!tablet.matches && current === 1) return 3;
         return current;
