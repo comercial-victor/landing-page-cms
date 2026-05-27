@@ -104,6 +104,16 @@ interface FilterOption {
   tone?: "all" | "visible" | "hidden" | "duplicates";
 }
 
+type ImageUploadPhase = "optimizing" | "uploading" | "done" | "error";
+interface ImageUploadStatus {
+  total: number;
+  current: number;
+  completed: number;
+  fileName: string;
+  phase: ImageUploadPhase;
+  error?: string;
+}
+
 // ── Helpers ───────────────────────────────────────────────────────
 const PRODUCT_SLUG_MAX_LENGTH = 96;
 const uid = () => Math.random().toString(36).slice(2, 10);
@@ -230,12 +240,19 @@ async function convertImageToAvif(file: File): Promise<File> {
   return new File([blob], `${filename}.avif`, { type: "image/avif" });
 }
 
-async function uploadOptimizedImage(client: ReturnType<typeof useClient>, file: File) {
+async function uploadOptimizedImage(
+  client: ReturnType<typeof useClient>,
+  file: File,
+  onPhase?: (phase: Exclude<ImageUploadPhase, "done" | "error">, currentFile: File) => void
+) {
   if (file.type === "image/gif" || file.type === "image/svg+xml") {
+    onPhase?.("uploading", file);
     return client.assets.upload("image", file, { filename: file.name });
   }
 
+  onPhase?.("optimizing", file);
   const optimized = await convertImageToAvif(file);
+  onPhase?.("uploading", optimized);
   return client.assets.upload("image", optimized, { filename: optimized.name });
 }
 
@@ -2400,6 +2417,7 @@ function EditDrawer({ prod, client, subcats, allTags, onClose, onSaved }: {
   const [tab, setTab] = useState<"general" | "presentaciones" | "imagenes">("general");
   const [newTag, setNewTag] = useState("");
   const [saveError, setSaveError] = useState("");
+  const [imageUploadStatus, setImageUploadStatus] = useState<ImageUploadStatus | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const isNew = prod._id === NEW_PRODUCT_ID;
 
@@ -2510,25 +2528,97 @@ const changed = (field: string) => {
     setSaving(false);
   };
 
+  const isImageUploading = !!imageUploadStatus && imageUploadStatus.phase !== "done" && imageUploadStatus.phase !== "error";
+  const imageUploadProgress = imageUploadStatus
+    ? Math.min(100, Math.round(((imageUploadStatus.completed + (imageUploadStatus.phase === "done" ? 1 : imageUploadStatus.phase === "uploading" ? 0.72 : imageUploadStatus.phase === "optimizing" ? 0.28 : 0)) / Math.max(1, imageUploadStatus.total)) * 100))
+    : 0;
+  const imageUploadLabel = imageUploadStatus?.phase === "optimizing"
+    ? "Optimizando imagen"
+    : imageUploadStatus?.phase === "uploading"
+      ? "Subiendo imagen"
+      : imageUploadStatus?.phase === "done"
+        ? "Carga completada"
+        : imageUploadStatus?.phase === "error"
+          ? "Hubo un problema"
+          : "";
+
   // Image upload
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files) return;
-    for (const file of Array.from(files)) {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0 || isImageUploading) return;
+
+    setImageUploadStatus({ total: files.length, current: 1, completed: 0, fileName: files[0].name, phase: "optimizing" });
+
+    let completed = 0;
+    let failed = 0;
+
+    for (let index = 0; index < files.length; index++) {
+      const file = files[index];
       try {
-        const asset = await uploadOptimizedImage(client, file);
+        const asset = await uploadOptimizedImage(client, file, (phase, currentFile) => {
+          setImageUploadStatus({
+            total: files.length,
+            current: index + 1,
+            completed,
+            fileName: currentFile.name || file.name,
+            phase,
+          });
+        });
         setDraft(d => ({
           ...d,
           imagenes: [...(d.imagenes || []), { _key: uid(), _type: "image", asset: { _ref: asset._id, url: asset.url } }],
         }));
+        completed += 1;
+        setImageUploadStatus({ total: files.length, current: index + 1, completed, fileName: file.name, phase: "uploading" });
       } catch (err) {
+        failed += 1;
         console.error("Error subiendo imagen:", err);
+        setImageUploadStatus({
+          total: files.length,
+          current: index + 1,
+          completed,
+          fileName: file.name,
+          phase: "error",
+          error: err instanceof Error ? err.message : "No se pudo subir esta imagen.",
+        });
       }
     }
+
+    setImageUploadStatus({
+      total: files.length,
+      current: files.length,
+      completed,
+      fileName: failed > 0 ? `${failed} imagen(es) no se pudieron subir` : "",
+      phase: failed > 0 ? "error" : "done",
+      error: failed > 0 ? "Revisa tu conexión y vuelve a intentar las imágenes faltantes." : undefined,
+    });
+
+    window.setTimeout(() => {
+      setImageUploadStatus((current) => current?.phase === "done" ? null : current);
+    }, 1800);
+
     e.target.value = "";
   };
 
   const removeImage = (idx: number) => setDraft(d => ({ ...d, imagenes: (d.imagenes || []).filter((_, i) => i !== idx) }));
+  const moveImage = (idx: number, direction: -1 | 1) => {
+    setDraft(d => {
+      const images = [...(d.imagenes || [])];
+      const target = idx + direction;
+      if (target < 0 || target >= images.length) return d;
+      [images[idx], images[target]] = [images[target], images[idx]];
+      return { ...d, imagenes: images };
+    });
+  };
+  const moveImageToStart = (idx: number) => {
+    setDraft(d => {
+      const images = [...(d.imagenes || [])];
+      if (idx <= 0 || idx >= images.length) return d;
+      const [image] = images.splice(idx, 1);
+      images.unshift(image);
+      return { ...d, imagenes: images };
+    });
+  };
 
   // Tags
   const addTag = (tag: string) => {
@@ -2777,26 +2867,68 @@ const changed = (field: string) => {
           {/* ── Imágenes ── */}
           {tab === "imagenes" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ fontSize: 15, color: C.inkSoft }}>{draft.imagenes?.length || 0} imágenes</span>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
                 <div>
-                  <input ref={fileRef} type="file" accept="image/*" multiple style={{ display: "none" }} onChange={handleImageUpload} />
-                  <button onClick={() => fileRef.current?.click()} style={btnStyle("primary")}><Upload size={iconSize} /> Subir imágenes</button>
+                  <span style={{ fontSize: 15, color: C.inkSoft }}>{draft.imagenes?.length || 0} imágenes</span>
+                  <div style={{ fontSize: 13, color: C.inkSoft, marginTop: 2 }}>
+                    La imagen 1 será la principal en catálogo, producto y vistas previas. Puedes cambiar el orden con las flechas.
+                  </div>
+                </div>
+                <div>
+                  <input ref={fileRef} type="file" accept="image/*" multiple style={{ display: "none" }} onChange={handleImageUpload} disabled={isImageUploading} />
+                  <button
+                    onClick={() => fileRef.current?.click()}
+                    disabled={isImageUploading}
+                    style={{ ...btnStyle("primary"), opacity: isImageUploading ? 0.72 : 1, cursor: isImageUploading ? "wait" : "pointer" }}
+                  >
+                    {isImageUploading ? <Loader2 size={iconSize} style={{ animation: "iv-spin 0.8s linear infinite" }} /> : <Upload size={iconSize} />}
+                    {isImageUploading ? "Subiendo..." : "Subir imágenes"}
+                  </button>
                 </div>
               </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: 10 }}>
+              {imageUploadStatus && (
+                <div style={{ background: imageUploadStatus.phase === "error" ? "#fef2f2" : C.blueBg, border: `1px solid ${imageUploadStatus.phase === "error" ? "#fecaca" : C.blueBorder}`, borderRadius: 12, padding: 12, display: "grid", gap: 8 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, color: imageUploadStatus.phase === "error" ? "#991b1b" : C.ink, fontWeight: 700 }}>
+                      {imageUploadStatus.phase === "error" ? <AlertTriangle size={16} /> : imageUploadStatus.phase === "done" ? <ImageIcon size={16} /> : <Loader2 size={16} style={{ animation: "iv-spin 0.8s linear infinite" }} />}
+                      {imageUploadLabel}
+                    </div>
+                    <span style={{ color: imageUploadStatus.phase === "error" ? "#991b1b" : C.inkSoft, fontSize: 13, fontWeight: 700 }}>
+                      {imageUploadStatus.completed}/{imageUploadStatus.total} imágenes · {imageUploadProgress}%
+                    </span>
+                  </div>
+                  <div style={{ height: 9, background: "rgba(15,23,42,0.1)", borderRadius: 999, overflow: "hidden" }}>
+                    <div style={{ width: `${imageUploadProgress}%`, height: "100%", background: imageUploadStatus.phase === "error" ? C.red : C.plum, transition: "width 180ms ease" }} />
+                  </div>
+                  <div style={{ fontSize: 13, color: imageUploadStatus.phase === "error" ? "#991b1b" : C.inkSoft }}>
+                    {imageUploadStatus.fileName ? `Archivo: ${imageUploadStatus.fileName}` : "Las imágenes se agregaron al borrador."}
+                    {imageUploadStatus.error ? ` ${imageUploadStatus.error}` : ""}
+                  </div>
+                </div>
+              )}
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 10 }}>
                 {(draft.imagenes || []).map((img, i) => {
+                  const imagesCount = draft.imagenes?.length || 0;
                   const url = img.asset?.url || (img.asset?._ref ? `https://cdn.sanity.io/images/${client.config().projectId}/${client.config().dataset}/${img.asset._ref.replace("image-", "").replace(/-(\w+)$/, ".$1")}` : null);
                   return (
-                    <div key={img._key || i} style={{ position: "relative", borderRadius: 10, overflow: "hidden", border: `1px solid ${C.line}`, aspectRatio: "4/3", background: "#f3f4f6" }}>
+                    <div key={img._key || i} style={{ position: "relative", borderRadius: 10, overflow: "hidden", border: `1px solid ${i === 0 ? C.plum : C.line}`, aspectRatio: "4/3", background: "#f3f4f6", boxShadow: i === 0 ? "0 0 0 2px rgba(210,56,108,0.14)" : "none" }}>
                       {url && <img src={`${url}?w=300&h=225&fit=crop`} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
-                      <button onClick={() => removeImage(i)}
+                      <button onClick={() => removeImage(i)} aria-label="Eliminar imagen" title="Eliminar imagen"
                         style={{ position: "absolute", top: 6, right: 6, width: 26, height: 26, borderRadius: "50%", border: "none", background: "rgba(220,38,38,0.9)", color: "#fff", cursor: "pointer", fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center" }}>
                         ×
                       </button>
-                      <div style={{ position: "absolute", bottom: 6, left: 6, background: "rgba(0,0,0,0.6)", color: "#fff", fontSize: 14, padding: "2px 6px", borderRadius: 4 }}>
-                        {i + 1}
+                      <div style={{ position: "absolute", top: 6, left: 6, background: i === 0 ? "rgba(210,56,108,0.95)" : "rgba(0,0,0,0.62)", color: "#fff", fontSize: 12, fontWeight: 800, padding: "3px 7px", borderRadius: 999 }}>
+                        {i === 0 ? "Principal" : `#${i + 1}`}
+                      </div>
+                      <div style={{ position: "absolute", bottom: 6, left: 6, right: 6, display: "flex", gap: 4, justifyContent: "space-between", alignItems: "center", background: "rgba(15,23,42,0.64)", backdropFilter: "blur(4px)", borderRadius: 8, padding: 4 }}>
+                        <button type="button" onClick={() => moveImage(i, -1)} disabled={i === 0} title="Mover antes" aria-label="Mover antes"
+                          style={{ ...imageOrderButtonStyle(i === 0), flex: 1 }}>←</button>
+                        <button type="button" onClick={() => moveImageToStart(i)} disabled={i === 0} title="Usar como principal" aria-label="Usar como imagen principal"
+                          style={{ ...imageOrderButtonStyle(i === 0), flex: 1, fontSize: 11 }}>1ª</button>
+                        <button type="button" onClick={() => moveImage(i, 1)} disabled={i >= imagesCount - 1} title="Mover después" aria-label="Mover después"
+                          style={{ ...imageOrderButtonStyle(i >= imagesCount - 1), flex: 1 }}>→</button>
                       </div>
                     </div>
                   );
@@ -2804,17 +2936,17 @@ const changed = (field: string) => {
               </div>
 
               {(!draft.imagenes || draft.imagenes.length === 0) && (
-                <div onClick={() => fileRef.current?.click()}
-                  style={{ textAlign: "center", padding: 48, color: C.inkSoft, fontSize: 15, background: C.white, borderRadius: 12, border: `2px dashed ${C.line}`, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
-                  <ImagePlus size={28} />
-                  Haz clic para subir la primera imagen
+                <div onClick={() => !isImageUploading && fileRef.current?.click()}
+                  style={{ textAlign: "center", padding: 48, color: C.inkSoft, fontSize: 15, background: C.white, borderRadius: 12, border: `2px dashed ${C.line}`, cursor: isImageUploading ? "wait" : "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+                  {isImageUploading ? <Loader2 size={28} style={{ animation: "iv-spin 0.8s linear infinite" }} /> : <ImagePlus size={28} />}
+                  {isImageUploading ? "Subiendo imagen..." : "Haz clic para subir la primera imagen"}
                 </div>
               )}
 
               {changed("imagenes") && (
                 <div style={{ padding: "8px 12px", background: C.yellowBg, border: `1px solid ${C.yellowBorder}`, borderRadius: 8, fontSize: 14, color: C.orange, display: "flex", alignItems: "center", gap: 6 }}>
                   <AlertTriangle size={iconSize} />
-                  Las imágenes se han modificado. Haz clic en "Guardar" para aplicar los cambios.
+                  Las imágenes o su orden se han modificado. Haz clic en "Guardar" para aplicar los cambios.
                 </div>
               )}
             </div>
@@ -2823,6 +2955,21 @@ const changed = (field: string) => {
       </div>
     </div>
   );
+}
+
+function imageOrderButtonStyle(disabled: boolean): React.CSSProperties {
+  return {
+    minWidth: 0,
+    height: 28,
+    border: "none",
+    borderRadius: 6,
+    background: disabled ? "rgba(255,255,255,0.16)" : "rgba(255,255,255,0.9)",
+    color: disabled ? "rgba(255,255,255,0.45)" : C.ink,
+    fontWeight: 900,
+    cursor: disabled ? "not-allowed" : "pointer",
+    fontFamily: "inherit",
+    padding: "0 6px",
+  };
 }
 
 // ── Reusable small components ─────────────────────────────────────
