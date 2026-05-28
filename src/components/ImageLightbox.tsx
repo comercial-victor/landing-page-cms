@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import type { MouseEvent, PointerEvent, WheelEvent } from "react";
+import type { MouseEvent, PointerEvent } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 interface ImageLightboxProps {
@@ -66,7 +66,7 @@ export default function ImageLightbox({
 
   const clampZoom = (value: number) => Math.min(maxZoom, Math.max(minZoom, value));
 
-  const handleWheel = useCallback((event: WheelEvent) => {
+  const handleWheel = useCallback((event: globalThis.WheelEvent) => {
     event.preventDefault();
     event.stopPropagation();
     const delta = event.deltaY > 0 ? -0.18 : 0.18;
@@ -80,7 +80,7 @@ export default function ImageLightbox({
   useEffect(() => {
     const stage = stageRef.current;
     if (!stage) return;
-    const onWheel = (event: WheelEvent) => {
+    const onWheel = (event: globalThis.WheelEvent) => {
       const path = typeof event.composedPath === "function" ? event.composedPath() : [];
       if (!path.includes(stage)) return;
       handleWheel(event);
