@@ -17,7 +17,6 @@ export interface SocialLink {
   phone?: string;
   active?: boolean;
   showInFooter?: boolean;
-  showFloating?: boolean;
   showInNavbar?: boolean;
   color?: string;
   isPrimaryCta?: boolean;

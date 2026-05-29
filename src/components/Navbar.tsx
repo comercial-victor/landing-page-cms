@@ -1,12 +1,12 @@
 "use client";
 import { useState, useRef, useMemo, useEffect } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import type { CSSProperties } from "react";
 import type { ProductoFlat, SanityImage } from "@/types";
 import { fmtSoles } from "@/lib/utils";
-import { urlFor } from "@/lib/sanity";
+import { brandLogoImage } from "@/lib/metadata";
 import { ProductImage } from "./ProductHelpers";
 import { ContactIcon, getContactColor, getContactHref, type ContactLink } from "@/lib/social";
 import { productPath } from "@/lib/products";
@@ -45,6 +45,7 @@ export default function Navbar({
   const inputRef = useRef<HTMLInputElement>(null);
   const searchWrapRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
+  const router = useRouter();
   const isCatalogSearch = searchMode === "catalog";
   const searchValue = isCatalogSearch ? catalogSearchValue : q;
   const hasSearchText = searchValue.trim().length > 0;
@@ -116,6 +117,10 @@ export default function Navbar({
     window.scrollTo({ top: Math.max(0, top), behavior: reduceMotion ? "auto" : "smooth" });
   };
 
+  const announceRouteStart = () => {
+    window.dispatchEvent(new Event("cv-route-start"));
+  };
+
   const go = (href: string) => {
     setMobileOpen(false);
     setMobileSearchOpen(false);
@@ -130,23 +135,32 @@ export default function Navbar({
       if (pathname === "/") {
         scrollToHash(href.slice(1));
       } else {
-        window.location.href = href;
+        announceRouteStart();
+        router.push(href);
       }
       return;
     }
-    window.location.href = href;
+    announceRouteStart();
+    router.push(href);
   };
 
   const focusSearchInput = () => {
+    const scrollY = window.scrollY;
     inputRef.current?.focus({ preventScroll: true });
+    window.requestAnimationFrame(() => {
+      if (Math.abs(window.scrollY - scrollY) > 8) {
+        window.scrollTo({ top: scrollY, behavior: "auto" });
+      }
+    });
   };
 
   const submitSearch = () => {
     const isMobile = window.innerWidth <= 820;
     const term = searchValue.trim();
 
-    if (isMobile && !mobileSearchOpen) {
+    if (isMobile && document.activeElement !== inputRef.current) {
       setMobileSearchOpen(true);
+      setSearchOpen(true);
       window.setTimeout(focusSearchInput, 0);
       return;
     }
@@ -156,7 +170,8 @@ export default function Navbar({
     const params = new URLSearchParams({ query: term });
     setMobileSearchOpen(false);
     setSearchOpen(false);
-    window.location.href = `/catalog?${params.toString()}`;
+    announceRouteStart();
+    router.push(`/catalog?${params.toString()}`);
   };
 
   const clearSearch = () => {
@@ -174,7 +189,7 @@ export default function Navbar({
           {/* Logo */}
           <button className="nf-logo" onClick={() => go("/")}>
             <Image
-              src={brand.logo ? urlFor(brand.logo).width(80).height(80).fit("crop").url() : "/logo-comercial-victor.png"}
+              src={brandLogoImage({ logo: brand.logo || undefined })}
               alt={brand.nombre}
               width={96}
               height={96}
@@ -207,9 +222,11 @@ export default function Navbar({
             <div
               className="nf-search"
               onPointerDown={(event) => {
+                const target = event.target as HTMLElement;
+                if (target.closest("button")) return;
+                setSearchOpen(true);
+
                 if (window.innerWidth <= 820) {
-                  const target = event.target as HTMLElement;
-                  if (target.closest("button")) return;
                   event.preventDefault();
                   setMobileSearchOpen(true);
                   window.setTimeout(focusSearchInput, 0);
@@ -222,6 +239,7 @@ export default function Navbar({
               placeholder={isCatalogSearch ? "Buscar" : "Buscar…"}
               value={searchValue}
               onChange={(e) => {
+                setSearchOpen(true);
                 if (isCatalogSearch) {
                   if (window.innerWidth <= 820) setMobileSearchOpen(true);
                   onCatalogSearchChange?.(e.target.value);
@@ -229,7 +247,6 @@ export default function Navbar({
                 }
                 setQ(e.target.value);
                 if (window.innerWidth <= 820) setMobileSearchOpen(true);
-                setSearchOpen(true);
               }}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
@@ -245,7 +262,6 @@ export default function Navbar({
                 setSearchOpen(true);
                 if (window.innerWidth <= 820) {
                   setMobileSearchOpen(true);
-                  window.setTimeout(focusSearchInput, 0);
                 }
               }}
               autoComplete="off"

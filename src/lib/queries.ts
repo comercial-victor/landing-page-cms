@@ -1,17 +1,25 @@
 import { sanityClient } from "./sanity";
 import type { Collection, Album, SiteSettings, Hero, FeaturedGallery, Categoria, Producto, ProductoFlat, DestacadoUbicacion } from "@/types";
 
+const siteSettingsProjection = `{
+  _id, nombre, tagline, logo, whatsapp, whatsappDisplay, telefono, email,
+  direccion, googleMapsUrl, googleMapsEmbedUrl, instagramUrl, facebookUrl, tiktokUrl,
+  socialLinks[]{ _key, platform, label, url, phone, active, showInFooter, showInNavbar, color, isPrimaryCta },
+  storeStatus{ enabled, mode, openingTime, message, validUntil },
+  horarios[]{ dia, hora, cerrado }, seoTitle, seoDescription
+}`;
+
 export async function getSiteSettings(): Promise<SiteSettings | null> {
   return sanityClient.fetch(
-    `*[_type == "siteSettings"][0]{
-      _id, nombre, tagline, logo, whatsapp, whatsappDisplay, telefono, email,
-      direccion, googleMapsUrl, googleMapsEmbedUrl, instagramUrl, facebookUrl, tiktokUrl,
-      socialLinks[]{ _key, platform, label, url, phone, active, showInFooter, showFloating, showInNavbar, color, isPrimaryCta },
-      storeStatus{ enabled, mode, openingTime, message, validUntil },
-      horarios[]{ dia, hora, cerrado }, seoTitle, seoDescription, seoImage
-    }`, {}, { cache: "no-store" }
+    `coalesce(
+      *[_type == "siteSettings" && _id == "siteSettings"][0] ${siteSettingsProjection},
+      *[_type == "siteSettings"][0] ${siteSettingsProjection}
+    )`,
+    {},
+    { next: { tags: ["siteSettings"] } }
   );
 }
+
 
 export async function getHero(): Promise<Hero | null> {
   return sanityClient.fetch(
@@ -21,7 +29,7 @@ export async function getHero(): Promise<Hero | null> {
       "floatingCards": floatingCards[visible != false] | order(order asc){
         _key, label, title, visualFormat, position, rotation, order, visible
       }
-    }`, {}, { cache: "no-store" }
+    }`, {}, { next: { tags: ["hero"] } }
   );
 }
 
@@ -35,7 +43,7 @@ export async function getFeaturedGallery(): Promise<FeaturedGallery | null> {
       } | order(orden asc)
     }`,
     {},
-    { cache: "no-store" }
+    { next: { tags: ["featuredGallery"] } }
   );
 }
 

@@ -45,7 +45,7 @@ export default function CollectionPageClient({
   collections: Collection[];
   categorias: Categoria[];
 }) {
-  const [catalogQuery, setCatalogQuery] = useState("");
+  const [catalogQueryDraft, setCatalogQueryDraft] = useState("");
   const floatingContacts = useMemo(
     () => (brand.floatingContacts.length ? brand.floatingContacts : brand.socialLinks),
     [brand.floatingContacts, brand.socialLinks],
@@ -59,8 +59,8 @@ export default function CollectionPageClient({
         brand={brand}
         productos={allProductos}
         searchMode="catalog"
-        catalogSearchValue={catalogQuery}
-        onCatalogSearchChange={setCatalogQuery}
+        catalogSearchValue={catalogQueryDraft}
+        onCatalogSearchChange={setCatalogQueryDraft}
       />
       <main className="collection-page" style={{ "--collection-theme": themeColor } as CSSProperties}>
         <section className="collection-hero">
@@ -86,8 +86,7 @@ export default function CollectionPageClient({
           collections={collections}
           activeCollectionId={collection._id}
           brand={brand}
-          externalQuery={catalogQuery}
-          onExternalQueryChange={setCatalogQuery}
+          externalQuery=""
           hideLocalSearch
           kicker="Productos de la colección"
           title={<>Elige, cotiza<br />y comparte.</>}

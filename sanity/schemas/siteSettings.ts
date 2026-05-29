@@ -30,7 +30,7 @@ export default defineType({
       name: "socialLinks",
       title: "Redes sociales y contacto",
       group: "redes",
-      description: "Fuente central de redes. Todas las redes activas salen en el footer. Aquí decides cuáles aparecen en la navbar y en el botón flotante.",
+      description: "Fuente central de redes. Todas las redes activas salen en el footer y en el botón flotante. Aquí decides cuáles aparecen también en la navbar.",
       type: "array",
       of: [{
         type: "object",
@@ -57,16 +57,15 @@ export default defineType({
           defineField({ name: "phone", title: "Teléfono", type: "string", description: "Para WhatsApp. Ej: 51987654321", hidden: ({ parent }) => parent?.platform !== "whatsapp" }),
           defineField({ name: "url", title: "URL", type: "url", description: "Para Instagram, Facebook, Messenger, TikTok u otras redes." }),
           defineField({ name: "active", title: "Activa", type: "boolean", initialValue: true }),
-          defineField({ name: "showFloating", title: "Mostrar en botón flotante", type: "boolean", initialValue: false, description: "Aparece en la esquina inferior derecha. Si marcas varias, se abrirá un selector." }),
           defineField({ name: "showInNavbar", title: "Mostrar en navbar", type: "boolean", initialValue: false, description: "Aparece arriba junto al buscador. Si hay varias, se muestran compactas." }),
           defineField({ name: "color", title: "Color personalizado opcional", type: "string", description: "Ej: #25D366. Si lo dejas vacío se usa el color oficial aproximado de la red." }),
           defineField({ name: "isPrimaryCta", title: "Usar como contacto principal / CTA", type: "boolean", initialValue: false, description: "Se usa para botones principales cuando no hay una red específica configurada. Solo una red puede ser CTA principal." }),
         ],
         preview: {
-          select: { platform: "platform", label: "label", active: "active", primary: "isPrimaryCta", floating: "showFloating", navbar: "showInNavbar" },
-          prepare: ({ platform, label, active, primary, floating, navbar }) => ({
+          select: { platform: "platform", label: "label", active: "active", primary: "isPrimaryCta", navbar: "showInNavbar" },
+          prepare: ({ platform, label, active, primary, navbar }) => ({
             title: label || platform || "Red social",
-            subtitle: `${primary ? "⭐ CTA principal · " : ""}${floating ? "Flotante · " : ""}${navbar ? "Navbar · " : ""}${active ? "Activa" : "Inactiva"}`,
+            subtitle: `${primary ? "⭐ CTA principal · " : ""}${navbar ? "Navbar · " : ""}${active ? "Activa" : "Inactiva"}`,
           }),
         },
       }],
@@ -152,8 +151,7 @@ export default defineType({
       },
     }),
     defineField({ name: "seoTitle", title: "SEO: Título", type: "string", group: "seo" }),
-    defineField({ name: "seoDescription", title: "SEO: Descripción", type: "text", rows: 3, group: "seo" }),
-    defineField({ name: "seoImage", title: "SEO: Imagen social", type: "image", group: "seo" }),
+    defineField({ name: "seoDescription", title: "SEO: Descripción", type: "text", rows: 3, group: "seo", description: "La imagen social general se toma del Logo en la pestaña Identidad para mantener una sola identidad visual." }),
   ],
   preview: {
     select: { title: "nombre" },

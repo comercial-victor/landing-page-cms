@@ -24,8 +24,7 @@ export default async function HomePage() {
   const socialLinks = normalizeSocialLinks(settings);
   const primaryContact = getPrimaryContact(socialLinks, settings?.whatsapp);
   const navbarContacts = socialLinks.filter((link) => link.showInNavbar === true);
-  const selectedFloatingContacts = socialLinks.filter((link) => link.showFloating === true);
-  const floatingContacts = selectedFloatingContacts.length ? selectedFloatingContacts : socialLinks;
+  const floatingContacts = socialLinks;
   const brand = {
     nombre: settings?.nombre || "Comercial Victor",
     tagline: settings?.tagline || "Todo para que tu fiesta brille",

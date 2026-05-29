@@ -2,7 +2,7 @@
 import type { CSSProperties } from "react";
 import Image from "next/image";
 import type { SanityImage } from "@/types";
-import { urlFor } from "@/lib/sanity";
+import { brandLogoImage } from "@/lib/metadata";
 import { ContactIcon, getContactColor, getContactHref, type ContactLink } from "@/lib/social";
 
 interface Brand {
@@ -27,7 +27,7 @@ export default function Footer({ brand }: { brand: Brand }) {
             <div className="footer-v2-brand-col">
               <div className="footer-brand-row">
                 <Image
-                  src={brand.logo ? urlFor(brand.logo).width(80).height(80).fit("crop").url() : "/logo-comercial-victor.png"}
+                  src={brandLogoImage({ logo: brand.logo || undefined })}
                   alt={brand.nombre}
                   width={40}
                   height={40}

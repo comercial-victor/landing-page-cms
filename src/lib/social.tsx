@@ -51,7 +51,6 @@ export function normalizeSocialLinks(settings?: Partial<SiteSettings> | null): C
       label: settings.whatsappDisplay || "WhatsApp",
       active: true,
       showInFooter: true,
-      showFloating: true,
       showInNavbar: true,
       isPrimaryCta: true,
     });

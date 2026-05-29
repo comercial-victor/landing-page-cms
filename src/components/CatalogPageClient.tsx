@@ -44,10 +44,12 @@ export default function CatalogPageClient({
   initialCategorySlug?: string;
   initialSubcategorySlug?: string;
 }) {
-  const [catalogQuery, setCatalogQuery] = useState(initialQuery);
+  const [catalogQueryDraft, setCatalogQueryDraft] = useState(initialQuery);
+  const [committedCatalogQuery, setCommittedCatalogQuery] = useState(initialQuery);
 
   useEffect(() => {
-    setCatalogQuery(initialQuery);
+    setCatalogQueryDraft(initialQuery);
+    setCommittedCatalogQuery(initialQuery);
   }, [initialQuery]);
 
   const floatingContacts = useMemo(
@@ -62,19 +64,18 @@ export default function CatalogPageClient({
         brand={brand}
         productos={productos}
         searchMode="catalog"
-        catalogSearchValue={catalogQuery}
-        onCatalogSearchChange={setCatalogQuery}
+        catalogSearchValue={catalogQueryDraft}
+        onCatalogSearchChange={setCatalogQueryDraft}
       />
       <main className="catalog-page">
         <Catalogo
           productos={productos}
           categorias={categorias}
           brand={brand}
-          externalQuery={catalogQuery}
-          onExternalQueryChange={setCatalogQuery}
-          searchAllCategories={Boolean(catalogQuery.trim())}
-          initialCategorySlug={catalogQuery.trim() ? undefined : initialCategorySlug}
-          initialSubcategorySlug={catalogQuery.trim() ? undefined : initialSubcategorySlug}
+          externalQuery={committedCatalogQuery}
+          searchAllCategories={Boolean(committedCatalogQuery.trim())}
+          initialCategorySlug={committedCatalogQuery.trim() ? undefined : initialCategorySlug}
+          initialSubcategorySlug={committedCatalogQuery.trim() ? undefined : initialSubcategorySlug}
           hideLocalSearch
         />
       </main>

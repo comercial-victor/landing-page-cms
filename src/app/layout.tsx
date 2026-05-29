@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { getSiteSettings } from "@/lib/queries";
-import { absoluteUrl, brandShareImage, faviconIcons, siteUrl } from "@/lib/metadata";
+import { absoluteUrl, brandLogoImage, brandShareImage, faviconIcons, siteUrl } from "@/lib/metadata";
+import RouteLoadingOverlay from "@/components/RouteLoadingOverlay";
 
 export async function generateMetadata(): Promise<Metadata> {
   try {
@@ -63,14 +64,26 @@ export async function generateMetadata(): Promise<Metadata> {
   }
 }
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  let loaderLogo = "/logo-comercial-victor.png";
+
+  try {
+    const settings = await getSiteSettings();
+    loaderLogo = brandLogoImage(settings);
+  } catch {
+    loaderLogo = "/logo-comercial-victor.png";
+  }
+
   return (
     <html lang="es" suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
       </head>
-      <body suppressHydrationWarning>{children}</body>
+      <body suppressHydrationWarning>
+        {children}
+        <RouteLoadingOverlay logoSrc={loaderLogo} />
+      </body>
     </html>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import { ContactIcon, getContactColor, getContactHref, type ContactLink } from "@/lib/social";
 
@@ -11,35 +11,48 @@ interface FabSocialsProps {
 
 export default function FabWhatsApp({ contact, contacts }: FabSocialsProps) {
   const [open, setOpen] = useState(false);
-  const items = (contacts?.length ? contacts : contact ? [contact] : [])
+  const [activeIndex, setActiveIndex] = useState(0);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const items = useMemo(() => (contacts?.length ? contacts : contact ? [contact] : [])
     .filter((item) => item.active !== false)
     .sort((a, b) =>
       Number(Boolean(b.isPrimaryCta)) - Number(Boolean(a.isPrimaryCta)) ||
       Number(b.platform === "whatsapp") - Number(a.platform === "whatsapp")
-    );
+    ), [contact, contacts]);
+
+  useEffect(() => {
+    if (open || items.length <= 1) return;
+    const id = window.setInterval(() => {
+      setActiveIndex((index) => (index + 1) % items.length);
+    }, 3200);
+    return () => window.clearInterval(id);
+  }, [items.length, open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target as Node | null;
+      if (target && rootRef.current?.contains(target)) return;
+      setOpen(false);
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open]);
 
   if (!items.length) return null;
 
-  const primary = items[0];
+  const primary = items[activeIndex % items.length] || items[0];
   const primaryStyle = { "--fab-color": getContactColor(primary) } as CSSProperties;
 
-  if (items.length === 1) {
-    return (
-      <a
-        className="fab-wa"
-        href={getContactHref(primary, "Hola! Quisiera cotizar.")}
-        target="_blank"
-        rel="noopener noreferrer"
-        aria-label={primary.label}
-        style={primaryStyle}
-      >
-        <ContactIcon platform={primary.platform} size={30} />
-      </a>
-    );
-  }
-
   return (
-    <div className={`fab-socials ${open ? "open" : ""}`}>
+    <div ref={rootRef} className={`fab-socials ${open ? "open" : ""}`}>
       <div className="fab-social-list" aria-hidden={!open}>
         {items.map((item) => (
           <a
@@ -51,6 +64,7 @@ export default function FabWhatsApp({ contact, contacts }: FabSocialsProps) {
             aria-label={item.label}
             title={item.label}
             style={{ "--fab-color": getContactColor(item) } as CSSProperties}
+            onClick={() => setOpen(false)}
           >
             <ContactIcon platform={item.platform} size={22} />
             <span className="fab-social-label">{item.label}</span>
@@ -70,7 +84,9 @@ export default function FabWhatsApp({ contact, contacts }: FabSocialsProps) {
             <path d="M6 18L18 6M6 6l12 12" />
           </svg>
         ) : (
-          <ContactIcon platform={primary.platform} size={30} />
+          <span className="fab-rotating-icon" key={`${primary.platform}-${activeIndex}`}>
+            <ContactIcon platform={primary.platform} size={30} />
+          </span>
         )}
       </button>
     </div>
