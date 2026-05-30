@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState, useMemo, useRef } from "react";
 import type {
+  CSSProperties,
   ReactNode,
   PointerEvent as ReactPointerEvent,
   MouseEvent as ReactMouseEvent,
@@ -120,7 +121,11 @@ export default function Catalogo({
   const [query, setQuery] = useState("");
   const mobileSubcatRef = useRef<HTMLDivElement>(null);
   const categoryRailRef = useRef<HTMLDivElement>(null);
-  const categoryButtonRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
+  const categoryButtonRefs = useRef<Map<string, HTMLElement>>(new Map());
+  const [categoryScrollState, setCategoryScrollState] = useState({
+    left: false,
+    right: false,
+  });
   const [subcatScrollState, setSubcatScrollState] = useState({
     left: false,
     right: false,
@@ -219,6 +224,58 @@ export default function Catalogo({
     [activeCategory, subcatId],
   );
 
+  const railAccentColor = useMemo(() => {
+    if (showCollections) {
+      const activeCollection = visibleCollections.find((collection) => collection._id === activeCollectionId);
+      return activeCollection?.themeColor || visibleCollections[0]?.themeColor || "var(--plum)";
+    }
+
+    return activeCategory?.color || expandedCategory?.color || "var(--plum)";
+  }, [activeCollectionId, activeCategory?.color, expandedCategory?.color, showCollections, visibleCollections]);
+
+  const orderedCategoryGroups = useMemo(() => {
+    const priorityId = catId !== "__all" ? catId : expandedCatId !== "__none" ? expandedCatId : undefined;
+    if (!priorityId) return categoryGroups;
+    const priority = categoryGroups.find((group) => group._id === priorityId);
+    if (!priority) return categoryGroups;
+    return [priority, ...categoryGroups.filter((group) => group._id !== priorityId)];
+  }, [categoryGroups, catId, expandedCatId]);
+
+  const orderedVisibleCollections = useMemo(() => {
+    if (!activeCollectionId) return visibleCollections;
+    const active = visibleCollections.find((collection) => collection._id === activeCollectionId);
+    if (!active) return visibleCollections;
+    return [active, ...visibleCollections.filter((collection) => collection._id !== activeCollectionId)];
+  }, [visibleCollections, activeCollectionId]);
+
+  const updateCategoryScrollState = useCallback(() => {
+    const rail = categoryRailRef.current;
+    if (!rail) {
+      setCategoryScrollState({ left: false, right: false });
+      return;
+    }
+
+    const maxScroll = Math.max(0, rail.scrollWidth - rail.clientWidth);
+    const left = rail.scrollLeft > 6;
+    const right = rail.scrollLeft < maxScroll - 6;
+    setCategoryScrollState((current) =>
+      current.left === left && current.right === right
+        ? current
+        : { left, right },
+    );
+  }, []);
+
+  const scrollCategories = (direction: "left" | "right") => {
+    const rail = categoryRailRef.current;
+    if (!rail) return;
+    const amount = Math.max(190, Math.round(rail.clientWidth * 0.72));
+    rail.scrollBy({
+      left: direction === "right" ? amount : -amount,
+      behavior: "smooth",
+    });
+    window.setTimeout(updateCategoryScrollState, 260);
+  };
+
   const updateSubcatScrollState = useCallback(() => {
     const rail = mobileSubcatRef.current;
     if (!rail) {
@@ -289,10 +346,11 @@ export default function Catalogo({
         state.rail.dataset.dragging = "true";
         state.rail.scrollLeft = state.startScrollLeft - delta;
         if (state.rail === mobileSubcatRef.current) updateSubcatScrollState();
+        if (state.rail === categoryRailRef.current) updateCategoryScrollState();
         event.preventDefault();
       }
     },
-    [updateSubcatScrollState],
+    [updateCategoryScrollState, updateSubcatScrollState],
   );
 
   const endRailDrag = useCallback((event: ReactPointerEvent<HTMLElement>) => {
@@ -348,7 +406,7 @@ export default function Catalogo({
   );
 
   const setCategoryButtonRef = useCallback(
-    (id: string) => (node: HTMLButtonElement | null) => {
+    (id: string) => (node: HTMLElement | null) => {
       if (node) {
         categoryButtonRefs.current.set(id, node);
         return;
@@ -533,6 +591,35 @@ export default function Catalogo({
   }, [expandedCatId, scrollCategoryIntoView]);
 
   useEffect(() => {
+    const targetId = activeCollectionId || (catId !== "__all" ? catId : expandedCatId !== "__none" ? expandedCatId : "__all");
+    window.setTimeout(() => scrollCategoryIntoView(targetId), 120);
+  }, [activeCollectionId, catId, expandedCatId, orderedVisibleCollections.length, orderedCategoryGroups.length, scrollCategoryIntoView]);
+
+  useEffect(() => {
+    updateCategoryScrollState();
+    const rail = categoryRailRef.current;
+    if (!rail) return;
+
+    const onScroll = () => updateCategoryScrollState();
+    const onResize = () => updateCategoryScrollState();
+    rail.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onResize);
+
+    const id = window.setTimeout(updateCategoryScrollState, 120);
+    return () => {
+      rail.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onResize);
+      window.clearTimeout(id);
+    };
+  }, [
+    orderedVisibleCollections.length,
+    orderedCategoryGroups.length,
+    expandedCatId,
+    activeCollectionId,
+    updateCategoryScrollState,
+  ]);
+
+  useEffect(() => {
     const rail = mobileSubcatRef.current;
     if (rail) rail.scrollLeft = 0;
     updateSubcatScrollState();
@@ -609,58 +696,94 @@ export default function Catalogo({
             {/* Sidebar */}
             <aside className="cat-sidebar">
               <div className="cat-sidebar-title">
-                {showCollections ? "Colecciones activas" : "Categorías"}
+                <span>{showCollections ? "Colecciones activas" : "Categorías"}</span>
+                <strong>{showCollections ? visibleCollections.length : categoryGroups.length}</strong>
               </div>
-              <div
-                ref={categoryRailRef}
-                className="cat-list"
-                onPointerDown={beginRailDrag}
-                onPointerMove={moveRailDrag}
-                onPointerUp={endRailDrag}
-                onPointerCancel={cancelRailDrag}
-                onClickCapture={preventClickAfterRailDrag}
-              >
+              <div className="cat-rail-wrap" style={{ "--rail-color": railAccentColor } as CSSProperties}>
+                {categoryScrollState.left && (
+                  <button
+                    className="cat-scroll-cue left"
+                    type="button"
+                    aria-label={showCollections ? "Ver colecciones anteriores" : "Ver categorías anteriores"}
+                    onClick={() => scrollCategories("left")}
+                  >
+                    <svg
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d="m15 18-6-6 6-6" />
+                    </svg>
+                  </button>
+                )}
+                <div
+                  ref={categoryRailRef}
+                  className="cat-list"
+                  style={{ "--rail-color": railAccentColor } as CSSProperties}
+                  onPointerDown={beginRailDrag}
+                  onPointerMove={moveRailDrag}
+                  onPointerUp={endRailDrag}
+                  onPointerCancel={cancelRailDrag}
+                  onClickCapture={preventClickAfterRailDrag}
+                >
                 {showCollections ? (
-                  visibleCollections.map((collection) => {
-                    const count =
-                      collection.items?.filter((item) => item.producto)
-                        .length ?? 0;
-                    const isActive = activeCollectionId === collection._id;
-                    const theme = collection.themeColor || "#D2386C";
+                  <>
+                    <Link
+                      ref={setCategoryButtonRef("__all")}
+                      className={`cat-item ${!activeCollectionId ? "active" : ""}`}
+                      href="/colecciones"
+                      style={{ "--item-color": "var(--plum)" } as CSSProperties}
+                      aria-current={!activeCollectionId ? "page" : undefined}
+                    >
+                      <span className="cat-item-dot" />
+                      <span className="cat-item-name">Todas</span>
+                      <span className="cat-item-count">{visibleCollections.length}</span>
+                    </Link>
+                    {orderedVisibleCollections.map((collection) => {
+                      const count =
+                        collection.items?.filter((item) => item.producto)
+                          .length ?? 0;
+                      const isActive = activeCollectionId === collection._id;
+                      const theme = collection.themeColor || "#D2386C";
 
-                    return (
-                      <Link
-                        key={collection._id}
-                        href={collectionPath(collection)}
-                        className={`cat-item ${isActive ? "active" : ""}`}
-                        aria-current={isActive ? "page" : undefined}
-                      >
-                        <span
-                          className="cat-item-dot"
-                          style={{ background: theme }}
-                        />
-                        <span className="cat-item-name">
-                          {collection.titulo}
-                        </span>
-                        <span className="cat-item-count">{count}</span>
-                      </Link>
-                    );
-                  })
+                      return (
+                        <Link
+                          ref={setCategoryButtonRef(collection._id)}
+                          key={collection._id}
+                          href={collectionPath(collection)}
+                          className={`cat-item ${isActive ? "active" : ""}`}
+                          style={{ "--item-color": theme } as CSSProperties}
+                          aria-current={isActive ? "page" : undefined}
+                        >
+                          <span className="cat-item-dot" />
+                          <span className="cat-item-name">
+                            {collection.titulo}
+                          </span>
+                          <span className="cat-item-count">{count}</span>
+                        </Link>
+                      );
+                    })}
+                  </>
                 ) : (
                   <>
                     <Link
+                      ref={setCategoryButtonRef("__all")}
                       className={`cat-item ${catId === "__all" && subcatId === "__all" ? "active" : ""}`}
                       href="/catalog"
+                      style={{ "--item-color": "var(--plum)" } as CSSProperties}
                     >
-                      <span
-                        className="cat-item-dot"
-                        style={{ background: "var(--plum)" }}
-                      />
+                      <span className="cat-item-dot" />
                       <span className="cat-item-name">Todos</span>
                       <span className="cat-item-count">{productos.length}</span>
                     </Link>
 
-                    {categoryGroups.map((cat) => {
+                    {orderedCategoryGroups.map((cat) => {
                       const isActive = catId === cat._id;
                       const isExpanded = expandedCatId === cat._id;
                       const target = catalogUrl(cat.slug);
@@ -674,14 +797,12 @@ export default function Catalogo({
                             ref={setCategoryButtonRef(cat._id)}
                             className={`cat-item cat-item-category ${isActive ? "active" : ""} ${isExpanded ? "expanded" : ""}`}
                             type="button"
+                            style={{ "--item-color": cat.color } as CSSProperties}
                             aria-expanded={isExpanded}
                             aria-controls={`subcat-panel-${cat._id}`}
                             onClick={() => toggleCategory(cat._id, isExpanded)}
                           >
-                            <span
-                              className="cat-item-dot"
-                              style={{ background: cat.color }}
-                            />
+                            <span className="cat-item-dot" />
                             <span className="cat-item-name">{cat.nombre}</span>
                             <span className="cat-item-count">{cat.count}</span>
                             {cat.subcategories.length > 0 && (
@@ -714,6 +835,7 @@ export default function Catalogo({
                               <Link
                                 className={`subcat-btn subcat-btn-all ${isActive && subcatId === "__all" ? "active" : ""}`}
                                 href={target}
+                                style={{ "--item-color": cat.color } as CSSProperties}
                                 aria-current={
                                   isActive && subcatId === "__all"
                                     ? "page"
@@ -737,6 +859,7 @@ export default function Catalogo({
                                   key={subcat._id}
                                   className={`subcat-btn ${subcatId === subcat._id ? "active" : ""}`}
                                   href={catalogUrl(cat.slug, subcat.slug)}
+                                  style={{ "--item-color": cat.color } as CSSProperties}
                                   aria-current={
                                     subcatId === subcat._id ? "page" : undefined
                                   }
@@ -761,10 +884,33 @@ export default function Catalogo({
                     })}
                   </>
                 )}
+                </div>
+                {categoryScrollState.right && (
+                  <button
+                    className="cat-scroll-cue right"
+                    type="button"
+                    aria-label={showCollections ? "Ver más colecciones" : "Ver más categorías"}
+                    onClick={() => scrollCategories("right")}
+                  >
+                    <svg
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d="m9 18 6-6-6-6" />
+                    </svg>
+                  </button>
+                )}
               </div>
 
               {!showCollections && expandedCategory?.subcategories.length ? (
-                <div className="mobile-subcat-wrap">
+                <div className="mobile-subcat-wrap" style={{ "--rail-color": expandedCategory.color, "--item-color": expandedCategory.color } as CSSProperties}>
                   {subcatScrollState.left && (
                     <button
                       className="subcat-scroll-cue left"
@@ -800,6 +946,7 @@ export default function Catalogo({
                     <Link
                       className={`mobile-subcat-chip ${catId === expandedCategory._id && subcatId === "__all" ? "active" : ""}`}
                       href={catalogUrl(expandedCategory.slug)}
+                      style={{ "--item-color": expandedCategory.color } as CSSProperties}
                       aria-current={
                         catId === expandedCategory._id && subcatId === "__all"
                           ? "page"
@@ -821,6 +968,7 @@ export default function Catalogo({
                         key={subcat._id}
                         className={`mobile-subcat-chip ${subcatId === subcat._id ? "active" : ""}`}
                         href={catalogUrl(expandedCategory.slug, subcat.slug)}
+                        style={{ "--item-color": expandedCategory.color } as CSSProperties}
                         aria-current={
                           subcatId === subcat._id ? "page" : undefined
                         }

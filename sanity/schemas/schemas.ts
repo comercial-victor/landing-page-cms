@@ -232,7 +232,26 @@ export const albumSchema = defineType({
     defineField({ name: "titulo", title: "Título de la colección", type: "string", group: "contenido", validation: (R) => R.required() }),
     defineField({ name: "subtitulo", title: "Descripción breve", type: "text", group: "contenido", rows: 2 }),
     defineField({ name: "etiqueta", title: "Etiqueta opcional", type: "string", group: "contenido", description: "Ej: Halloween, Navidad, Cumpleaños, Escolar" }),
-    defineField({ name: "slug", title: "Slug", type: "slug", group: "contenido", options: { source: "titulo", maxLength: 96 } }),
+    defineField({
+      name: "slug",
+      title: "Slug",
+      type: "slug",
+      group: "contenido",
+      description: "Se genera desde el título. Si editas desde la Vista interactiva y lo dejas vacío, se completará automáticamente al guardar.",
+      options: {
+        source: "titulo",
+        maxLength: 96,
+        slugify: (input) => slugifyForUrl(input).slice(0, 96),
+      },
+      validation: (Rule) =>
+        Rule.custom((value) => {
+          const current = value?.current;
+          if (!current) return true;
+          if (current.includes(".")) return "El slug no debe contener puntos.";
+          if (!/^[a-z0-9-]+$/.test(current)) return "Usa solo minúsculas, números y guiones.";
+          return true;
+        }),
+    }),
     defineField({ name: "portada", title: "Portada opcional", type: "image", group: "contenido", options: { hotspot: true } }),
     defineField({ name: "themeColor", title: "Color principal del degradado", type: "string", group: "contenido", initialValue: "#D2386C", description: "Usa un color HEX. Ej: #D2386C" }),
     defineField({ name: "visible", title: "Mostrar colección en el sitio", type: "boolean", group: "estado", initialValue: true }),

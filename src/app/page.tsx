@@ -65,7 +65,7 @@ export default async function HomePage() {
         whatsapp={brand.whatsapp}
         contact={brand.primaryContact}
       />
-      <Colecciones colecciones={colecciones} />
+      <Colecciones colecciones={colecciones} variant="carousel" />
       <HorariosUbicacion brand={brand} />
       <Footer brand={brand} />
       <FabWhatsApp contacts={brand.floatingContacts} />

@@ -264,6 +264,12 @@ const C = {
   yellowBg: "#fef3c7", yellowBorder: "#f59e0b", blueBg: "#eff6ff", blueBorder: "#bfdbfe",
 };
 
+const normalizeHexColor = (value?: string) => {
+  const raw = (value || "").trim();
+  const normalized = raw.startsWith("#") ? raw : `#${raw}`;
+  return /^#[0-9a-fA-F]{6}$/.test(normalized) ? normalized.toUpperCase() : C.plum;
+};
+
 // ── Main Component ────────────────────────────────────────────────
 export function InteractiveViewTool() {
   const client = useClient({ apiVersion: "2026-04-24" });
@@ -1853,7 +1859,20 @@ function CollectionEditor({
             <Field label="Título">
               <input value={draft.titulo} onChange={(event) => {
                 const value = event.target.value;
-                setDraft((current) => ({ ...current, titulo: value, slug: { current: current.slug?.current || slugify(value) } }));
+                setDraft((current) => {
+                  const previousAutoSlug = slugify(current.titulo || "");
+                  const currentSlug = current.slug?.current || "";
+                  const shouldUpdateSlug =
+                    !currentSlug ||
+                    currentSlug === previousAutoSlug ||
+                    (currentSlug.length <= 3 && previousAutoSlug.startsWith(currentSlug));
+
+                  return {
+                    ...current,
+                    titulo: value,
+                    slug: { current: shouldUpdateSlug ? slugify(value) : currentSlug },
+                  };
+                });
               }} style={inputStyle(C.white, "#d1d5db")} placeholder="Ej: Halloween" />
             </Field>
             <Field label="Slug">
@@ -1865,8 +1884,37 @@ function CollectionEditor({
             <Field label="Descripción">
               <textarea value={draft.subtitulo || ""} onChange={(event) => setField("subtitulo", event.target.value)} rows={3} style={{ ...inputStyle(C.white, "#d1d5db"), height: "auto", padding: "8px 12px" }} />
             </Field>
-            <Field label="Color principal">
-              <input value={draft.themeColor || C.plum} onChange={(event) => setField("themeColor", event.target.value)} style={inputStyle(C.white, "#d1d5db")} placeholder="#D2386C" />
+            <Field label="Color principal" help="Elige un color base para botones y acentos de esta colección.">
+              <div style={{ display: "grid", gridTemplateColumns: "58px 1fr", gap: 10, alignItems: "center" }}>
+                <label
+                  title="Elegir color"
+                  style={{
+                    width: 58,
+                    height: 42,
+                    padding: 4,
+                    borderRadius: 14,
+                    border: "1px solid #d1d5db",
+                    background: C.white,
+                    boxShadow: "0 12px 28px -22px rgba(31, 27, 46, 0.8)",
+                    cursor: "pointer",
+                  }}
+                >
+                  <input
+                    type="color"
+                    value={normalizeHexColor(draft.themeColor)}
+                    onChange={(event) => setField("themeColor", event.target.value.toUpperCase())}
+                    style={{ width: "100%", height: "100%", padding: 0, border: 0, borderRadius: 10, background: "transparent", cursor: "pointer" }}
+                    aria-label="Elegir color principal"
+                  />
+                </label>
+                <input
+                  value={draft.themeColor || C.plum}
+                  onChange={(event) => setField("themeColor", event.target.value.toUpperCase())}
+                  onBlur={(event) => setField("themeColor", normalizeHexColor(event.target.value))}
+                  style={inputStyle(C.white, "#d1d5db")}
+                  placeholder="#D2386C"
+                />
+              </div>
             </Field>
             <Field label="Imagen principal de portada" help="Se convierte a AVIF al subirla desde esta herramienta. Si no subes una, se usan los productos marcados como portada.">
               <div style={{ display: "grid", gap: 8 }}>
@@ -2022,11 +2070,11 @@ function CategoryManager({ cats, subcats, prods, client, onCategoryDeleted, onCa
       const created = await client.create({
         _type: "categoria",
         nombre,
-        color: newCatDraft.color || C.plum,
+        color: normalizeHexColor(newCatDraft.color || C.plum),
         activo: true,
         slug: { _type: "slug", current: slugify(nombre) },
       });
-      onCategoryCreated({ _id: created._id, nombre, color: newCatDraft.color || C.plum, activo: true });
+      onCategoryCreated({ _id: created._id, nombre, color: normalizeHexColor(newCatDraft.color || C.plum), activo: true });
       setNewCatDraft({ nombre: "", color: C.plum });
       setAddingCat(false);
     } catch (err) {
@@ -2048,9 +2096,9 @@ function CategoryManager({ cats, subcats, prods, client, onCategoryDeleted, onCa
     try {
       await client
         .patch(cat._id)
-        .set({ nombre, color: catDraft.color || C.plum, slug: { _type: "slug", current: slugify(nombre) } })
+        .set({ nombre, color: normalizeHexColor(catDraft.color || C.plum), slug: { _type: "slug", current: slugify(nombre) } })
         .commit();
-      onCategoryUpdated({ ...cat, nombre, color: catDraft.color || C.plum });
+      onCategoryUpdated({ ...cat, nombre, color: normalizeHexColor(catDraft.color || C.plum) });
       setEditingCatId(null);
     } catch (err) {
       console.error("Error actualizando categoría:", err);
@@ -2171,8 +2219,24 @@ function CategoryManager({ cats, subcats, prods, client, onCategoryDeleted, onCa
           <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
             <input value={newCatDraft.nombre} onChange={e => setNewCatDraft(d => ({ ...d, nombre: e.target.value }))} placeholder="Nombre de la nueva categoría"
               style={{ ...inputStyle(C.white, "#d1d5db"), flex: "1 1 240px" }} />
-            <input value={newCatDraft.color} onChange={e => setNewCatDraft(d => ({ ...d, color: e.target.value }))} placeholder="#D2386C"
-              style={{ ...inputStyle(C.white, "#d1d5db"), flex: "0 1 140px" }} />
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flex: "0 1 210px" }}>
+              <label title="Elegir color" style={{ width: 44, height: 36, padding: 3, borderRadius: 10, border: "1px solid #d1d5db", background: C.white, cursor: "pointer", boxSizing: "border-box" }}>
+                <input
+                  type="color"
+                  value={normalizeHexColor(newCatDraft.color)}
+                  onChange={e => setNewCatDraft(d => ({ ...d, color: e.target.value.toUpperCase() }))}
+                  aria-label="Elegir color de categoría"
+                  style={{ width: "100%", height: "100%", padding: 0, border: 0, borderRadius: 7, background: "transparent", cursor: "pointer" }}
+                />
+              </label>
+              <input
+                value={newCatDraft.color}
+                onChange={e => setNewCatDraft(d => ({ ...d, color: e.target.value.toUpperCase() }))}
+                onBlur={e => setNewCatDraft(d => ({ ...d, color: normalizeHexColor(e.target.value) }))}
+                placeholder="#D2386C"
+                style={{ ...inputStyle(C.white, "#d1d5db"), flex: "1 1 120px" }}
+              />
+            </div>
             <button onClick={createCategory} disabled={savingId === "new-category"} style={btnStyle("save")}>
               {savingId === "new-category" ? <Loader2 size={iconSize} style={{ animation: "iv-spin 0.8s linear infinite" }} /> : <Save size={iconSize} />} Guardar
             </button>
@@ -2197,8 +2261,24 @@ function CategoryManager({ cats, subcats, prods, client, onCategoryDeleted, onCa
                   <div style={{ display: "grid", gap: 8, marginBottom: 8 }}>
                     <input value={catDraft.nombre} onChange={e => setCatDraft(d => ({ ...d, nombre: e.target.value }))}
                       style={inputStyle(C.white, "#d1d5db")} placeholder="Nombre de la categoría" />
-                    <input value={catDraft.color} onChange={e => setCatDraft(d => ({ ...d, color: e.target.value }))}
-                      style={inputStyle(C.white, "#d1d5db")} placeholder="#D2386C" />
+                    <div style={{ display: "grid", gridTemplateColumns: "52px 1fr", gap: 8, alignItems: "center" }}>
+                      <label title="Elegir color" style={{ width: 52, height: 36, padding: 3, borderRadius: 10, border: "1px solid #d1d5db", background: C.white, cursor: "pointer", boxSizing: "border-box" }}>
+                        <input
+                          type="color"
+                          value={normalizeHexColor(catDraft.color)}
+                          onChange={e => setCatDraft(d => ({ ...d, color: e.target.value.toUpperCase() }))}
+                          aria-label="Elegir color de categoría"
+                          style={{ width: "100%", height: "100%", padding: 0, border: 0, borderRadius: 7, background: "transparent", cursor: "pointer" }}
+                        />
+                      </label>
+                      <input
+                        value={catDraft.color}
+                        onChange={e => setCatDraft(d => ({ ...d, color: e.target.value.toUpperCase() }))}
+                        onBlur={e => setCatDraft(d => ({ ...d, color: normalizeHexColor(e.target.value) }))}
+                        style={inputStyle(C.white, "#d1d5db")}
+                        placeholder="#D2386C"
+                      />
+                    </div>
                   </div>
                 ) : (
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
