@@ -243,14 +243,6 @@ export default function Catalogo({
     return activeCategory?.color || expandedCategory?.color || "var(--plum)";
   }, [activeCollectionId, activeCategory?.color, expandedCategory?.color, showCollections, visibleCollections]);
 
-  const orderedCategoryGroups = useMemo(() => {
-    const priorityId = catId !== "__all" ? catId : expandedCatId !== "__none" ? expandedCatId : undefined;
-    if (!priorityId) return categoryGroups;
-    const priority = categoryGroups.find((group) => group._id === priorityId);
-    if (!priority) return categoryGroups;
-    return [priority, ...categoryGroups.filter((group) => group._id !== priorityId)];
-  }, [categoryGroups, catId, expandedCatId]);
-
   const orderedVisibleCollections = useMemo(() => {
     if (!activeCollectionId) return visibleCollections;
     const active = visibleCollections.find((collection) => collection._id === activeCollectionId);
@@ -603,7 +595,7 @@ export default function Catalogo({
   useEffect(() => {
     const targetId = activeCollectionId || (catId !== "__all" ? catId : expandedCatId !== "__none" ? expandedCatId : "__all");
     window.setTimeout(() => scrollCategoryIntoView(targetId), 120);
-  }, [activeCollectionId, catId, expandedCatId, orderedVisibleCollections.length, orderedCategoryGroups.length, scrollCategoryIntoView]);
+  }, [activeCollectionId, catId, expandedCatId, orderedVisibleCollections.length, categoryGroups.length, scrollCategoryIntoView]);
 
   useEffect(() => {
     updateCategoryScrollState();
@@ -623,7 +615,7 @@ export default function Catalogo({
     };
   }, [
     orderedVisibleCollections.length,
-    orderedCategoryGroups.length,
+    categoryGroups.length,
     expandedCatId,
     activeCollectionId,
     updateCategoryScrollState,
@@ -793,7 +785,7 @@ export default function Catalogo({
                       <span className="cat-item-count">{productos.length}</span>
                     </Link>
 
-                    {orderedCategoryGroups.map((cat) => {
+                    {categoryGroups.map((cat) => {
                       const isActive = catId === cat._id;
                       const isExpanded = expandedCatId === cat._id;
                       const target = catalogUrl(cat.slug);
