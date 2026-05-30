@@ -59,11 +59,6 @@ export default defineConfig({
               .id("featuredGallery")
               .icon(GalleryHorizontalEnd)
               .child(S.document().schemaType("featuredGallery").documentId("featuredGallery")),
-            S.listItem()
-              .title("Colecciones")
-              .id("colecciones")
-              .icon(GalleryHorizontalEnd)
-              .child(S.documentTypeList("album").title("Colecciones")),
           ]),
     }),
   ],

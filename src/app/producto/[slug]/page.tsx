@@ -7,7 +7,7 @@ import FabWhatsApp from "@/components/FabWhatsApp";
 import ScrollToTop from "@/components/ScrollToTop";
 import ProductDetailClient from "@/components/ProductDetailClient";
 import { getProductoPorSlug, getProductoSlugs, getSiteSettings, getTodosLosProductos } from "@/lib/queries";
-import { getPrimaryContact, normalizeSocialLinks } from "@/lib/social";
+import { formatPhoneDisplay, getPrimaryContact, normalizeSocialLinks } from "@/lib/social";
 import { brandShareImage, siteUrl } from "@/lib/metadata";
 import { urlFor } from "@/lib/sanity";
 
@@ -76,7 +76,7 @@ export default async function ProductoPage({ params }: { params: Promise<{ slug:
     tagline: settings?.tagline || "Todo para que tu fiesta brille",
     logo: settings?.logo || null,
     whatsapp: primaryContact.platform === "whatsapp" ? (primaryContact.phone || settings?.whatsapp || "51987654321") : (settings?.whatsapp || "51987654321"),
-    whatsappDisplay: settings?.whatsappDisplay || primaryContact.label || "+51 987 654 321",
+    whatsappDisplay: formatPhoneDisplay(primaryContact.platform === "whatsapp" ? (primaryContact.phone || settings?.whatsapp) : settings?.whatsapp) || primaryContact.label || "+51 987 654 321",
     socialLinks,
     navbarContacts,
     floatingContacts,

@@ -5,7 +5,7 @@ import Footer from "@/components/Footer";
 import FabWhatsApp from "@/components/FabWhatsApp";
 import ScrollToTop from "@/components/ScrollToTop";
 import { getColecciones, getSiteSettings, getTodosLosProductos } from "@/lib/queries";
-import { getPrimaryContact, normalizeSocialLinks } from "@/lib/social";
+import { formatPhoneDisplay, getPrimaryContact, normalizeSocialLinks } from "@/lib/social";
 
 export default async function ColeccionesPage() {
   const [settings, colecciones, productos] = await Promise.all([
@@ -23,7 +23,7 @@ export default async function ColeccionesPage() {
     tagline: settings?.tagline || "Todo para que tu fiesta brille",
     logo: settings?.logo || null,
     whatsapp: primaryContact.platform === "whatsapp" ? (primaryContact.phone || settings?.whatsapp || "51987654321") : (settings?.whatsapp || "51987654321"),
-    whatsappDisplay: settings?.whatsappDisplay || primaryContact.label || "+51 987 654 321",
+    whatsappDisplay: formatPhoneDisplay(primaryContact.platform === "whatsapp" ? (primaryContact.phone || settings?.whatsapp) : settings?.whatsapp) || primaryContact.label || "+51 987 654 321",
     socialLinks,
     navbarContacts,
     floatingContacts,

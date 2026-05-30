@@ -1177,6 +1177,60 @@ function FilterChip({ label, color, tone, onClear }: { label: string; color?: st
   );
 }
 
+
+function InlineNotice({ tone = "info", children }: { tone?: "info" | "error" | "warning"; children: React.ReactNode }) {
+  const color = tone === "error" ? C.red : tone === "warning" ? C.orange : C.plum;
+  const bg = tone === "error" ? "#fef2f2" : tone === "warning" ? "#fff7ed" : "#fdf2f8";
+  const border = tone === "error" ? "#fecaca" : tone === "warning" ? "#fed7aa" : "#fbcfe8";
+  return (
+    <div style={{ display: "flex", gap: 9, alignItems: "flex-start", padding: "10px 12px", borderRadius: 12, border: `1px solid ${border}`, background: bg, color: C.ink, fontSize: 13, lineHeight: 1.45 }}>
+      <AlertTriangle size={15} color={color} style={{ flexShrink: 0, marginTop: 1 }} />
+      <div>{children}</div>
+    </div>
+  );
+}
+
+function ConfirmDialog({
+  title,
+  message,
+  confirmLabel = "Eliminar",
+  busy,
+  tone = "danger",
+  onConfirm,
+  onCancel,
+}: {
+  title: string;
+  message: React.ReactNode;
+  confirmLabel?: string;
+  busy?: boolean;
+  tone?: "danger" | "warning";
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <div role="dialog" aria-modal="true" style={{ position: "fixed", inset: 0, zIndex: 999, display: "grid", placeItems: "center", padding: 18, background: "rgba(15,18,31,0.58)" }}>
+      <div style={{ width: "min(440px, 100%)", borderRadius: 18, background: C.white, border: "1px solid #e5e7eb", boxShadow: "0 28px 90px rgba(0,0,0,0.36)", overflow: "hidden" }}>
+        <div style={{ padding: "18px 18px 12px", display: "flex", gap: 12, alignItems: "flex-start" }}>
+          <span style={{ display: "inline-grid", placeItems: "center", width: 38, height: 38, borderRadius: 999, background: tone === "danger" ? "#fef2f2" : "#fff7ed", color: tone === "danger" ? C.red : C.orange, flexShrink: 0 }}>
+            <AlertTriangle size={20} />
+          </span>
+          <div style={{ minWidth: 0 }}>
+            <h3 style={{ margin: "2px 0 6px", color: C.ink, fontSize: 18 }}>{title}</h3>
+            <div style={{ color: C.inkSoft, fontSize: 14, lineHeight: 1.5 }}>{message}</div>
+          </div>
+        </div>
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, padding: 14, background: "#f8fafc", borderTop: "1px solid #e5e7eb" }}>
+          <button type="button" onClick={onCancel} disabled={busy} style={btnStyle("secondary")}><X size={iconSize} /> Cancelar</button>
+          <button type="button" onClick={onConfirm} disabled={busy} style={btnStyle(tone === "danger" ? "danger" : "primary")}>
+            {busy ? <Loader2 size={iconSize} style={{ animation: "iv-spin 0.8s linear infinite" }} /> : <Trash2 size={iconSize} />}
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function TagOffIcon({ size = 14 }: { size?: number }) {
   return (
     <span style={{ width: size, height: size, display: "inline-flex", alignItems: "center", justifyContent: "center", position: "relative", flexShrink: 0 }}>
@@ -1208,6 +1262,7 @@ function FeaturedGalleryManager({
   const [selectedKey, setSelectedKey] = useState("");
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState<"image" | "thumbnail" | "">("");
+  const [featuredDeleteKey, setFeaturedDeleteKey] = useState<string | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const thumbInputRef = useRef<HTMLInputElement>(null);
 
@@ -1243,7 +1298,13 @@ function FeaturedGalleryManager({
 
   const removeItem = (key: string) => {
     const item = sortedItems.find((entry) => entry._key === key);
-    if (!item || !window.confirm(`¿Eliminar la card "${item.titulo || "sin título"}"?`)) return;
+    if (!item) return;
+    setFeaturedDeleteKey(key);
+  };
+
+  const confirmRemoveItem = () => {
+    const key = featuredDeleteKey;
+    if (!key) return;
     setDraft((current) => {
       const nextItems = (current.items || [])
         .filter((entry) => entry._key !== key)
@@ -1251,6 +1312,7 @@ function FeaturedGalleryManager({
       setSelectedKey(nextItems[0]?._key || "");
       return { ...current, items: nextItems };
     });
+    setFeaturedDeleteKey(null);
   };
 
   const moveItem = (key: string, direction: -1 | 1) => {
@@ -1336,8 +1398,19 @@ function FeaturedGalleryManager({
     }
   };
 
+  const featuredDeleteItem = sortedItems.find((entry) => entry._key === featuredDeleteKey);
+
   return (
     <div style={{ display: "grid", gap: 14 }}>
+      {featuredDeleteItem && (
+        <ConfirmDialog
+          title="Eliminar novedad"
+          message={<>Se quitará la card <strong>{featuredDeleteItem.titulo || "sin título"}</strong> de la sección de novedades. El cambio se guardará cuando presiones Guardar.</>}
+          confirmLabel="Eliminar card"
+          onCancel={() => setFeaturedDeleteKey(null)}
+          onConfirm={confirmRemoveItem}
+        />
+      )}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", background: C.surface, border: `1px solid ${C.darkLine}`, borderRadius: 12, padding: 14 }}>
         <div>
           <h2 style={{ margin: 0, color: "#f8fafc", fontSize: 20, display: "flex", alignItems: "center", gap: 8 }}>
@@ -1571,6 +1644,7 @@ function CollectionManager({
 }) {
   const [savingDemo, setSavingDemo] = useState(false);
   const [deletingId, setDeletingId] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState<SCollection | null>(null);
 
   const createDemoCollections = async () => {
     setSavingDemo(true);
@@ -1620,12 +1694,17 @@ function CollectionManager({
     }
   };
 
-  const deleteCollection = async (collection: SCollection) => {
-    if (!window.confirm(`¿Eliminar la colección "${collection.titulo}"?`)) return;
-    setDeletingId(collection._id);
+  const deleteCollection = (collection: SCollection) => {
+    setDeleteTarget(collection);
+  };
+
+  const confirmDeleteCollection = async () => {
+    if (!deleteTarget) return;
+    setDeletingId(deleteTarget._id);
     try {
-      await client.delete(collection._id);
-      onDeleted(collection._id);
+      await client.delete(deleteTarget._id);
+      onDeleted(deleteTarget._id);
+      setDeleteTarget(null);
     } finally {
       setDeletingId("");
     }
@@ -1633,6 +1712,16 @@ function CollectionManager({
 
   return (
     <div style={{ display: "grid", gap: 14 }}>
+      {deleteTarget && (
+        <ConfirmDialog
+          title="Eliminar colección"
+          message={<>Se eliminará <strong>{deleteTarget.titulo}</strong>. Esta acción no se puede deshacer.</>}
+          confirmLabel="Eliminar colección"
+          busy={deletingId === deleteTarget._id}
+          onCancel={() => deletingId ? undefined : setDeleteTarget(null)}
+          onConfirm={confirmDeleteCollection}
+        />
+      )}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", background: C.surface, border: `1px solid ${C.darkLine}`, borderRadius: 12, padding: 14 }}>
         <div>
           <h2 style={{ margin: 0, color: "#f8fafc", fontSize: 20, display: "flex", alignItems: "center", gap: 8 }}>
@@ -1701,10 +1790,15 @@ function CollectionEditor({
   onSaved: (collection: SCollection) => void;
 }) {
   const [draft, setDraft] = useState<SCollection>(collection);
+  const [slugManuallyEdited, setSlugManuallyEdited] = useState(Boolean(collection.slug?.current));
   const [productQuery, setProductQuery] = useState("");
   const [saving, setSaving] = useState(false);
   const [uploadingCover, setUploadingCover] = useState(false);
   const coverInputRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    setDraft(collection);
+    setSlugManuallyEdited(Boolean(collection.slug?.current));
+  }, [collection]);
   const selectedIds = useMemo(() => new Set((draft.items || []).map((item) => item.producto?._id).filter(Boolean) as string[]), [draft.items]);
   const coverItemCount = useMemo(() => (draft.items || []).filter((item) => item.mostrarEnPortada).length, [draft.items]);
   const filteredProducts = useMemo(() => {
@@ -1862,21 +1956,13 @@ function CollectionEditor({
                 setDraft((current) => {
                   const previousAutoSlug = slugify(current.titulo || "");
                   const currentSlug = current.slug?.current || "";
-                  const shouldUpdateSlug =
-                    !currentSlug ||
-                    currentSlug === previousAutoSlug ||
-                    (currentSlug.length <= 3 && previousAutoSlug.startsWith(currentSlug));
-
-                  return {
-                    ...current,
-                    titulo: value,
-                    slug: { current: shouldUpdateSlug ? slugify(value) : currentSlug },
-                  };
+                  const shouldAutoUpdate = !slugManuallyEdited || !currentSlug || currentSlug === previousAutoSlug || currentSlug.length <= 1;
+                  return { ...current, titulo: value, slug: { current: shouldAutoUpdate ? slugify(value) : currentSlug } };
                 });
               }} style={inputStyle(C.white, "#d1d5db")} placeholder="Ej: Halloween" />
             </Field>
             <Field label="Slug">
-              <input value={draft.slug?.current || ""} onChange={(event) => setField("slug", { current: slugify(event.target.value) })} style={inputStyle(C.white, "#d1d5db")} placeholder="halloween" />
+              <input value={draft.slug?.current || ""} onChange={(event) => { setSlugManuallyEdited(true); setField("slug", { current: slugify(event.target.value) }); }} style={inputStyle(C.white, "#d1d5db")} placeholder="halloween" />
             </Field>
             <Field label="Etiqueta">
               <input value={draft.etiqueta || ""} onChange={(event) => setField("etiqueta", event.target.value)} style={inputStyle(C.white, "#d1d5db")} placeholder="Temporada" />
@@ -1968,7 +2054,7 @@ function CollectionEditor({
                       {thumb ? <img src={thumb} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <ImageIcon size={20} color="#8792a5" />}
                     </button>
                     <div style={{ minWidth: 0 }}>
-                      <button onClick={() => toggleProduct(product)} style={{ display: "block", width: "100%", border: "none", background: "none", padding: 0, color: C.ink, fontWeight: 700, fontSize: 13, textAlign: "left", cursor: "pointer", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{product.nombre}</button>
+                      <button onClick={() => toggleProduct(product)} title={product.nombre} style={{ display: "block", width: "100%", border: "none", background: "none", padding: 0, color: C.ink, fontWeight: 700, fontSize: 13, lineHeight: 1.28, textAlign: "left", cursor: "pointer", whiteSpace: "normal", overflow: "visible", textOverflow: "clip" }}>{product.nombre}</button>
                       <div style={{ color: C.inkSoft, fontSize: 12, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{product.subcategoria?.nombre || "Sin subcategoría"}</div>
                       {selected && (
                         <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginTop: 5 }}>
@@ -2042,6 +2128,8 @@ function CategoryManager({ cats, subcats, prods, client, onCategoryDeleted, onCa
   const [newSubcatName, setNewSubcatName] = useState("");
   const [editingSubcatId, setEditingSubcatId] = useState<string | null>(null);
   const [subcatDraft, setSubcatDraft] = useState("");
+  const [categoryNotice, setCategoryNotice] = useState<{ tone: "info" | "error" | "warning"; text: string } | null>(null);
+  const [deleteConfirmTarget, setDeleteConfirmTarget] = useState<{ type: "category" | "subcategory"; id: string; title: string; message: string } | null>(null);
 
   const countsFor = (catId: string) => {
     const subcatCount = subcats.filter(sc => sc.categoria?._id === catId).length;
@@ -2061,7 +2149,7 @@ function CategoryManager({ cats, subcats, prods, client, onCategoryDeleted, onCa
   const createCategory = async () => {
     const nombre = newCatDraft.nombre.trim();
     if (!nombre) {
-      alert("Escribe un nombre para la categoría.");
+      setCategoryNotice({ tone: "warning", text: "Escribe un nombre para la categoría." });
       return;
     }
 
@@ -2079,7 +2167,7 @@ function CategoryManager({ cats, subcats, prods, client, onCategoryDeleted, onCa
       setAddingCat(false);
     } catch (err) {
       console.error("Error creando categoría:", err);
-      alert(`No se pudo crear "${nombre}".`);
+      setCategoryNotice({ tone: "error", text: `No se pudo crear "${nombre}".` });
     } finally {
       setSavingId(null);
     }
@@ -2088,7 +2176,7 @@ function CategoryManager({ cats, subcats, prods, client, onCategoryDeleted, onCa
   const saveCategory = async (cat: SCat) => {
     const nombre = catDraft.nombre.trim();
     if (!nombre) {
-      alert("El nombre de la categoría no puede estar vacío.");
+      setCategoryNotice({ tone: "warning", text: "El nombre de la categoría no puede estar vacío." });
       return;
     }
 
@@ -2102,7 +2190,7 @@ function CategoryManager({ cats, subcats, prods, client, onCategoryDeleted, onCa
       setEditingCatId(null);
     } catch (err) {
       console.error("Error actualizando categoría:", err);
-      alert(`No se pudo actualizar "${cat.nombre}".`);
+      setCategoryNotice({ tone: "error", text: `No se pudo actualizar "${cat.nombre}".` });
     } finally {
       setSavingId(null);
     }
@@ -2116,7 +2204,7 @@ function CategoryManager({ cats, subcats, prods, client, onCategoryDeleted, onCa
   const createSubcategory = async (cat: SCat) => {
     const nombre = newSubcatName.trim();
     if (!nombre) {
-      alert("Escribe un nombre para la subcategoría.");
+      setCategoryNotice({ tone: "warning", text: "Escribe un nombre para la subcategoría." });
       return;
     }
 
@@ -2135,7 +2223,7 @@ function CategoryManager({ cats, subcats, prods, client, onCategoryDeleted, onCa
       setExpanded(x => ({ ...x, [cat._id]: true }));
     } catch (err) {
       console.error("Error creando subcategoría:", err);
-      alert(`No se pudo crear "${nombre}".`);
+      setCategoryNotice({ tone: "error", text: `No se pudo crear "${nombre}".` });
     } finally {
       setSavingId(null);
     }
@@ -2144,7 +2232,7 @@ function CategoryManager({ cats, subcats, prods, client, onCategoryDeleted, onCa
   const saveSubcategory = async (subcat: SSubcat) => {
     const nombre = subcatDraft.trim();
     if (!nombre) {
-      alert("El nombre de la subcategoría no puede estar vacío.");
+      setCategoryNotice({ tone: "warning", text: "El nombre de la subcategoría no puede estar vacío." });
       return;
     }
 
@@ -2158,62 +2246,85 @@ function CategoryManager({ cats, subcats, prods, client, onCategoryDeleted, onCa
       setEditingSubcatId(null);
     } catch (err) {
       console.error("Error actualizando subcategoría:", err);
-      alert(`No se pudo actualizar "${subcat.nombre}".`);
-    } finally {
+      setCategoryNotice({ tone: "error", text: `No se pudo actualizar "${subcat.nombre}".` });
+     } finally {
       setSavingId(null);
     }
   };
 
-  const deleteCategory = async (cat: SCat) => {
+  const deleteCategory = (cat: SCat) => {
     const counts = countsFor(cat._id);
     if (counts.total > 0) {
       setExpanded(x => ({ ...x, [cat._id]: true }));
-      alert(`"${cat.nombre}" todavía tiene ${counts.productCount} producto(s) y ${counts.subcatCount} subcategoría(s).\n\nPrimero elimina o mueve esos vínculos desde esta misma card.`);
+      setCategoryNotice({ tone: "warning", text: `"${cat.nombre}" todavía tiene ${counts.productCount} producto(s) y ${counts.subcatCount} subcategoría(s). Primero elimina o mueve esos vínculos desde esta misma card.` });
       return;
     }
 
     const detail = `${counts.productCount} producto(s) y ${counts.subcatCount} subcategoría(s) vinculada(s)`;
-    const ok = window.confirm(`¿Eliminar la categoría "${cat.nombre}"?\n\nTiene ${detail}.\n\nEsta acción no se puede deshacer.`);
-    if (!ok) return;
+    setDeleteConfirmTarget({ type: "category", id: cat._id, title: cat.nombre, message: `Tiene ${detail}. Esta acción no se puede deshacer.` });
+  };
 
+  const confirmDeleteCategory = async (cat: SCat) => {
     setDeletingId(cat._id);
     try {
       await client.delete(cat._id);
       onCategoryDeleted(cat._id);
+      setDeleteConfirmTarget(null);
     } catch (err) {
       console.error("Error eliminando categoría:", err);
       const msg = err instanceof Error ? err.message : String(err);
-      alert(`No se pudo eliminar "${cat.nombre}".\n\n${msg}\n\nSi tiene vínculos, primero mueve o elimina sus subcategorías/productos.`);
+      setCategoryNotice({ tone: "error", text: `No se pudo eliminar "${cat.nombre}". ${msg}. Si tiene vínculos, primero mueve o elimina sus subcategorías/productos.` });
     } finally {
       setDeletingId(null);
     }
   };
 
-  const deleteSubcategory = async (subcat: SSubcat) => {
+  const deleteSubcategory = (subcat: SSubcat) => {
     const productCount = productCountForSubcat(subcat._id);
     if (productCount > 0) {
-      alert(`"${subcat.nombre}" todavía tiene ${productCount} producto(s).\n\nAntes de eliminarla, mueve esos productos a otra subcategoría.`);
+      setCategoryNotice({ tone: "warning", text: `"${subcat.nombre}" todavía tiene ${productCount} producto(s). Antes de eliminarla, mueve esos productos a otra subcategoría.` });
       return;
     }
 
-    const ok = window.confirm(`¿Eliminar la subcategoría "${subcat.nombre}"?\n\nTiene 0 productos asociados.\n\nEsta acción no se puede deshacer.`);
-    if (!ok) return;
+    setDeleteConfirmTarget({ type: "subcategory", id: subcat._id, title: subcat.nombre, message: "Tiene 0 productos asociados. Esta acción no se puede deshacer." });
+  };
 
+  const confirmDeleteSubcategory = async (subcat: SSubcat) => {
     setDeletingId(subcat._id);
     try {
       await client.delete(subcat._id);
       onSubcategoryDeleted(subcat._id);
+      setDeleteConfirmTarget(null);
     } catch (err) {
       console.error("Error eliminando subcategoría:", err);
       const msg = err instanceof Error ? err.message : String(err);
-      alert(`No se pudo eliminar "${subcat.nombre}".\n\n${msg}`);
+      setCategoryNotice({ tone: "error", text: `No se pudo eliminar "${subcat.nombre}". ${msg}` });
     } finally {
       setDeletingId(null);
     }
   };
 
+  const pendingCategory = deleteConfirmTarget?.type === "category" ? cats.find(cat => cat._id === deleteConfirmTarget.id) : null;
+  const pendingSubcategory = deleteConfirmTarget?.type === "subcategory" ? subcats.find(subcat => subcat._id === deleteConfirmTarget.id) : null;
+
   return (
     <div>
+      {categoryNotice && (
+        <div style={{ marginBottom: 12, position: "relative" }}>
+          <InlineNotice tone={categoryNotice.tone}>{categoryNotice.text}</InlineNotice>
+          <button type="button" onClick={() => setCategoryNotice(null)} aria-label="Cerrar aviso" style={{ position: "absolute", right: 8, top: 8, border: "none", background: "transparent", color: C.inkSoft, cursor: "pointer" }}><X size={14} /></button>
+        </div>
+      )}
+      {deleteConfirmTarget && (pendingCategory || pendingSubcategory) && (
+        <ConfirmDialog
+          title={deleteConfirmTarget.type === "category" ? "Eliminar categoría" : "Eliminar subcategoría"}
+          message={<>{deleteConfirmTarget.message}</>}
+          confirmLabel={deleteConfirmTarget.type === "category" ? "Eliminar categoría" : "Eliminar subcategoría"}
+          busy={deletingId === deleteConfirmTarget.id}
+          onCancel={() => deletingId ? undefined : setDeleteConfirmTarget(null)}
+          onConfirm={() => pendingCategory ? confirmDeleteCategory(pendingCategory) : pendingSubcategory ? confirmDeleteSubcategory(pendingSubcategory) : undefined}
+        />
+      )}
       <div style={{ marginBottom: 12, background: C.surface, border: `1px solid ${C.darkLine}`, borderRadius: 8, padding: 12 }}>
         {addingCat ? (
           <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
@@ -2518,14 +2629,14 @@ const changed = (field: string) => {
       // Guard: subcategoria must have _id
       const subcatId = draft.subcategoria?._id;
       if (!subcatId || typeof subcatId !== "string") {
-        alert("El artículo necesita una subcategoría antes de guardar.");
+        setSaveError("El artículo necesita una subcategoría antes de guardar.");
         setSaving(false);
         return;
       }
 
       const cleanName = draft.nombre.trim();
       if (!cleanName) {
-        alert("El artículo necesita un nombre antes de guardar.");
+        setSaveError("El artículo necesita un nombre antes de guardar.");
         setSaving(false);
         return;
       }
@@ -2732,7 +2843,7 @@ const changed = (field: string) => {
   const fieldBorder = (field: string) => changed(field) ? C.yellowBorder : "#d1d5db";
 
   return (
-    <div style={{ position: "fixed", top: STRUCTURE_PANE_HEADER_OFFSET, right: 0, bottom: 0, left: 0, zIndex: 100, display: "flex" }}>
+    <div style={{ position: "fixed", inset: 0, zIndex: 1000, display: "flex" }}>
       {/* Backdrop */}
       <div onClick={onClose} style={{ flex: 1, background: "rgba(31,27,46,0.4)", backdropFilter: "blur(4px)" }} />
       {/* Panel */}

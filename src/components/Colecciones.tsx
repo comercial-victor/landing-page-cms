@@ -9,6 +9,16 @@ import { urlFor } from "@/lib/sanity";
 import { collectionPath } from "@/lib/collections";
 import { ProductImage } from "./ProductHelpers";
 
+function AllGridIcon({ className = "all-grid-icon" }: { className?: string }) {
+  return (
+    <span className={className} aria-hidden="true">
+      <span /><span /><span />
+      <span /><span /><span />
+      <span /><span /><span />
+    </span>
+  );
+}
+
 interface ColeccionesProps {
   colecciones: Collection[];
   variant?: "carousel" | "grid";
@@ -137,7 +147,13 @@ function CollectionIndexBar({ collections, activeCollectionId }: { collections: 
   }, [collections.length, updateScrollState]);
 
   useEffect(() => {
-    activeChipRef.current?.scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" });
+    const chip = activeChipRef.current;
+    const rail = railRef.current;
+    if (!chip || !rail) return;
+    const railRect = rail.getBoundingClientRect();
+    const chipRect = chip.getBoundingClientRect();
+    const targetLeft = rail.scrollLeft + (chipRect.left + chipRect.width / 2) - (railRect.left + railRect.width / 2);
+    rail.scrollTo({ left: Math.max(0, targetLeft), behavior: "smooth" });
   }, [activeCollectionId, orderedCollections.length]);
 
   return (
@@ -160,7 +176,7 @@ function CollectionIndexBar({ collections, activeCollectionId }: { collections: 
             style={{ "--collection-color": "var(--plum)" } as CSSProperties}
             aria-current={!activeCollectionId ? "page" : undefined}
           >
-            <span className="collection-index-dot" aria-hidden="true" />
+            <AllGridIcon className="collection-index-all-icon all-grid-icon" />
             <span>Todas</span>
             <small>{collections.length}</small>
           </Link>
@@ -253,7 +269,14 @@ function CollectionCarousel({
   }, [collections.length, updateDotsScrollState]);
 
   useEffect(() => {
-    activeDotRef.current?.scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" });
+    const dot = activeDotRef.current;
+    const rail = dotsRailRef.current;
+    if (dot && rail) {
+      const railRect = rail.getBoundingClientRect();
+      const dotRect = dot.getBoundingClientRect();
+      const targetLeft = rail.scrollLeft + (dotRect.left + dotRect.width / 2) - (railRect.left + railRect.width / 2);
+      rail.scrollTo({ left: Math.max(0, targetLeft), behavior: "smooth" });
+    }
     window.setTimeout(updateDotsScrollState, 280);
   }, [activeIndex, updateDotsScrollState]);
 

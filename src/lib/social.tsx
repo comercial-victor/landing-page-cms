@@ -32,6 +32,19 @@ export function getContactColor(contact: Pick<ContactLink, "platform" | "color">
   return contact.color || getPlatformColor(contact.platform);
 }
 
+export function formatPhoneDisplay(phone?: string) {
+  const digits = (phone || "").replace(/\D/g, "");
+  if (!digits) return "";
+  if (digits.startsWith("51") && digits.length === 11) {
+    const local = digits.slice(2);
+    return `+51 ${local.slice(0, 3)} ${local.slice(3, 6)} ${local.slice(6)}`;
+  }
+  if (digits.length === 9) {
+    return `${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6)}`;
+  }
+  return `+${digits}`;
+}
+
 export function normalizeSocialLinks(settings?: Partial<SiteSettings> | null): ContactLink[] {
   const configured = (settings?.socialLinks || [])
     .filter((link) => link?.active !== false)
@@ -48,7 +61,7 @@ export function normalizeSocialLinks(settings?: Partial<SiteSettings> | null): C
     fallback.push({
       platform: "whatsapp",
       phone: settings.whatsapp,
-      label: settings.whatsappDisplay || "WhatsApp",
+      label: "WhatsApp",
       active: true,
       showInFooter: true,
       showInNavbar: true,
@@ -63,7 +76,7 @@ export function normalizeSocialLinks(settings?: Partial<SiteSettings> | null): C
 }
 
 export function getPrimaryContact(links: ContactLink[], fallbackPhone?: string): ContactLink {
-  const primary = links.find((link) => link.isPrimaryCta) || links[0];
+  const primary = links.find((link) => link.active !== false && link.isPrimaryCta) || links.find((link) => link.platform === "whatsapp") || links[0];
   if (primary) return primary;
   return {
     platform: "whatsapp",

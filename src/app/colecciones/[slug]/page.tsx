@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import CollectionPageClient from "@/components/CollectionPageClient";
 import type { ProductoFlat } from "@/types";
 import { getCategorias, getColeccionPorSlug, getColeccionSlugs, getColecciones, getSiteSettings, getTodosLosProductos } from "@/lib/queries";
-import { getPrimaryContact, normalizeSocialLinks } from "@/lib/social";
+import { formatPhoneDisplay, getPrimaryContact, normalizeSocialLinks } from "@/lib/social";
 
 export async function generateStaticParams() {
   const slugs = await getColeccionSlugs();
@@ -34,7 +34,7 @@ export default async function ColeccionRoutePage({ params }: { params: Promise<{
     tagline: settings?.tagline || "Todo para que tu fiesta brille",
     logo: settings?.logo || null,
     whatsapp: primaryContact.platform === "whatsapp" ? (primaryContact.phone || settings?.whatsapp || "51987654321") : (settings?.whatsapp || "51987654321"),
-    whatsappDisplay: settings?.whatsappDisplay || primaryContact.label || "+51 987 654 321",
+    whatsappDisplay: formatPhoneDisplay(primaryContact.platform === "whatsapp" ? (primaryContact.phone || settings?.whatsapp) : settings?.whatsapp) || primaryContact.label || "+51 987 654 321",
     socialLinks,
     navbarContacts,
     floatingContacts,

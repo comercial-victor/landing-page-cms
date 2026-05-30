@@ -16,7 +16,6 @@ export default function FabWhatsApp({ contact, contacts }: FabSocialsProps) {
   const items = useMemo(() => (contacts?.length ? contacts : contact ? [contact] : [])
     .filter((item) => item.active !== false)
     .sort((a, b) =>
-      Number(Boolean(b.isPrimaryCta)) - Number(Boolean(a.isPrimaryCta)) ||
       Number(b.platform === "whatsapp") - Number(a.platform === "whatsapp")
     ), [contact, contacts]);
 

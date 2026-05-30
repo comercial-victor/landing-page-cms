@@ -2,9 +2,9 @@ import { sanityClient } from "./sanity";
 import type { Collection, Album, SiteSettings, Hero, FeaturedGallery, Categoria, Producto, ProductoFlat, DestacadoUbicacion } from "@/types";
 
 const siteSettingsProjection = `{
-  _id, nombre, tagline, logo, whatsapp, whatsappDisplay, telefono, email,
+  _id, nombre, tagline, logo, whatsapp, telefono, email,
   direccion, googleMapsUrl, googleMapsEmbedUrl, instagramUrl, facebookUrl, tiktokUrl,
-  socialLinks[]{ _key, platform, label, url, phone, active, showInFooter, showInNavbar, color, isPrimaryCta },
+  socialLinks[]{ _key, platform, label, url, phone, active, showInFooter, showInNavbar, isPrimaryCta, color },
   storeStatus{ enabled, mode, openingTime, message, validUntil },
   horarios[]{ dia, hora, cerrado }, seoTitle, seoDescription
 }`;

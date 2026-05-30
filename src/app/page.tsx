@@ -9,7 +9,7 @@ import HorariosUbicacion from "@/components/HorariosUbicacion";
 import Footer from "@/components/Footer";
 import FabWhatsApp from "@/components/FabWhatsApp";
 import ScrollToTop from "@/components/ScrollToTop";
-import { getPrimaryContact, normalizeSocialLinks } from "@/lib/social";
+import { formatPhoneDisplay, getPrimaryContact, normalizeSocialLinks } from "@/lib/social";
 
 export default async function HomePage() {
   const [settings, hero, featuredGallery, productos, preCatalogDestacados, colecciones] = await Promise.all([
@@ -30,7 +30,7 @@ export default async function HomePage() {
     tagline: settings?.tagline || "Todo para que tu fiesta brille",
     logo: settings?.logo || null,
     whatsapp: primaryContact.platform === "whatsapp" ? (primaryContact.phone || settings?.whatsapp || "51987654321") : (settings?.whatsapp || "51987654321"),
-    whatsappDisplay: settings?.whatsappDisplay || primaryContact.label || "+51 987 654 321",
+    whatsappDisplay: formatPhoneDisplay(primaryContact.platform === "whatsapp" ? (primaryContact.phone || settings?.whatsapp) : settings?.whatsapp) || primaryContact.label || "+51 987 654 321",
     socialLinks,
     navbarContacts,
     floatingContacts,

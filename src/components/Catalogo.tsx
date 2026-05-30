@@ -96,6 +96,16 @@ function catalogUrl(categorySlug?: string, subcategorySlug?: string) {
   return query ? `/catalog?${query}` : "/catalog";
 }
 
+function AllGridIcon({ className = "all-grid-icon" }: { className?: string }) {
+  return (
+    <span className={className} aria-hidden="true">
+      <span /><span /><span />
+      <span /><span /><span />
+      <span /><span /><span />
+    </span>
+  );
+}
+
 export default function Catalogo({
   productos,
   categorias,
@@ -741,7 +751,7 @@ export default function Catalogo({
                       style={{ "--item-color": "var(--plum)" } as CSSProperties}
                       aria-current={!activeCollectionId ? "page" : undefined}
                     >
-                      <span className="cat-item-dot" />
+                      <AllGridIcon />
                       <span className="cat-item-name">Todas</span>
                       <span className="cat-item-count">{visibleCollections.length}</span>
                     </Link>
@@ -778,7 +788,7 @@ export default function Catalogo({
                       href="/catalog"
                       style={{ "--item-color": "var(--plum)" } as CSSProperties}
                     >
-                      <span className="cat-item-dot" />
+                      <AllGridIcon />
                       <span className="cat-item-name">Todos</span>
                       <span className="cat-item-count">{productos.length}</span>
                     </Link>

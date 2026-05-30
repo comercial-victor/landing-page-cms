@@ -17,7 +17,6 @@ export default defineType({
     defineField({ name: "tagline", title: "Tagline / eslogan", type: "string", group: "identidad" }),
     defineField({ name: "logo", title: "Logo", type: "image", group: "identidad", options: { hotspot: true } }),
     defineField({ name: "whatsapp", title: "WhatsApp (con código de país)", type: "string", group: "contacto", description: "Ej: 51987654321", validation: (R) => R.required() }),
-    defineField({ name: "whatsappDisplay", title: "WhatsApp visible al público", type: "string", group: "contacto", description: "Ej: +51 987 654 321" }),
     defineField({ name: "telefono", title: "Teléfono (opcional)", type: "string", group: "contacto" }),
     defineField({ name: "email", title: "Email", type: "string", group: "contacto" }),
     defineField({ name: "direccion", title: "Dirección", type: "string", group: "contacto" }),
@@ -32,6 +31,14 @@ export default defineType({
       group: "redes",
       description: "Fuente central de redes. Todas las redes activas salen en el footer y en el botón flotante. Aquí decides cuáles aparecen también en la navbar.",
       type: "array",
+      validation: (Rule) =>
+        Rule.custom((links: unknown) => {
+          const socialLinks = Array.isArray(links)
+            ? (links as Array<{ active?: boolean; isPrimaryCta?: boolean }>)
+            : [];
+          const primaryCount = socialLinks.filter((link) => link.active !== false && link.isPrimaryCta).length;
+          return primaryCount <= 1 || "Solo una red social puede usarse como botón principal del Hero.";
+        }),
       of: [{
         type: "object",
         name: "socialLink",
@@ -58,28 +65,17 @@ export default defineType({
           defineField({ name: "url", title: "URL", type: "url", description: "Para Instagram, Facebook, Messenger, TikTok u otras redes." }),
           defineField({ name: "active", title: "Activa", type: "boolean", initialValue: true }),
           defineField({ name: "showInNavbar", title: "Mostrar en navbar", type: "boolean", initialValue: false, description: "Aparece arriba junto al buscador. Si hay varias, se muestran compactas." }),
+          defineField({ name: "isPrimaryCta", title: "Usar en el botón principal del Hero", type: "boolean", initialValue: false, description: "Solo una red debe estar activa aquí. Define el color, ícono y destino del primer botón grande del inicio." }),
           defineField({ name: "color", title: "Color personalizado opcional", type: "string", description: "Ej: #25D366. Si lo dejas vacío se usa el color oficial aproximado de la red." }),
-          defineField({ name: "isPrimaryCta", title: "Usar como contacto principal / CTA", type: "boolean", initialValue: false, description: "Se usa para botones principales cuando no hay una red específica configurada. Solo una red puede ser CTA principal." }),
         ],
         preview: {
-          select: { platform: "platform", label: "label", active: "active", primary: "isPrimaryCta", navbar: "showInNavbar" },
-          prepare: ({ platform, label, active, primary, navbar }) => ({
+          select: { platform: "platform", label: "label", active: "active", navbar: "showInNavbar", primary: "isPrimaryCta" },
+          prepare: ({ platform, label, active, navbar, primary }) => ({
             title: label || platform || "Red social",
-            subtitle: `${primary ? "⭐ CTA principal · " : ""}${navbar ? "Navbar · " : ""}${active ? "Activa" : "Inactiva"}`,
+            subtitle: `${primary ? "Hero CTA · " : ""}${navbar ? "Navbar · " : ""}${active ? "Activa" : "Inactiva"}`,
           }),
         },
       }],
-      validation: (Rule) =>
-        Rule.custom((links) => {
-          if (!Array.isArray(links)) return true;
-          const primaryCount = links.filter(
-            (link) => (link as { isPrimaryCta?: boolean })?.isPrimaryCta === true
-          ).length;
-          if (primaryCount > 1) {
-            return `Solo una red social puede ser CTA principal. Actualmente hay ${primaryCount} marcadas.`;
-          }
-          return true;
-        }),
     }),
     defineField({
       name: "horarios",

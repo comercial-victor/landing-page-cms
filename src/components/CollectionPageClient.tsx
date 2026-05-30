@@ -97,7 +97,8 @@ export default function CollectionPageClient({
           collections={collections}
           activeCollectionId={collection._id}
           brand={brand}
-          externalQuery=""
+          externalQuery={catalogQueryDraft}
+          onExternalQueryChange={setCatalogQueryDraft}
           hideLocalSearch
           kicker="Productos de la colección"
           title={<>Elige, cotiza<br />y comparte.</>}

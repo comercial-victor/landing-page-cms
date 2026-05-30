@@ -2,8 +2,8 @@
 
 import type { Hero as HeroType } from "@/types";
 import { useEffect, useRef, useState } from "react";
-import type { MouseEvent } from "react";
-import { ContactIcon, getContactHref, type ContactLink } from "@/lib/social";
+import type { CSSProperties, MouseEvent } from "react";
+import { ContactIcon, getContactColor, getContactHref, type ContactLink } from "@/lib/social";
 
 interface HeroProps {
   hero: HeroType | null;
@@ -42,7 +42,13 @@ export default function Hero({ hero, brand }: HeroProps) {
     isPrimaryCta: true,
   };
   const primaryUrl = getContactHref(primaryContact, ctaMensaje);
-  const ctaTexto = hero?.ctaPrincipalTexto || `Cotizar por ${primaryContact.label}`;
+  const primaryColor = getContactColor(primaryContact);
+  const primaryLabel = primaryContact.label || "WhatsApp";
+  const rawCtaTexto = hero?.ctaPrincipalTexto || `Cotizar por ${primaryLabel}`;
+  const ctaTexto =
+    primaryContact.platform !== "whatsapp" && /whatsapp/i.test(rawCtaTexto)
+      ? rawCtaTexto.replace(/whatsapp/gi, primaryLabel)
+      : rawCtaTexto;
 
   // Parse trust items as "num · label" pairs
   const trustParsed = trustItems.map((item) => {
@@ -137,7 +143,13 @@ export default function Hero({ hero, brand }: HeroProps) {
           <p className="hero-sub">{subtitulo}</p>
 
           <div className="hero-cta">
-            <a className={`btn ${primaryContact.platform === "whatsapp" ? "btn-wa" : "btn-plum"} btn-lg`} href={primaryUrl} target="_blank" rel="noopener noreferrer">
+            <a
+              className="btn btn-social btn-lg"
+              href={primaryUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ "--social-color": primaryColor } as CSSProperties}
+            >
               <ContactIcon platform={primaryContact.platform} size={19} />
               {ctaTexto}
             </a>
