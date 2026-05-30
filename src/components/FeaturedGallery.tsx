@@ -3,10 +3,11 @@
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
-import type { FeaturedGalleryItem } from "@/types";
+import type { FeaturedGalleryCtaAction, FeaturedGalleryItem } from "@/types";
 import { originalImageUrl, urlFor } from "@/lib/sanity";
 import { getYouTubeEmbed } from "@/lib/youtube";
-import { ContactIcon, getContactHref, type ContactLink } from "@/lib/social";
+import { getContactHref, type ContactLink } from "@/lib/social";
+import { CtaIcon } from "@/lib/ctaIcons";
 import ImageLightbox from "./ImageLightbox";
 
 interface FeaturedGalleryProps {
@@ -14,6 +15,7 @@ interface FeaturedGalleryProps {
   primaryContact: ContactLink;
   title?: string;
   subtitle?: string;
+  themeColor?: string;
 }
 
 const fallbackItems: FeaturedGalleryItem[] = [
@@ -36,8 +38,9 @@ const fallbackItems: FeaturedGalleryItem[] = [
     mediaOrientation: "vertical",
     meta: "Artesanal",
     ctaText: "Ver catálogo",
-    ctaAction: "scroll",
-    targetSection: "catalogo",
+    ctaAction: "customUrl",
+    ctaHref: "/catalog",
+    ctaIcon: "catalog",
     active: true,
   },
   {
@@ -83,9 +86,71 @@ function getItemOrientation(item: FeaturedGalleryItem) {
   return item.mediaOrientation || (item.mediaType === "youtube" ? "horizontal" : "vertical");
 }
 
+function getItemCtaAction(item: FeaturedGalleryItem): FeaturedGalleryCtaAction {
+  if (item.ctaAction === "customUrl") return "customUrl";
+  if (item.ctaAction === "scroll") return "scroll";
+  return "whatsapp";
+}
+
 function getCtaLabel(item: FeaturedGalleryItem, contactLabel: string) {
   if (item.ctaText) return item.ctaText;
-  return item.ctaAction === "scroll" ? "Ver sección" : `Cotizar por ${contactLabel}`;
+  const action = getItemCtaAction(item);
+  if (action === "customUrl") return "Ver más";
+  if (action === "scroll") return "Ver sección";
+  return `Cotizar por ${contactLabel}`;
+}
+
+function normalizeHexColor(value?: string, fallback = "#D2386C") {
+  const raw = (value || "").trim();
+  const match = raw.match(/^#?([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/);
+  if (!match) return fallback;
+  const hex = match[1];
+  if (hex.length === 3) {
+    return `#${hex.split("").map((char) => char + char).join("")}`.toUpperCase();
+  }
+  return `#${hex}`.toUpperCase();
+}
+
+function hexToRgbTriplet(value?: string) {
+  const hex = normalizeHexColor(value).replace("#", "");
+  const number = Number.parseInt(hex, 16);
+  return `${(number >> 16) & 255}, ${(number >> 8) & 255}, ${number & 255}`;
+}
+
+function getReadableTextColor(value?: string) {
+  const hex = normalizeHexColor(value).replace("#", "");
+  const r = Number.parseInt(hex.slice(0, 2), 16) / 255;
+  const g = Number.parseInt(hex.slice(2, 4), 16) / 255;
+  const b = Number.parseInt(hex.slice(4, 6), 16) / 255;
+  const luminance = [r, g, b]
+    .map((channel) => (channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4))
+    .reduce((total, channel, index) => total + channel * [0.2126, 0.7152, 0.0722][index], 0);
+
+  return luminance > 0.62 ? "#211A2E" : "#FFFFFF";
+}
+
+function getCtaButtonStyle(item: FeaturedGalleryItem, sectionTheme?: string): CSSProperties {
+  const action = getItemCtaAction(item);
+  const fallbackColor = action === "whatsapp" ? "#25D366" : normalizeHexColor(sectionTheme, "#38BDF8");
+  const color = normalizeHexColor(item.ctaColor, fallbackColor);
+
+  return {
+    "--cta-color": color,
+    "--cta-color-rgb": hexToRgbTriplet(color),
+    "--cta-ink": getReadableTextColor(color),
+  } as CSSProperties;
+}
+
+function scrollToSection(id: string) {
+  const target = document.getElementById(id);
+  if (!target) return false;
+  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const offset = window.innerWidth < 700 ? 78 : 96;
+  window.scrollTo({
+    top: Math.max(0, target.getBoundingClientRect().top + window.scrollY - offset),
+    behavior: reduceMotion ? "auto" : "smooth",
+  });
+  return true;
 }
 
 function FeaturedMedia({
@@ -199,7 +264,7 @@ function FeaturedMedia({
   );
 }
 
-export default function FeaturedGallery({ items, primaryContact, title, subtitle }: FeaturedGalleryProps) {
+export default function FeaturedGallery({ items, primaryContact, title, subtitle, themeColor }: FeaturedGalleryProps) {
   const visibleItems = useMemo(() => {
     const activeItems = items.filter((item) => item.active !== false);
     return activeItems.length ? activeItems : fallbackItems;
@@ -221,6 +286,11 @@ export default function FeaturedGallery({ items, primaryContact, title, subtitle
   const modalMedia = modalItem ? getItemMedia(modalItem) : null;
   const modalOrientation = modalItem ? getItemOrientation(modalItem) : "vertical";
   const contactLabel = primaryContact.label || "WhatsApp";
+  const sectionThemeColor = normalizeHexColor(themeColor, "#D2386C");
+  const sectionStyle = {
+    "--featured-theme": sectionThemeColor,
+    "--featured-theme-rgb": hexToRgbTriplet(sectionThemeColor),
+  } as CSSProperties;
 
   const goTo = useCallback((index: number) => {
     if (!visibleItems.length) return;
@@ -257,30 +327,54 @@ export default function FeaturedGallery({ items, primaryContact, title, subtitle
     }, 360);
   }, []);
 
-  const runCta = useCallback((item: FeaturedGalleryItem) => {
-    if (item.ctaHref) {
-      window.open(item.ctaHref, "_blank", "noopener,noreferrer");
+  const openCustomHref = useCallback((href: string) => {
+    const rawHref = href.trim();
+    if (!rawHref) return;
+
+    if (rawHref.startsWith("#")) {
+      if (scrollToSection(rawHref.slice(1))) closeModal();
       return;
     }
 
-    if (item.ctaAction === "scroll") {
-      const id = item.targetSection;
-      const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      const target = id ? document.getElementById(id) : null;
-      if (target) {
-        const offset = window.innerWidth < 700 ? 78 : 96;
-        window.scrollTo({
-          top: Math.max(0, target.getBoundingClientRect().top + window.scrollY - offset),
-          behavior: reduceMotion ? "auto" : "smooth",
-        });
+    let parsed: URL;
+    try {
+      parsed = new URL(rawHref, window.location.origin);
+    } catch {
+      return;
+    }
+
+    const sameOrigin = parsed.origin === window.location.origin;
+    if (sameOrigin) {
+      const targetPath = `${parsed.pathname}${parsed.search}${parsed.hash}`;
+      if (parsed.pathname === window.location.pathname && parsed.hash) {
+        if (scrollToSection(parsed.hash.slice(1))) closeModal();
+        return;
       }
+      window.location.href = targetPath;
+      return;
+    }
+
+    window.open(parsed.href, "_blank", "noopener,noreferrer");
+  }, [closeModal]);
+
+  const runCta = useCallback((item: FeaturedGalleryItem) => {
+    const action = getItemCtaAction(item);
+
+    if ((action === "customUrl" || action === "scroll") && item.ctaHref) {
+      openCustomHref(item.ctaHref);
+      return;
+    }
+
+    if (action === "scroll") {
+      const id = item.targetSection;
+      if (id) scrollToSection(id);
       closeModal();
       return;
     }
 
     const message = item.whatsappMessage || `Hola! Quisiera información sobre ${item.titulo}.`;
     window.open(getContactHref(primaryContact, message), "_blank", "noopener,noreferrer");
-  }, [closeModal, primaryContact]);
+  }, [closeModal, openCustomHref, primaryContact]);
 
   useEffect(() => {
     if (activeIndex > visibleItems.length - 1) setActiveIndex(0);
@@ -339,7 +433,7 @@ export default function FeaturedGallery({ items, primaryContact, title, subtitle
 
   return (
     <>
-      <section className="section featured-gallery" id="novedades">
+      <section className="section featured-gallery" id="novedades" style={sectionStyle}>
         {activePreviewSrc && (
           <div className="featured-ambient" aria-hidden="true">
             <Image
@@ -481,8 +575,8 @@ export default function FeaturedGallery({ items, primaryContact, title, subtitle
               {activeItem.descripcion && <p>{activeItem.descripcion}</p>}
             </div>
             {(activeItem.ctaText || activeItem.ctaHref || activeItem.ctaAction) && (
-              <button className={`btn ${activeItem.ctaAction === "scroll" || primaryContact.platform !== "whatsapp" ? "btn-plum" : "btn-wa"} btn-lg`} onClick={() => runCta(activeItem)}>
-                {activeItem.ctaAction !== "scroll" && <ContactIcon platform={primaryContact.platform} size={18} />}
+              <button className="btn btn-themed-cta btn-lg" style={getCtaButtonStyle(activeItem, sectionThemeColor)} onClick={() => runCta(activeItem)}>
+                <CtaIcon icon={activeItem.ctaIcon} action={getItemCtaAction(activeItem)} contactPlatform={primaryContact.platform} size={18} />
                 {getCtaLabel(activeItem, contactLabel)}
               </button>
             )}
@@ -531,8 +625,8 @@ export default function FeaturedGallery({ items, primaryContact, title, subtitle
               <div className="section-kicker">{modalItem.meta || (modalItem.mediaType === "youtube" ? "Video destacado" : "Imagen destacada")}</div>
               <h3 id="featured-modal-title">{modalItem.titulo}</h3>
               {modalItem.descripcion && <p>{modalItem.descripcion}</p>}
-              <button className={`btn ${modalItem.ctaAction === "scroll" || primaryContact.platform !== "whatsapp" ? "btn-plum" : "btn-wa"} btn-lg`} onClick={() => runCta(modalItem)}>
-                {modalItem.ctaAction !== "scroll" && <ContactIcon platform={primaryContact.platform} size={18} />}
+              <button className="btn btn-themed-cta btn-lg" style={getCtaButtonStyle(modalItem, sectionThemeColor)} onClick={() => runCta(modalItem)}>
+                <CtaIcon icon={modalItem.ctaIcon} action={getItemCtaAction(modalItem)} contactPlatform={primaryContact.platform} size={18} />
                 {getCtaLabel(modalItem, contactLabel)}
               </button>
             </div>

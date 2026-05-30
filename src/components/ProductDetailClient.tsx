@@ -2,23 +2,47 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import type { ProductoFlat } from "@/types";
+import type { Collection, ProductoFlat } from "@/types";
 import { originalImageUrl, urlFor } from "@/lib/sanity";
 import { waLink } from "@/lib/utils";
 import { ProductImage, Badges, PriceDisplay, PresentacionesList } from "@/components/ProductHelpers";
 import { getContactHref, type ContactLink } from "@/lib/social";
 import ImageLightbox from "@/components/ImageLightbox";
+import { collectionPath } from "@/lib/collections";
 
 interface ProductDetailClientProps {
   producto: ProductoFlat;
   whatsapp: string;
   contact?: ContactLink;
+  backHref?: string;
+  backLabel?: string;
+  collectionContexts?: Collection[];
 }
 
-export default function ProductDetailClient({ producto, whatsapp, contact }: ProductDetailClientProps) {
+function productBelongsToCollection(producto: ProductoFlat, collection: Collection) {
+  return collection.items?.some((item) => {
+    const itemProduct = item.producto;
+    if (!itemProduct) return false;
+    return (
+      itemProduct._id === producto._id ||
+      itemProduct.slug?.current === producto.slug?.current ||
+      Boolean(itemProduct.idExcel && producto.idExcel && itemProduct.idExcel === producto.idExcel)
+    );
+  });
+}
+
+export default function ProductDetailClient({
+  producto,
+  whatsapp,
+  contact,
+  backHref = "/catalog",
+  backLabel = "Seguir viendo",
+  collectionContexts = [],
+}: ProductDetailClientProps) {
   const [activeImgIdx, setActiveImgIdx] = useState(0);
   const [zoomed, setZoomed] = useState(false);
   const [imageLoading, setImageLoading] = useState(false);
+  const [resolvedBack, setResolvedBack] = useState({ href: backHref, label: backLabel });
 
   useEffect(() => {
     setActiveImgIdx(0);
@@ -28,6 +52,29 @@ export default function ProductDetailClient({ producto, whatsapp, contact }: Pro
   useEffect(() => {
     setImageLoading(Boolean(producto.imagenes?.[activeImgIdx]));
   }, [activeImgIdx, producto]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const collectionSlug = params.get("coleccion");
+    if (!collectionSlug) {
+      setResolvedBack({ href: backHref, label: backLabel });
+      return;
+    }
+
+    const collection = collectionContexts.find(
+      (item) => item.slug?.current === collectionSlug && productBelongsToCollection(producto, item),
+    );
+
+    if (!collection) {
+      setResolvedBack({ href: backHref, label: backLabel });
+      return;
+    }
+
+    setResolvedBack({
+      href: collectionPath(collection),
+      label: `Seguir viendo ${collection.titulo}`,
+    });
+  }, [backHref, backLabel, collectionContexts, producto]);
 
   const allImages = producto.imagenes || [];
   const hasMultipleImages = allImages.length > 1;
@@ -156,7 +203,7 @@ export default function ProductDetailClient({ producto, whatsapp, contact }: Pro
             <a className={`btn ${activeContact.platform === "whatsapp" ? "btn-wa" : "btn-plum"} btn-lg`} href={contactUrl} target="_blank" rel="noopener noreferrer">
               Pedir por {activeContact.label}
             </a>
-            <a className="btn btn-ghost" href="/catalog">Seguir viendo</a>
+            <a className="btn btn-ghost" href={resolvedBack.href}>{resolvedBack.label}</a>
           </div>
         </div>
       </div>

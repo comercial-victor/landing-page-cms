@@ -58,6 +58,7 @@ export default async function HomePage() {
         items={featuredGallery?.items || []}
         title={featuredGallery?.titulo}
         subtitle={featuredGallery?.subtitulo}
+        themeColor={featuredGallery?.themeColor}
         primaryContact={brand.primaryContact}
       />
       <Showcase

@@ -7,8 +7,29 @@ import {
   Sparkles,
   Type,
 } from "lucide-react";
+import { CtaIconInput } from "../components/CtaIconInput";
+import { CTA_ICON_OPTIONS } from "../../src/lib/ctaIconOptions";
 
 const PRODUCT_SLUG_MAX_LENGTH = 96;
+
+const HEX_COLOR_REGEX = /^#(?:[0-9a-fA-F]{3}){1,2}$/;
+
+function isValidHexColor(value?: string) {
+  return !value || HEX_COLOR_REGEX.test(value);
+}
+
+function isValidCtaHref(value?: string) {
+  if (!value) return true;
+  const trimmed = value.trim();
+  if (trimmed.startsWith("/") || trimmed.startsWith("#")) return true;
+  try {
+    const parsed = new URL(trimmed);
+    return ["http:", "https:", "mailto:", "tel:"].includes(parsed.protocol);
+  } catch {
+    return false;
+  }
+}
+
 
 function slugifyForUrl(value: string): string {
   return value
@@ -61,6 +82,15 @@ export const featuredGallerySchema = defineType({
   fields: [
     defineField({ name: "titulo", title: "Título de la sección", type: "string", group: "contenido", initialValue: "Ideas nuevas para celebrar" }),
     defineField({ name: "subtitulo", title: "Descripción breve de la sección", type: "text", group: "contenido", rows: 2 }),
+    defineField({
+      name: "themeColor",
+      title: "Color temático de la sección",
+      type: "string",
+      group: "contenido",
+      initialValue: "#D2386C",
+      description: "Usa un color HEX. Ej: #F97316 para naranja. El fondo y las cards tomarán una tonalidad de este color.",
+      validation: (Rule) => Rule.custom((value) => isValidHexColor(value) || "Ingresa un color HEX válido. Ej: #F97316"),
+    }),
     defineField({ name: "active", title: "Sección activa", type: "boolean", group: "estado", initialValue: true }),
     defineField({
       name: "items",
@@ -158,7 +188,6 @@ export const featuredGallerySchema = defineType({
           }),
           defineField({ name: "meta", title: "Etiqueta / meta opcional", type: "string", description: "Ej: Nuevo, Video, Campaña escolar" }),
           defineField({ name: "ctaText", title: "Texto del botón CTA", type: "string", initialValue: "Cotizar ahora" }),
-          defineField({ name: "ctaHref", title: "URL opcional del CTA", type: "url", description: "Si se completa, el botón abre este enlace." }),
           defineField({
             name: "ctaAction",
             title: "Acción del CTA",
@@ -167,22 +196,51 @@ export const featuredGallerySchema = defineType({
               layout: "radio",
               list: [
                 { title: "WhatsApp", value: "whatsapp" },
-                { title: "Scroll interno", value: "scroll" },
+                { title: "URL personalizada", value: "customUrl" },
               ],
             },
             initialValue: "whatsapp",
+          }),
+          defineField({
+            name: "ctaHref",
+            title: "URL personalizada del CTA",
+            type: "string",
+            description: "Acepta rutas internas como /colecciones/dia-del-padre, enlaces con #seccion o URLs completas https://...",
+            hidden: ({ parent }) => parent?.ctaAction !== "customUrl",
+            validation: (Rule) =>
+              Rule.custom((value, context) => {
+                const parent = context.parent as { ctaAction?: string };
+                if (parent?.ctaAction === "customUrl" && !value) return "Agrega la URL del CTA.";
+                return isValidCtaHref(value) || "Ingresa una URL válida. Ej: /colecciones/dia-del-padre o https://comercial-victor.com/colecciones/dia-del-padre";
+              }),
           }),
           defineField({
             name: "whatsappMessage",
             title: "Mensaje personalizado de WhatsApp",
             type: "text",
             rows: 2,
-            hidden: ({ parent }) => parent?.ctaAction === "scroll",
+            hidden: ({ parent }) => parent?.ctaAction !== "whatsapp",
+          }),
+          defineField({
+            name: "ctaIcon",
+            title: "Icono del CTA",
+            type: "string",
+            description: "Elige un icono para mostrar al lado del texto del botón.",
+            options: { list: CTA_ICON_OPTIONS.map(({ title, value }) => ({ title, value })) },
+            components: { input: CtaIconInput },
+          }),
+          defineField({
+            name: "ctaColor",
+            title: "Color del CTA",
+            type: "string",
+            description: "Color HEX opcional. Ej: #38BDF8 para celeste. Si lo dejas vacío se usa un color automático según la acción.",
+            validation: (Rule) => Rule.custom((value) => isValidHexColor(value) || "Ingresa un color HEX válido. Ej: #38BDF8"),
           }),
           defineField({
             name: "targetSection",
-            title: "Sección destino",
+            title: "Sección destino legacy",
             type: "string",
+            description: "Campo antiguo. Ya no se muestra en Studio, pero se conserva para no romper novedades existentes.",
             options: {
               list: [
                 { title: "Novedades", value: "novedades" },
@@ -191,7 +249,7 @@ export const featuredGallerySchema = defineType({
                 { title: "Contacto / Ubicación", value: "contacto" },
               ],
             },
-            hidden: ({ parent }) => parent?.ctaAction !== "scroll",
+            hidden: true,
           }),
           defineField({ name: "active", title: "Card activa", type: "boolean", initialValue: true }),
           defineField({ name: "orden", title: "Orden", type: "number", initialValue: 0 }),

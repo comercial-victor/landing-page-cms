@@ -20,6 +20,8 @@ interface CatalogoProps {
   categorias: Categoria[];
   collections?: Collection[];
   activeCollectionId?: string;
+  activeCollectionSlug?: string;
+  activeCollectionThemeColor?: string;
   brand: { whatsapp: string; primaryContact?: ContactLink };
   externalQuery?: string;
   onExternalQueryChange?: (value: string) => void;
@@ -48,12 +50,25 @@ interface CategoryFilter {
   subcategories: SubcategoryFilter[];
 }
 
-function ProductCard({ producto }: { producto: ProductoFlat }) {
+function ProductCard({
+  producto,
+  collectionContextSlug,
+  collectionThemeColor,
+}: {
+  producto: ProductoFlat;
+  collectionContextSlug?: string;
+  collectionThemeColor?: string;
+}) {
+  const cardStyle = collectionThemeColor
+    ? ({ "--pcard-theme": collectionThemeColor } as CSSProperties)
+    : undefined;
+
   return (
     <Link
       className="pcard"
-      href={productPath(producto)}
+      href={productPath(producto, { collectionSlug: collectionContextSlug })}
       aria-label={`Ver detalle de ${producto.nombre}`}
+      style={cardStyle}
     >
       <div className="pcard-img">
         <div className="pcard-img-inner">
@@ -111,6 +126,8 @@ export default function Catalogo({
   categorias,
   collections,
   activeCollectionId,
+  activeCollectionSlug: activeCollectionSlugProp,
+  activeCollectionThemeColor,
   brand,
   externalQuery,
   onExternalQueryChange,
@@ -151,6 +168,14 @@ export default function Catalogo({
   }, [collections]);
 
   const showCollections = Boolean(visibleCollections.length);
+
+  const activeCollection = useMemo(() => {
+    if (!activeCollectionId) return null;
+    return visibleCollections.find((collection) => collection._id === activeCollectionId) || null;
+  }, [activeCollectionId, visibleCollections]);
+
+  const activeCollectionSlug = activeCollectionSlugProp || activeCollection?.slug?.current;
+  const activeThemeColor = activeCollectionThemeColor || activeCollection?.themeColor;
 
   const categoryGroups = useMemo<CategoryFilter[]>(() => {
     const byCategory = new Map<
@@ -236,12 +261,11 @@ export default function Catalogo({
 
   const railAccentColor = useMemo(() => {
     if (showCollections) {
-      const activeCollection = visibleCollections.find((collection) => collection._id === activeCollectionId);
       return activeCollection?.themeColor || visibleCollections[0]?.themeColor || "var(--plum)";
     }
 
     return activeCategory?.color || expandedCategory?.color || "var(--plum)";
-  }, [activeCollectionId, activeCategory?.color, expandedCategory?.color, showCollections, visibleCollections]);
+  }, [activeCategory?.color, activeCollection?.themeColor, expandedCategory?.color, showCollections, visibleCollections]);
 
   const orderedVisibleCollections = useMemo(() => {
     if (!activeCollectionId) return visibleCollections;
@@ -1068,7 +1092,7 @@ export default function Catalogo({
               ) : (
                 <div className={`prod-grid cols-${cols}`}>
                   {filtrados.map((p) => (
-                    <ProductCard key={p._id} producto={p} />
+                    <ProductCard key={p._id} producto={p} collectionContextSlug={activeCollectionSlug} collectionThemeColor={activeThemeColor} />
                   ))}
                 </div>
               )}

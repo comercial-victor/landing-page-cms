@@ -96,6 +96,8 @@ export default function CollectionPageClient({
           categorias={categorias}
           collections={collections}
           activeCollectionId={collection._id}
+          activeCollectionSlug={collection.slug?.current}
+          activeCollectionThemeColor={themeColor}
           brand={brand}
           externalQuery={catalogQueryDraft}
           onExternalQueryChange={setCatalogQueryDraft}

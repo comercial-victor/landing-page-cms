@@ -64,7 +64,7 @@ export interface HeroFloatingCard {
 
 // ─── Galería destacada ─────────────────────────────────────────────
 export type FeaturedGalleryMediaType = "image" | "youtube";
-export type FeaturedGalleryCtaAction = "whatsapp" | "scroll";
+export type FeaturedGalleryCtaAction = "whatsapp" | "customUrl" | "scroll";
 export type FeaturedGalleryMediaOrientation = "vertical" | "horizontal";
 
 export interface FeaturedGalleryItem {
@@ -83,6 +83,8 @@ export interface FeaturedGalleryItem {
   ctaHref?: string;
   ctaAction?: FeaturedGalleryCtaAction;
   whatsappMessage?: string;
+  ctaIcon?: string;
+  ctaColor?: string;
   targetSection?: string;
   active: boolean;
 }
@@ -91,6 +93,7 @@ export interface FeaturedGallery {
   _id: string;
   titulo?: string;
   subtitulo?: string;
+  themeColor?: string;
   active: boolean;
   items: FeaturedGalleryItem[];
 }

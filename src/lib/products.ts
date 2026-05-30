@@ -30,7 +30,13 @@ function fallbackProductSlug(producto: Pick<ProductoFlat, "_id" | "idExcel" | "n
   return `${safeBase}-${suffix}`;
 }
 
-export function productPath(producto: Pick<ProductoFlat, "_id" | "idExcel" | "slug" | "nombre">) {
+export function productPath(
+  producto: Pick<ProductoFlat, "_id" | "idExcel" | "slug" | "nombre">,
+  options?: { collectionSlug?: string },
+) {
   const slug = producto.slug?.current || fallbackProductSlug(producto);
-  return `/producto/${slug}`;
+  const path = `/producto/${slug}`;
+  return options?.collectionSlug
+    ? `${path}?coleccion=${encodeURIComponent(options.collectionSlug)}`
+    : path;
 }

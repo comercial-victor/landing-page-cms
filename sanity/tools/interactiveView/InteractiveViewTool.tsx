@@ -1,31 +1,49 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useClient } from "sanity";
 import { rankBySearch, searchScore } from "../../../src/lib/search";
+import { CTA_ICON_OPTIONS, isSocialCtaIcon, type CtaIconValue } from "../../../src/lib/ctaIconOptions";
 import {
   AlertTriangle,
   ChevronDown,
   ChevronRight,
   ClipboardList,
+  Clock,
+  Crown,
   ExternalLink,
   Eye,
   EyeOff,
   FolderTree,
   GalleryHorizontalEnd,
+  Ghost,
+  Gift,
+  GraduationCap,
+  Heart,
+  Home,
   ImageIcon,
   ImagePlus,
   Layers,
+  Layers3,
   Loader2,
+  MapPin,
+  Megaphone,
   Package,
   Palette,
+  PartyPopper,
   Pencil,
   Plus,
+  Rabbit,
   RefreshCw,
   RotateCcw,
   Save,
+  School,
   Search,
+  ShoppingBag,
+  ShoppingCart,
+  Sparkles,
   Star,
   Tag,
   Trash2,
+  TreePine,
   Upload,
   WandSparkles,
   X,
@@ -66,7 +84,7 @@ interface SCollection {
 }
 type FeaturedMediaType = "image" | "youtube";
 type FeaturedOrientation = "vertical" | "horizontal";
-type FeaturedCtaAction = "whatsapp" | "scroll";
+type FeaturedCtaAction = "whatsapp" | "customUrl" | "scroll";
 type DestacadoUbicacion = "preCatalog";
 interface SFeaturedGalleryItem {
   _key: string;
@@ -84,6 +102,8 @@ interface SFeaturedGalleryItem {
   ctaHref?: string;
   ctaAction?: FeaturedCtaAction;
   whatsappMessage?: string;
+  ctaIcon?: string;
+  ctaColor?: string;
   targetSection?: string;
   active?: boolean;
   orden?: number;
@@ -92,6 +112,7 @@ interface SFeaturedGallery {
   _id: string;
   titulo?: string;
   subtitulo?: string;
+  themeColor?: string;
   active?: boolean;
   items?: SFeaturedGalleryItem[];
 }
@@ -188,6 +209,7 @@ function makeDefaultFeaturedGallery(): SFeaturedGallery {
     _id: "featuredGallery",
     titulo: "Ideas nuevas para celebrar",
     subtitulo: "",
+    themeColor: C.plum,
     active: true,
     items: [],
   };
@@ -203,6 +225,8 @@ function makeNewFeaturedItem(): SFeaturedGalleryItem {
     meta: "",
     ctaText: "Cotizar ahora",
     ctaAction: "whatsapp",
+    ctaIcon: "whatsapp",
+    ctaColor: "",
     targetSection: "catalogo",
     active: true,
     orden: 0,
@@ -270,6 +294,81 @@ const normalizeHexColor = (value?: string) => {
   return /^#[0-9a-fA-F]{6}$/.test(normalized) ? normalized.toUpperCase() : C.plum;
 };
 
+const isHexColor = (value?: string) => /^#[0-9a-fA-F]{6}$/.test((value || "").trim());
+const getFeaturedCtaAction = (action?: FeaturedCtaAction): "whatsapp" | "customUrl" => action === "customUrl" || action === "scroll" ? "customUrl" : "whatsapp";
+
+const groupedCtaIconOptions = CTA_ICON_OPTIONS.reduce<Record<string, typeof CTA_ICON_OPTIONS[number][]>>((acc, option) => {
+  acc[option.group] = [...(acc[option.group] || []), option];
+  return acc;
+}, {});
+
+function SocialCtaIconPreview({ value, size = 18 }: { value: string; size?: number }) {
+  if (value === "whatsapp") {
+    return (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <path d="M20.52 3.48A11.86 11.86 0 0 0 12.07 0C5.5 0 .15 5.33.15 11.88c0 2.1.55 4.15 1.6 5.95L.05 24l6.32-1.66a11.94 11.94 0 0 0 5.7 1.45h.01c6.57 0 11.92-5.33 11.92-11.89 0-3.17-1.24-6.16-3.48-8.42Zm-8.44 18.3h-.01c-1.7 0-3.37-.46-4.82-1.32l-.35-.21-3.75.98 1-3.65-.24-.38a9.86 9.86 0 0 1-1.5-5.32c0-5.45 4.45-9.88 9.92-9.88 2.65 0 5.14 1.03 7.01 2.9a9.82 9.82 0 0 1 2.9 7c0 5.45-4.45 9.88-9.91 9.88Zm5.43-7.4c-.3-.15-1.76-.86-2.03-.96-.27-.1-.47-.15-.67.15-.2.3-.77.96-.94 1.16-.17.2-.35.22-.65.07-.3-.15-1.25-.46-2.39-1.47a8.95 8.95 0 0 1-1.65-2.05c-.17-.3-.02-.46.13-.61.13-.13.3-.35.45-.52.15-.18.2-.3.3-.5.1-.2.05-.37-.02-.52-.08-.15-.67-1.6-.92-2.2-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.8.37-.27.3-1.04 1.02-1.04 2.49s1.07 2.89 1.22 3.09c.15.2 2.1 3.2 5.09 4.48.71.3 1.27.49 1.7.63.71.23 1.36.2 1.88.12.57-.08 1.76-.72 2-1.41.25-.7.25-1.29.18-1.42-.08-.12-.28-.2-.57-.35Z" />
+      </svg>
+    );
+  }
+  if (value === "instagram") {
+    return (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <rect x="3" y="3" width="18" height="18" rx="5" />
+        <circle cx="12" cy="12" r="4" />
+        <circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none" />
+      </svg>
+    );
+  }
+  if (value === "facebook") {
+    return (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <path d="M24 12.07C24 5.4 18.63 0 12 0S0 5.4 0 12.07c0 6.02 4.39 11.01 10.13 11.93v-8.44H7.08v-3.49h3.05V9.41c0-3.03 1.79-4.7 4.53-4.7 1.31 0 2.68.24 2.68.24v2.96h-1.51c-1.49 0-1.96.93-1.96 1.89v2.27h3.33l-.53 3.49h-2.8V24C19.61 23.08 24 18.09 24 12.07Z" />
+      </svg>
+    );
+  }
+  if (value === "messenger") {
+    return (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <path d="M12 0C5.24 0 0 4.95 0 11.63c0 3.49 1.43 6.5 3.77 8.58V24l3.45-1.9c1.46.4 3.07.61 4.78.61 6.76 0 12-4.95 12-11.63S18.76 0 12 0Zm1.2 15.65-3.05-3.24-5.95 3.24 6.52-6.92 3.13 3.24 5.87-3.24-6.52 6.92Z" />
+      </svg>
+    );
+  }
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 1 1-2.89-2.89c.3 0 .6.05.88.14V9.4a6.34 6.34 0 1 0 5.46 6.27v-7a8.16 8.16 0 0 0 4.77 1.52v-3.5Z" />
+    </svg>
+  );
+}
+
+function CtaIconPreview({ value, size = 18 }: { value?: string; size?: number }) {
+  const props = { size, strokeWidth: 2.25, "aria-hidden": true };
+  if (value && isSocialCtaIcon(value)) return <SocialCtaIconPreview value={value} size={size} />;
+  switch (value as CtaIconValue) {
+    case "home": return <Home {...props} />;
+    case "sparkles": return <Sparkles {...props} />;
+    case "collection": return <Layers3 {...props} />;
+    case "catalog": return <ShoppingBag {...props} />;
+    case "clock": return <Clock {...props} />;
+    case "location": return <MapPin {...props} />;
+    case "external": return <ExternalLink {...props} />;
+    case "gift": return <Gift {...props} />;
+    case "party": return <PartyPopper {...props} />;
+    case "megaphone": return <Megaphone {...props} />;
+    case "shoppingCart": return <ShoppingCart {...props} />;
+    case "heart":
+    case "valentine": return <Heart {...props} />;
+    case "star": return <Star {...props} />;
+    case "crown": return <Crown {...props} />;
+    case "halloween": return <Ghost {...props} />;
+    case "christmas": return <TreePine {...props} />;
+    case "newYear": return <Sparkles {...props} />;
+    case "teacher": return <GraduationCap {...props} />;
+    case "school": return <School {...props} />;
+    case "easter": return <Rabbit {...props} />;
+    default: return <Sparkles {...props} />;
+  }
+}
+
 // ── Main Component ────────────────────────────────────────────────
 export function InteractiveViewTool() {
   const client = useClient({ apiVersion: "2026-04-24" });
@@ -316,10 +415,10 @@ export function InteractiveViewTool() {
         items[]{_key,titulo,descripcion,visible,mostrarEnPortada,producto->{_id,idExcel,nombre,visible,tags,imagenes[]{_key,asset},subcategoria->{_id,nombre,categoria->{_id,nombre,color}}}}
       }`),
       client.fetch<SFeaturedGallery | null>(`*[_type=="featuredGallery" && _id=="featuredGallery"][0]{
-        _id,titulo,subtitulo,active,
+        _id,titulo,subtitulo,themeColor,active,
         items[]{
           _key,titulo,descripcion,mediaType,mediaOrientation,imagen{asset},alt,focalPosition,
-          youtubeUrl,youtubeThumbnail{asset},meta,ctaText,ctaHref,ctaAction,whatsappMessage,targetSection,active,orden
+          youtubeUrl,youtubeThumbnail{asset},meta,ctaText,ctaHref,ctaAction,whatsappMessage,ctaIcon,ctaColor,targetSection,active,orden
         }
       }`),
     ]);
@@ -1363,9 +1462,11 @@ function FeaturedGalleryManager({
           youtubeUrl: item.youtubeUrl || "",
           meta: item.meta || "",
           ctaText: item.ctaText || "",
-          ctaHref: item.ctaHref || "",
-          ctaAction: item.ctaAction || "whatsapp",
-          whatsappMessage: item.whatsappMessage || "",
+          ctaHref: getFeaturedCtaAction(item.ctaAction) === "customUrl" ? item.ctaHref || (item.ctaAction === "scroll" && item.targetSection ? `/#${item.targetSection}` : "") : "",
+          ctaAction: getFeaturedCtaAction(item.ctaAction),
+          whatsappMessage: getFeaturedCtaAction(item.ctaAction) === "whatsapp" ? item.whatsappMessage || "" : "",
+          ctaIcon: item.ctaIcon || "",
+          ctaColor: item.ctaColor || "",
           targetSection: item.targetSection || "catalogo",
           active: item.active !== false,
           orden: index,
@@ -1380,6 +1481,7 @@ function FeaturedGalleryManager({
       const data = {
         titulo: draft.titulo || "Ideas nuevas para celebrar",
         subtitulo: draft.subtitulo || "",
+        themeColor: normalizeHexColor(draft.themeColor),
         active: draft.active !== false,
         items,
       };
@@ -1390,8 +1492,9 @@ function FeaturedGalleryManager({
         _id: "featuredGallery",
         titulo: data.titulo,
         subtitulo: data.subtitulo,
+        themeColor: data.themeColor,
         active: data.active,
-        items: sortedItems.map((item, index) => ({ ...item, orden: index })),
+        items: sortedItems.map((item, index) => ({ ...item, ctaAction: getFeaturedCtaAction(item.ctaAction), orden: index })),
       });
     } finally {
       setSaving(false);
@@ -1434,6 +1537,27 @@ function FeaturedGalleryManager({
             </Field>
             <Field label="Descripción breve">
               <textarea value={draft.subtitulo || ""} onChange={(event) => setField("subtitulo", event.target.value)} rows={3} style={{ ...inputStyle(C.white, "#d1d5db"), height: "auto", padding: "8px 12px" }} />
+            </Field>
+            <Field label="Color temático de sección">
+              <div style={{ display: "grid", gridTemplateColumns: "48px minmax(0, 1fr)", gap: 8, alignItems: "center" }}>
+                <input
+                  type="color"
+                  value={normalizeHexColor(draft.themeColor)}
+                  onChange={(event) => setField("themeColor", event.target.value.toUpperCase())}
+                  style={{ width: 48, height: 40, border: "1px solid #d1d5db", borderRadius: 10, background: C.white, padding: 3 }}
+                  aria-label="Color temático de sección"
+                />
+                <input
+                  value={draft.themeColor || ""}
+                  onChange={(event) => setField("themeColor", event.target.value.toUpperCase())}
+                  onBlur={(event) => setField("themeColor", normalizeHexColor(event.target.value))}
+                  style={inputStyle(C.white, "#d1d5db")}
+                  placeholder="#F97316"
+                />
+              </div>
+              <div style={{ marginTop: 8, borderRadius: 12, border: "1px solid #e5e7eb", background: `linear-gradient(135deg, ${normalizeHexColor(draft.themeColor)}33, #fff7ed)`, padding: 10, color: C.inkSoft, fontSize: 12 }}>
+                El fondo y las cards de Novedades tomarán una tonalidad suave de este color.
+              </div>
             </Field>
             <ToggleField label="Sección activa" help="Si está desactivada no se muestra en la web." value={draft.active !== false} onChange={(value) => setField("active", value)} />
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
@@ -1555,29 +1679,104 @@ function FeaturedGalleryManager({
                   <input value={selectedItem.ctaText || ""} onChange={(event) => setItem(selectedItem._key, { ctaText: event.target.value })} style={inputStyle(C.white, "#d1d5db")} />
                 </Field>
                 <Field label="Acción CTA">
-                  <select value={selectedItem.ctaAction || "whatsapp"} onChange={(event) => setItem(selectedItem._key, { ctaAction: event.target.value as FeaturedCtaAction })} style={inputStyle(C.white, "#d1d5db")}>
+                  <select
+                    value={getFeaturedCtaAction(selectedItem.ctaAction)}
+                    onChange={(event) => {
+                      const action = event.target.value as "whatsapp" | "customUrl";
+                      setItem(selectedItem._key, {
+                        ctaAction: action,
+                        ctaIcon: action === "whatsapp" ? selectedItem.ctaIcon || "whatsapp" : selectedItem.ctaIcon || "external",
+                        ctaHref: action === "customUrl" ? selectedItem.ctaHref || "" : "",
+                        whatsappMessage: action === "whatsapp" ? selectedItem.whatsappMessage || "" : "",
+                      });
+                    }}
+                    style={inputStyle(C.white, "#d1d5db")}
+                  >
                     <option value="whatsapp">WhatsApp</option>
-                    <option value="scroll">Scroll interno</option>
+                    <option value="customUrl">URL personalizada</option>
                   </select>
                 </Field>
-                {selectedItem.ctaAction === "scroll" ? (
-                  <Field label="Sección destino">
-                    <select value={selectedItem.targetSection || "catalogo"} onChange={(event) => setItem(selectedItem._key, { targetSection: event.target.value })} style={inputStyle(C.white, "#d1d5db")}>
-                      <option value="novedades">Novedades</option>
-                      <option value="catalogo">Catálogo</option>
-                      <option value="horarios">Horarios</option>
-                      <option value="contacto">Contacto</option>
-                    </select>
+                {getFeaturedCtaAction(selectedItem.ctaAction) === "whatsapp" ? (
+                  <Field label="Mensaje WhatsApp">
+                    <input value={selectedItem.whatsappMessage || ""} onChange={(event) => setItem(selectedItem._key, { whatsappMessage: event.target.value })} style={inputStyle(C.white, "#d1d5db")} placeholder="Mensaje que se enviará al abrir WhatsApp" />
                   </Field>
                 ) : (
-                  <Field label="Mensaje WhatsApp">
-                    <input value={selectedItem.whatsappMessage || ""} onChange={(event) => setItem(selectedItem._key, { whatsappMessage: event.target.value })} style={inputStyle(C.white, "#d1d5db")} />
+                  <Field label="URL personalizada del CTA">
+                    <input value={selectedItem.ctaHref || ""} onChange={(event) => setItem(selectedItem._key, { ctaHref: event.target.value })} style={inputStyle(C.white, "#d1d5db")} placeholder="/colecciones/dia-del-padre o https://..." />
                   </Field>
                 )}
               </div>
 
-              <Field label="URL CTA opcional">
-                <input value={selectedItem.ctaHref || ""} onChange={(event) => setItem(selectedItem._key, { ctaHref: event.target.value })} style={inputStyle(C.white, "#d1d5db")} placeholder="https://..." />
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 12 }}>
+                <Field label="Color del CTA">
+                  <div style={{ display: "grid", gridTemplateColumns: "48px minmax(0, 1fr)", gap: 8, alignItems: "center" }}>
+                    <input
+                      type="color"
+                      value={isHexColor(selectedItem.ctaColor) ? selectedItem.ctaColor! : getFeaturedCtaAction(selectedItem.ctaAction) === "whatsapp" ? "#25D366" : "#38BDF8"}
+                      onChange={(event) => setItem(selectedItem._key, { ctaColor: event.target.value.toUpperCase() })}
+                      style={{ width: 48, height: 40, border: "1px solid #d1d5db", borderRadius: 10, background: C.white, padding: 3 }}
+                      aria-label="Color del CTA"
+                    />
+                    <input
+                      value={selectedItem.ctaColor || ""}
+                      onChange={(event) => setItem(selectedItem._key, { ctaColor: event.target.value.toUpperCase() })}
+                      onBlur={(event) => setItem(selectedItem._key, { ctaColor: event.target.value ? normalizeHexColor(event.target.value) : "" })}
+                      style={inputStyle(C.white, "#d1d5db")}
+                      placeholder={getFeaturedCtaAction(selectedItem.ctaAction) === "whatsapp" ? "#25D366" : "#38BDF8"}
+                    />
+                  </div>
+                </Field>
+                <Field label="Vista rápida del CTA">
+                  <div style={{ display: "inline-flex", alignItems: "center", gap: 8, width: "fit-content", minHeight: 42, borderRadius: 999, padding: "0 16px", color: "#fff", fontWeight: 850, background: isHexColor(selectedItem.ctaColor) ? selectedItem.ctaColor : getFeaturedCtaAction(selectedItem.ctaAction) === "whatsapp" ? "#25D366" : "#38BDF8", boxShadow: `0 16px 30px ${(isHexColor(selectedItem.ctaColor) ? selectedItem.ctaColor : getFeaturedCtaAction(selectedItem.ctaAction) === "whatsapp" ? "#25D366" : "#38BDF8")}40` }}>
+                    <CtaIconPreview value={selectedItem.ctaIcon || (getFeaturedCtaAction(selectedItem.ctaAction) === "whatsapp" ? "whatsapp" : "external")} />
+                    {selectedItem.ctaText || "Texto CTA"}
+                  </div>
+                </Field>
+              </div>
+
+              <Field label="Icono del CTA">
+                <div style={{ display: "grid", gap: 12 }}>
+                  {Object.entries(groupedCtaIconOptions).map(([group, options]) => (
+                    <div key={group} style={{ display: "grid", gap: 8 }}>
+                      <div style={{ color: C.inkSoft, fontSize: 12, fontWeight: 850, letterSpacing: "0.08em", textTransform: "uppercase" }}>{group}</div>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 8 }}>
+                        {options.map((option) => {
+                          const active = selectedItem.ctaIcon === option.value;
+                          return (
+                            <button
+                              key={option.value}
+                              type="button"
+                              onClick={() => setItem(selectedItem._key, { ctaIcon: option.value })}
+                              style={{
+                                appearance: "none",
+                                border: `1px solid ${active ? C.plum : "#d1d5db"}`,
+                                background: active ? "#fff1f7" : C.white,
+                                borderRadius: 12,
+                                padding: "9px 10px",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 8,
+                                font: "inherit",
+                                fontWeight: active ? 850 : 650,
+                                color: active ? C.plum : C.ink,
+                                cursor: "pointer",
+                                textAlign: "left",
+                              }}
+                            >
+                              <CtaIconPreview value={option.value} />
+                              <span>{option.title}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                  {selectedItem.ctaIcon ? (
+                    <button type="button" onClick={() => setItem(selectedItem._key, { ctaIcon: "" })} style={{ ...btnStyle("secondary"), justifyContent: "center" }}>
+                      Quitar icono personalizado
+                    </button>
+                  ) : null}
+                </div>
               </Field>
             </div>
           ) : (

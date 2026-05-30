@@ -36,10 +36,10 @@ export async function getHero(): Promise<Hero | null> {
 export async function getFeaturedGallery(): Promise<FeaturedGallery | null> {
   return sanityClient.fetch(
     `*[_type == "featuredGallery" && _id == "featuredGallery" && active != false][0]{
-      _id, titulo, subtitulo, active,
+      _id, titulo, subtitulo, themeColor, active,
       "items": items[active != false]{
         _key, titulo, descripcion, mediaType, mediaOrientation, imagen, alt, focalPosition,
-        youtubeUrl, youtubeThumbnail, meta, ctaText, ctaHref, ctaAction, whatsappMessage, targetSection, active, orden
+        youtubeUrl, youtubeThumbnail, meta, ctaText, ctaHref, ctaAction, whatsappMessage, ctaIcon, ctaColor, targetSection, active, orden
       } | order(orden asc)
     }`,
     {},

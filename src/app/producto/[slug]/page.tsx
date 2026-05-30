@@ -6,9 +6,10 @@ import Footer from "@/components/Footer";
 import FabWhatsApp from "@/components/FabWhatsApp";
 import ScrollToTop from "@/components/ScrollToTop";
 import ProductDetailClient from "@/components/ProductDetailClient";
-import { getProductoPorSlug, getProductoSlugs, getSiteSettings, getTodosLosProductos } from "@/lib/queries";
+import { getColeccionPorSlug, getColecciones, getProductoPorSlug, getProductoSlugs, getSiteSettings, getTodosLosProductos } from "@/lib/queries";
 import { formatPhoneDisplay, getPrimaryContact, normalizeSocialLinks } from "@/lib/social";
 import { brandShareImage, siteUrl } from "@/lib/metadata";
+import { collectionPath } from "@/lib/collections";
 import { urlFor } from "@/lib/sanity";
 
 export async function generateStaticParams() {
@@ -57,15 +58,43 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   };
 }
 
-export default async function ProductoPage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function ProductoPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ slug: string }>;
+  searchParams?: Promise<{ coleccion?: string | string[] }>;
+}) {
   const { slug } = await params;
-  const [settings, producto, productos] = await Promise.all([
+  const resolvedSearchParams = await searchParams;
+  const collectionSlugParam = Array.isArray(resolvedSearchParams?.coleccion)
+    ? resolvedSearchParams?.coleccion[0]
+    : resolvedSearchParams?.coleccion;
+
+  const [settings, producto, productos, collectionContext, collectionContexts] = await Promise.all([
     getSiteSettings(),
     getProductoPorSlug(slug),
     getTodosLosProductos(),
+    collectionSlugParam ? getColeccionPorSlug(collectionSlugParam) : Promise.resolve(null),
+    getColecciones(),
   ]);
 
   if (!producto) notFound();
+
+  const validCollectionContext =
+    collectionContext?.items.some((item) => {
+      const itemProduct = item.producto;
+      if (!itemProduct) return false;
+      return (
+        itemProduct._id === producto._id ||
+        itemProduct.slug?.current === producto.slug?.current ||
+        Boolean(itemProduct.idExcel && producto.idExcel && itemProduct.idExcel === producto.idExcel)
+      );
+    })
+      ? collectionContext
+      : null;
+  const backHref = validCollectionContext ? collectionPath(validCollectionContext) : "/catalog";
+  const backLabel = validCollectionContext ? `Seguir viendo ${validCollectionContext.titulo}` : "Seguir viendo";
 
   const socialLinks = normalizeSocialLinks(settings);
   const primaryContact = getPrimaryContact(socialLinks, settings?.whatsapp);
@@ -101,6 +130,9 @@ export default async function ProductoPage({ params }: { params: Promise<{ slug:
               producto={producto}
               whatsapp={brand.whatsapp}
               contact={brand.primaryContact}
+              backHref={backHref}
+              backLabel={backLabel}
+              collectionContexts={collectionContexts}
             />
           </div>
         </section>
