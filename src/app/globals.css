@@ -462,8 +462,8 @@ section.featured-gallery { padding-top: 36px; overflow: hidden; }
 .modal-meta-line strong { color: var(--ink); }
 .modal-unit { font-size: 13px; color: var(--ink-soft); font-style: italic; }
 .modal-badges { display: flex; gap: 6px; margin: 14px 0; flex-wrap: wrap; }
-.modal-desc { font-size: 15px; color: var(--ink-soft); margin: 20px 0; text-wrap: pretty; line-height: 1.6; }
-.modal-obs { font-size: 13px; color: var(--ink-soft); font-style: italic; margin: 0 0 16px; }
+.modal-desc { font-size: 15px; color: var(--ink-soft); margin: 20px 0; text-wrap: pretty; line-height: 1.6; white-space: pre-line; }
+.modal-obs { font-size: 13px; color: var(--ink-soft); font-style: italic; margin: 0 0 16px; white-space: pre-line; }
 .modal-variantes { margin: 16px 0; }
 .modal-variantes-label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink-soft); margin-bottom: 8px; font-weight: 600; }
 .modal-variantes-list { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -9491,4 +9491,121 @@ h1.display em::after {
 .cat-item.active .all-grid-icon,
 .collection-index-chip.is-active .all-grid-icon {
   color: var(--item-color, var(--collection-color, var(--plum)));
+}
+
+/* Restore selected portada products on collection cards while keeping the Sanity cover image as the main background. */
+.collections-carousel-card.has-products {
+  align-items: end;
+}
+
+.collections-carousel-preview {
+  position: absolute;
+  z-index: 2;
+  top: clamp(18px, 3vw, 34px);
+  left: clamp(18px, 3vw, 34px);
+  width: min(390px, 52%);
+  height: clamp(150px, 15vw, 230px);
+  pointer-events: none;
+}
+
+.collections-carousel-mini {
+  position: absolute;
+  display: block;
+  overflow: hidden;
+  border: clamp(4px, 0.65vw, 8px) solid rgba(255, 253, 248, 0.92);
+  border-radius: clamp(18px, 2vw, 28px);
+  background: #fff1df;
+  box-shadow: 0 24px 58px -36px rgba(31, 27, 46, 0.72);
+}
+
+.collections-carousel-mini .placeholder-stripes,
+.collections-carousel-mini img {
+  border-radius: 0;
+}
+
+.collections-carousel-mini-0 {
+  left: 0;
+  bottom: 0;
+  width: 42%;
+  height: 70%;
+  transform: rotate(-7deg);
+}
+
+.collections-carousel-mini-1 {
+  left: 29%;
+  top: 20%;
+  z-index: 2;
+  width: 42%;
+  height: 76%;
+  transform: rotate(1.5deg);
+}
+
+.collections-carousel-mini-2 {
+  right: 0;
+  bottom: 8%;
+  z-index: 3;
+  width: 42%;
+  height: 72%;
+  transform: rotate(7deg);
+}
+
+.collections-carousel-card.has-products .collections-carousel-copy {
+  margin-top: clamp(140px, 16vw, 220px);
+}
+
+.coleccion-card.has-cover .coleccion-preview {
+  z-index: 4;
+  inset: clamp(16px, 2vw, 24px) clamp(16px, 2vw, 24px) auto;
+  height: clamp(150px, 15vw, 220px);
+}
+
+.coleccion-card.has-cover .coleccion-mini {
+  border-color: rgba(255, 253, 248, 0.92);
+  box-shadow: 0 24px 58px -36px rgba(31, 27, 46, 0.72);
+}
+
+.coleccion-card.has-cover .coleccion-mini-0 {
+  left: 0;
+  top: auto;
+  bottom: 0;
+  width: 38%;
+  height: 70%;
+}
+
+.coleccion-card.has-cover .coleccion-mini-1 {
+  left: 31%;
+  right: auto;
+  top: 16%;
+  width: 38%;
+  height: 76%;
+}
+
+.coleccion-card.has-cover .coleccion-mini-2 {
+  right: 0;
+  left: auto;
+  bottom: 6%;
+  width: 38%;
+  height: 72%;
+}
+
+.coleccion-card.has-cover .coleccion-copy {
+  z-index: 8;
+}
+
+@media (max-width: 700px) {
+  .collections-carousel-preview {
+    top: 16px;
+    left: 16px;
+    width: min(290px, calc(100% - 32px));
+    height: 150px;
+  }
+
+  .collections-carousel-card.has-products .collections-carousel-copy {
+    margin-top: 128px;
+  }
+
+  .coleccion-card.has-cover .coleccion-preview {
+    inset: 14px 14px auto;
+    height: 138px;
+  }
 }

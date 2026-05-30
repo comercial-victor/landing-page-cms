@@ -1792,6 +1792,7 @@ function CollectionEditor({
   const [draft, setDraft] = useState<SCollection>(collection);
   const [slugManuallyEdited, setSlugManuallyEdited] = useState(Boolean(collection.slug?.current));
   const [productQuery, setProductQuery] = useState("");
+  const [productListMode, setProductListMode] = useState<"all" | "selected">("all");
   const [saving, setSaving] = useState(false);
   const [uploadingCover, setUploadingCover] = useState(false);
   const coverInputRef = useRef<HTMLInputElement>(null);
@@ -1800,9 +1801,16 @@ function CollectionEditor({
     setSlugManuallyEdited(Boolean(collection.slug?.current));
   }, [collection]);
   const selectedIds = useMemo(() => new Set((draft.items || []).map((item) => item.producto?._id).filter(Boolean) as string[]), [draft.items]);
+  const selectedProducts = useMemo(() => {
+    const byId = new Map(products.map((product) => [product._id, product]));
+    return (draft.items || [])
+      .map((item) => item.producto?._id ? (byId.get(item.producto._id) || item.producto) : null)
+      .filter(Boolean) as SProd[];
+  }, [draft.items, products]);
   const coverItemCount = useMemo(() => (draft.items || []).filter((item) => item.mostrarEnPortada).length, [draft.items]);
   const filteredProducts = useMemo(() => {
-    return rankBySearch(products, productQuery, (product) => [
+    const source = productListMode === "selected" ? selectedProducts : products;
+    return rankBySearch(source, productQuery, (product) => [
       product.nombre,
       product.idExcel,
       product.descripcion,
@@ -1813,8 +1821,8 @@ function CollectionEditor({
       product.subcategoria?.categoria?.nombre,
       ...(product.tags || []),
       ...(product.presentaciones || []).map((presentacion) => presentacion.nombre),
-    ]).slice(0, 80);
-  }, [productQuery, products]);
+    ]).slice(0, productListMode === "selected" ? 160 : 80);
+  }, [productListMode, productQuery, products, selectedProducts]);
 
   const setField = <K extends keyof SCollection>(field: K, value: SCollection[K]) => {
     setDraft((current) => ({ ...current, [field]: value }));
@@ -2037,12 +2045,51 @@ function CollectionEditor({
             <div className="iv-collection-search">
               <div style={{ flex: 1, position: "relative" }}>
                 <Search size={15} color="#64748b" style={{ position: "absolute", left: 12, top: 11, pointerEvents: "none" }} />
-                <input value={productQuery} onChange={(event) => setProductQuery(event.target.value)} placeholder="Buscar productos para esta colección" style={{ ...inputStyle(C.white, "#d1d5db"), paddingLeft: 34 }} />
+                <input value={productQuery} onChange={(event) => setProductQuery(event.target.value)} placeholder={productListMode === "selected" ? "Buscar dentro de los elegidos" : "Buscar productos para esta colección"} style={{ ...inputStyle(C.white, "#d1d5db"), paddingLeft: 34 }} />
               </div>
               <span style={{ color: C.inkSoft, fontSize: 13 }}>{selectedIds.size} elegidos</span>
             </div>
 
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+              <button
+                type="button"
+                onClick={() => setProductListMode("all")}
+                style={{
+                  ...btnStyle(productListMode === "all" ? "primary" : "secondary"),
+                  height: 34,
+                  fontSize: 13,
+                  padding: "0 12px",
+                }}
+              >
+                Todos los productos
+              </button>
+              <button
+                type="button"
+                onClick={() => setProductListMode("selected")}
+                style={{
+                  ...btnStyle(productListMode === "selected" ? "primary" : "secondary"),
+                  height: 34,
+                  fontSize: 13,
+                  padding: "0 12px",
+                }}
+              >
+                Elegidos ({selectedIds.size})
+              </button>
+              {productListMode === "selected" && selectedIds.size > 0 && (
+                <span style={{ color: C.inkSoft, fontSize: 12 }}>Toca un producto elegido para quitarlo o usa sus opciones.</span>
+              )}
+            </div>
+
             <div className="iv-collection-products">
+              {filteredProducts.length === 0 && (
+                <div style={{ gridColumn: "1 / -1", padding: 20, borderRadius: 12, background: C.white, border: "1px dashed #cbd5e1", color: C.inkSoft, textAlign: "center", fontSize: 14 }}>
+                  {productListMode === "selected"
+                    ? selectedIds.size === 0
+                      ? "Todavía no hay productos elegidos en esta colección."
+                      : "No hay elegidos que coincidan con esa búsqueda."
+                    : "No se encontraron productos con esa búsqueda."}
+                </div>
+              )}
               {filteredProducts.map((product) => {
                 const selected = selectedIds.has(product._id);
                 const item = (draft.items || []).find((entry) => entry.producto?._id === product._id);
@@ -2070,6 +2117,14 @@ function CollectionEditor({
                           >
                             <Star size={12} fill={isCoverItem ? "currentColor" : "none"} />
                             Portada
+                          </button>
+                          <button
+                            onClick={() => toggleProduct(product)}
+                            title="Quitar de esta colección"
+                            style={{ ...btnStyle("danger"), height: 26, fontSize: 12, padding: "0 8px" }}
+                          >
+                            <Trash2 size={12} />
+                            Quitar
                           </button>
                         </div>
                       )}
@@ -2610,7 +2665,23 @@ function EditDrawer({ prod, client, subcats, allTags, onClose, onSaved }: {
   const [saveError, setSaveError] = useState("");
   const [imageUploadStatus, setImageUploadStatus] = useState<ImageUploadStatus | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const isNew = prod._id === NEW_PRODUCT_ID;
+  const [isMobileEditor, setIsMobileEditor] = useState(false);
+
+  useEffect(() => {
+    const checkViewport = () => setIsMobileEditor(window.innerWidth <= 760);
+    checkViewport();
+    window.addEventListener("resize", checkViewport);
+    return () => window.removeEventListener("resize", checkViewport);
+  }, []);
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      panelRef.current?.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [prod._id]);
 
   const isModified = JSON.stringify(draft) !== original;
 const changed = (field: string) => {
@@ -2841,20 +2912,31 @@ const changed = (field: string) => {
 
   const fieldBg = (field: string) => changed(field) ? C.yellowBg : C.white;
   const fieldBorder = (field: string) => changed(field) ? C.yellowBorder : "#d1d5db";
+  const editorTopOffset = isMobileEditor ? 118 : STRUCTURE_PANE_HEADER_OFFSET;
 
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 1000, display: "flex" }}>
+    <div
+      style={{
+        position: "fixed",
+        left: 0,
+        right: 0,
+        bottom: 0,
+        top: editorTopOffset,
+        zIndex: 2147483000,
+        display: "flex",
+      }}
+    >
       {/* Backdrop */}
-      <div onClick={onClose} style={{ flex: 1, background: "rgba(31,27,46,0.4)", backdropFilter: "blur(4px)" }} />
+      <div onClick={onClose} style={{ flex: 1, background: "rgba(31,27,46,0.4)", backdropFilter: isMobileEditor ? "none" : "blur(4px)" }} />
       {/* Panel */}
-      <div style={{ width: "min(680px, 90vw)", background: C.panel, overflowY: "auto", display: "flex", flexDirection: "column", boxShadow: "-8px 0 30px rgba(0,0,0,0.15)" }}>
+      <div ref={panelRef} style={{ width: isMobileEditor ? "100vw" : "min(680px, 100vw)", maxWidth: "100vw", height: "100%", background: C.panel, overflowY: "auto", overflowX: "hidden", display: "flex", flexDirection: "column", boxShadow: "-8px 0 30px rgba(0,0,0,0.15)" }}>
         {/* Header */}
-        <div style={{ padding: "16px 20px", borderBottom: `1px solid ${C.line}`, display: "flex", justifyContent: "space-between", alignItems: "center", background: C.white, position: "sticky", top: 0, zIndex: 10 }}>
-          <div>
-            <div style={{ fontSize: 14, color: C.inkSoft, fontFamily: "monospace" }}>{isNew ? "Nuevo artículo" : (draft.idExcel || draft._id)}</div>
-            <div style={{ fontSize: 18, fontWeight: 700, color: C.ink }}>{draft.nombre || "Sin nombre todavía"}</div>
+        <div style={{ padding: isMobileEditor ? "10px 12px" : "14px 16px", borderBottom: `1px solid ${C.line}`, display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, flexWrap: "wrap", background: C.white, position: "sticky", top: 0, zIndex: 20 }}>
+          <div style={{ minWidth: 0, flex: isMobileEditor ? "1 1 100%" : "1 1 220px" }}>
+            <div style={{ fontSize: 13, color: C.inkSoft, fontFamily: "monospace", overflowWrap: "anywhere" }}>{isNew ? "Nuevo artículo" : (draft.idExcel || draft._id)}</div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: C.ink, overflowWrap: "anywhere" }}>{draft.nombre || "Sin nombre todavía"}</div>
           </div>
-          <div style={{ display: "flex", gap: 8 }}>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: isMobileEditor ? "flex-start" : "flex-end", width: isMobileEditor ? "100%" : undefined }}>
             {isModified && <button onClick={() => setDraft(JSON.parse(original))} style={btnStyle("secondary")}><RotateCcw size={iconSize} /> Deshacer</button>}
             <button onClick={handleSave} disabled={(!isModified && !isNew) || saving}
               style={{ ...btnStyle("save"), opacity: (isModified || isNew) ? 1 : 0.4 }}>
@@ -2878,14 +2960,14 @@ const changed = (field: string) => {
         )}
 
         {/* Tabs */}
-        <div style={{ display: "flex", borderBottom: `1px solid ${C.line}`, padding: "0 20px", background: C.white }}>
+        <div style={{ display: "flex", borderBottom: `1px solid ${C.line}`, padding: "0 16px", background: C.white, overflowX: "auto", WebkitOverflowScrolling: "touch", flexShrink: 0 }}>
           <button style={tabBtnStyle("general")} onClick={() => setTab("general")}><ClipboardList size={iconSize} /> General</button>
           <button style={tabBtnStyle("presentaciones")} onClick={() => setTab("presentaciones")}><Package size={iconSize} /> Presentaciones ({draft.presentaciones?.length || 0})</button>
           <button style={tabBtnStyle("imagenes")} onClick={() => setTab("imagenes")}><ImageIcon size={iconSize} /> Imágenes ({draft.imagenes?.length || 0})</button>
         </div>
 
         {/* Content */}
-        <div style={{ padding: 20, flex: 1 }}>
+        <div style={{ padding: 16, flex: 1 }}>
 
                         {/* Help block for product creation model */}
               <EditorHint

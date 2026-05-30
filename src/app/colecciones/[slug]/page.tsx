@@ -1,12 +1,56 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import CollectionPageClient from "@/components/CollectionPageClient";
 import type { ProductoFlat } from "@/types";
 import { getCategorias, getColeccionPorSlug, getColeccionSlugs, getColecciones, getSiteSettings, getTodosLosProductos } from "@/lib/queries";
 import { formatPhoneDisplay, getPrimaryContact, normalizeSocialLinks } from "@/lib/social";
+import { brandShareImage, siteUrl } from "@/lib/metadata";
+import { urlFor } from "@/lib/sanity";
 
 export async function generateStaticParams() {
   const slugs = await getColeccionSlugs();
   return slugs.map((slug) => ({ slug }));
+}
+
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params;
+  const [settings, collection] = await Promise.all([
+    getSiteSettings(),
+    getColeccionPorSlug(slug),
+  ]);
+
+  if (!collection) return {};
+
+  const siteName = settings?.nombre || "Comercial Victor";
+  const title = `${collection.titulo} | ${siteName}`;
+  const description = collection.subtitulo || settings?.seoDescription || settings?.tagline || "";
+  const canonicalUrl = `${siteUrl}/colecciones/${slug}`;
+  const image = collection.portada
+    ? urlFor(collection.portada).width(1200).height(630).fit("crop").auto("format").url()
+    : brandShareImage(settings);
+
+  return {
+    title,
+    description,
+    alternates: {
+      canonical: canonicalUrl,
+    },
+    openGraph: {
+      title,
+      description,
+      url: canonicalUrl,
+      siteName,
+      type: "website",
+      locale: "es_PE",
+      images: [{ url: image, width: 1200, height: 630, alt: collection.titulo }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [image],
+    },
+  };
 }
 
 export default async function ColeccionRoutePage({ params }: { params: Promise<{ slug: string }> }) {

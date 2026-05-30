@@ -281,6 +281,15 @@ function CollectionCarousel({
   }, [activeIndex, updateDotsScrollState]);
 
   const active = collections[activeIndex] || collections[0];
+  const coverProducts = active.items
+    .filter((item) => item.visible !== false && item.mostrarEnPortada && item.producto)
+    .map((item) => item.producto)
+    .filter(Boolean) as ProductoFlat[];
+  const fallbackProducts = active.items
+    .filter((item) => item.visible !== false && item.producto)
+    .map((item) => item.producto)
+    .filter(Boolean) as ProductoFlat[];
+  const previewProducts = (coverProducts.length ? coverProducts : fallbackProducts).slice(0, 3);
   const cover = active.portada;
   const href = collectionPath(active);
   const theme = active.themeColor || "#8B3FD1";
@@ -288,7 +297,7 @@ function CollectionCarousel({
 
   return (
     <div className="collections-carousel" style={{ "--collection-color": theme } as CSSProperties}>
-      <Link key={active._id} href={href} className={`collections-carousel-card is-${direction}`} aria-label={`Ver colección ${active.titulo}`}>
+      <Link key={active._id} href={href} className={`collections-carousel-card is-${direction} ${previewProducts.length ? "has-products" : ""}`} aria-label={`Ver colección ${active.titulo}`}>
         <span className="collections-carousel-bg" aria-hidden="true">
           {cover ? (
             <Image
@@ -302,6 +311,15 @@ function CollectionCarousel({
           ) : null}
         </span>
         <span className="collections-carousel-shade" aria-hidden="true" />
+        {previewProducts.length > 0 && (
+          <span className="collections-carousel-preview" aria-hidden="true">
+            {previewProducts.map((producto, i) => (
+              <span key={producto._id} className={`collections-carousel-mini collections-carousel-mini-${i}`}>
+                <ProductImage producto={producto} />
+              </span>
+            ))}
+          </span>
+        )}
         <span className="collections-carousel-copy">
           <span className="coleccion-tag">{active.etiqueta || "Colección"}</span>
           <strong>{active.titulo}</strong>
@@ -388,8 +406,8 @@ function CollectionGridCard({ collection, featured }: { collection: Collection; 
         ) : null}
         <span className="coleccion-card-bg-overlay" />
       </span>
-      {!cover && (
-        <span className="coleccion-preview" aria-hidden="true">
+      {previewProducts.length > 0 && (
+        <span className={`coleccion-preview ${cover ? "with-cover" : ""}`} aria-hidden="true">
           {previewProducts.map((producto, i) => (
             <span key={producto._id} className={`coleccion-mini coleccion-mini-${i}`}>
               <ProductImage producto={producto} />
