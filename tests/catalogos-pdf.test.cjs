@@ -9,13 +9,13 @@ require.extensions['.ts'] = (module, filename) => {
   module._compile(ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, esModuleInterop: true } }).outputText, filename);
 };
 const rules = require('../src/lib/catalogosPdf.ts');
-const { saveCatalog, hideCatalog, deleteCatalog, mergeCatalogs } = require('../sanity/tools/interactiveView/catalogosPdf/catalogService.ts');
+const { saveCatalog, hideCatalog, deleteCatalog, mergeCatalogs, repairCatalogPublication } = require('../sanity/tools/interactiveView/catalogosPdf/catalogService.ts');
 // Queries are literal constants: extract them without initializing the production client.
 const source = fs.readFileSync(require.resolve('../src/lib/catalogosPdfQueries.ts'), 'utf8');
 const publicFilter = source.match(/export const publicCatalogFilter = `([^`]+)`/)[1];
 const projection = source.match(/export const catalogProjection = `([^`]+)`/)[1];
 const pdf = { _id:'file-one-pdf',_type:'sanity.fileAsset',url:'https://cdn.sanity.io/files/test/production/one.pdf',originalFilename:'campaña.pdf',mimeType:'application/pdf',size:1234 };
-const catalog = (extra={}) => ({_id:'catalogoPdf.test',_type:'catalogoPdf',titulo:'Halloween',slug:{_type:'slug',current:'halloween'},orden:0,visible:false,archivo:{_type:'file',asset:{_type:'reference',_ref:pdf._id}},...extra});
+const catalog = (extra={}) => ({_id:'catalogoPdf-test',_type:'catalogoPdf',titulo:'Halloween',slug:{_type:'slug',current:'halloween'},orden:0,visible:false,archivo:{_type:'file',asset:{_type:'reference',_ref:pdf._id}},...extra});
 function mockClient(initial=[]) {
   const docs = new Map([pdf,...initial].map(d=>[d._id,structuredClone(d)])); let rev=0;
   const client = {
@@ -54,9 +54,9 @@ test('public GROQ excludes drafts, releases, hidden, missing PDF and exact expir
 });
 test('draft without PDF is saved but cannot publish; publishing locks the slug and replacing PDF keeps URL',async()=>{
   const client=mockClient(); const form=catalog({archivo:undefined});
-  await saveCatalog(client,form,false);assert.ok(client.docs.has('drafts.catalogoPdf.test'));assert.ok(!client.docs.has(form._id));
+  await saveCatalog(client,form,false);assert.ok(client.docs.has('drafts.catalogoPdf-test'));assert.ok(!client.docs.has(form._id));
   await assert.rejects(saveCatalog(client,form,true),/PDF válido/);
-  await saveCatalog(client,catalog(),true); let live=client.docs.get(form._id);assert.equal(live.publicadoSlug,'halloween');assert.ok(!client.docs.has('drafts.catalogoPdf.test'));
+  await saveCatalog(client,catalog(),true); let live=client.docs.get(form._id);assert.equal(live.publicadoSlug,'halloween');assert.ok(!client.docs.has('drafts.catalogoPdf-test'));
   const nextPdf={...pdf,_id:'file-two-pdf',url:pdf.url.replace('one','two')}; client.docs.set(nextPdf._id,nextPdf);
   await saveCatalog(client,{...live,titulo:'Halloween actualizado',archivo:{_type:'file',asset:{_type:'reference',_ref:nextPdf._id}}},true);
   const replaced=client.docs.get(form._id);assert.equal(replaced.slug.current,'halloween');assert.equal(replaced.archivo.asset._ref,nextPdf._id);
@@ -65,7 +65,7 @@ test('draft without PDF is saved but cannot publish; publishing locks the slug a
   await deleteCatalog(client,{...live,published:live});assert.ok(!client.docs.has(form._id));assert.ok(client.docs.has(pdf._id));assert.ok(client.docs.has(nextPdf._id));
 });
 test('editing draft preserves public version; duplicate slugs, stale edits and expired publication are rejected',async()=>{
-  const client=mockClient();await saveCatalog(client,catalog(),true);const live=client.docs.get('catalogoPdf.test');
+  const client=mockClient();await saveCatalog(client,catalog(),true);const live=client.docs.get('catalogoPdf-test');
   await saveCatalog(client,{...live,titulo:'Edición pendiente'},false);assert.equal(client.docs.get(live._id).titulo,'Halloween');
   const merged=mergeCatalogs([...client.docs.values()].filter(d=>d._type==='catalogoPdf'));assert.equal(merged.length,1);assert.equal(merged[0].titulo,'Edición pendiente');assert.equal(merged[0].published.titulo,'Halloween');
   await assert.rejects(saveCatalog(client,catalog({_id:'another'}),true),/pertenece/);
@@ -78,4 +78,64 @@ test('atomic slug reservation prevents simultaneous duplicate creation',async()=
   const client=mockClient();const results=await Promise.allSettled([saveCatalog(client,catalog({_id:'one'}),true),saveCatalog(client,catalog({_id:'two'}),true)]);
   assert.equal(results.filter(r=>r.status==='fulfilled').length,1);
   assert.equal([...client.docs.values()].filter(d=>d._type==='catalogoPdf').length,1);
+});
+
+
+test('new catalog IDs allow anonymous reads in Sanity',()=>{
+  for(let i=0;i<10;i++) {
+    const id=rules.createCatalogId();
+    assert.match(id,/^catalogoPdf-[a-f0-9-]+$/);
+    assert.equal(rules.hasPrivateCatalogId(id),false);
+    assert.equal(rules.hasPrivateCatalogId(`drafts.${id}`),false);
+  }
+  assert.equal(rules.hasPrivateCatalogId('drafts.catalogoPdf.legacy'),true);
+});
+
+test('repair preserves the published PDF, URL, visibility and separate draft; transfers reservations',async()=>{
+  const id='catalogoPdf.legacy';
+  const live=catalog({_id:id,_rev:'live',visible:true,publicadoSlug:'halloween'});
+  const draft={...live,_id:`drafts.${id}`,_rev:'draft',titulo:'Pendiente',visible:false};
+  const client=mockClient([live,draft,{_id:'catalogoPdfSlug.halloween',_type:'catalogoPdfSlug',_rev:'reservation',catalogId:id}]);
+  const [row]=mergeCatalogs([live,draft]);
+  await repairCatalogPublication(client,row);
+  assert.equal(client.docs.has(id),false);assert.equal(client.docs.has(draft._id),false);
+  const newId=client.docs.get('catalogoPdfSlug.halloween').catalogId;
+  assert.equal(rules.hasPrivateCatalogId(newId),false);
+  const repaired=client.docs.get(newId);
+  assert.equal(repaired.visible,true);assert.equal(repaired.titulo,live.titulo);
+  assert.deepEqual(repaired.archivo,live.archivo);assert.deepEqual(repaired.slug,live.slug);
+  assert.equal(repaired.publicadoSlug,live.publicadoSlug);
+  assert.equal(client.docs.get(`drafts.${newId}`).titulo,'Pendiente');
+  assert.equal(client.docs.get(`drafts.${newId}`).visible,false);
+  assert.ok(client.docs.has(pdf._id));
+  await saveCatalog(client,{...repaired,titulo:'Reemplazo'},true);
+});
+
+test('repair handles draft-only catalogs and rejects stale edits and conflicting reservations atomically',async()=>{
+  const draft=catalog({_id:'drafts.catalogoPdf.legacy',_rev:'draft'});
+  const client=mockClient([draft]);const [row]=mergeCatalogs([draft]);
+  await assert.rejects(saveCatalog(client,draft,true),/Reparar publicaci/);
+  await assert.rejects(repairCatalogPublication(client,{...row,_rev:'stale'}),/Otra persona/);
+  await repairCatalogPublication(client,row);
+  const newId=client.docs.get('catalogoPdfSlug.halloween').catalogId;
+  assert.equal(client.docs.has(newId),false);assert.ok(client.docs.has(`drafts.${newId}`));
+  const live=catalog({_id:'catalogoPdf.conflict',_rev:'live',visible:true});
+  const conflict=mockClient([live,{_id:'catalogoPdfSlug.halloween',_rev:'r',catalogId:'another'}]);
+  await assert.rejects(repairCatalogPublication(conflict,mergeCatalogs([live])[0]),/pertenece/);
+  assert.ok(conflict.docs.has(live._id));
+  assert.equal([...conflict.docs.values()].filter(d=>d._type==='catalogoPdf').length,1);
+});
+
+test('repaired catalogs reach the public queries only when visible and unexpired',async()=>{
+  for (const extra of [{visible:true},{visible:false},{visible:true,fechaCaducidad:'2020-01-01T00:00:00Z'}]) {
+    const live=catalog({_id:'catalogoPdf.legacy',_rev:'live',...extra});
+    const client=mockClient([live]);
+    await repairCatalogPublication(client,mergeCatalogs([live])[0]);
+    // Model Sanity's anonymous access: dotted document IDs are inaccessible.
+    const dataset=[...client.docs.values()].filter(d=>!d._id.includes('.'));
+    const result=await groq.evaluate(groq.parse(`*[${publicFilter} && slug.current == $slug] ${projection}`),{dataset,params:{slug:'halloween'}});
+    const rows=await result.get();
+    assert.equal(rows.length,extra.visible && !extra.fechaCaducidad ? 1 : 0);
+    if(rows.length) assert.equal(rows[0].pdf.url,pdf.url);
+  }
 });

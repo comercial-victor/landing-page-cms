@@ -21,6 +21,14 @@ La fecha usa la zona horaria del dispositivo administrador y se guarda en UTC. E
 
 ## Lecturas y caché
 
+### Catálogos que aparecen en Studio pero no en la web
+
+Sanity restringe las lecturas anónimas de documentos cuyo `_id` contiene puntos, incluso en datasets públicos. Los catálogos nuevos usan `catalogoPdf-{uuid}` para evitarlo. Las reservas internas `catalogoPdfSlug.{slug}` siguen siendo privadas intencionalmente.
+
+Para catálogos anteriores con IDs `catalogoPdf.{uuid}`, abre **Vista interactiva → Catálogos PDF** en el Studio actualizado y pulsa **Reparar publicación**. Puede hacerse desde localhost conectado al mismo proyecto y dataset: la reparación de datos también aplica a producción, sin volver a subir el PDF. La operación mueve las versiones pública y borrador a un ID público y transfiere las reservas en una sola transacción, conservando slug, archivos, portada, visibilidad y caducidad. Los cambios pendientes permanecen como borrador. No requiere un token nuevo ni cambiar variables de entorno.
+
+La tarjeta indica **Requiere reparación** y no ofrece enlaces públicos hasta corregir el ID. La reparación usa la sesión autenticada de Studio; las pruebas locales usan datos simulados y no modifican producción.
+
 `src/lib/catalogosPdfQueries.ts` contiene consultas reutilizables y tipadas para listado, detalle, slugs de sitemap y editor. Las públicas exigen visibilidad explícita, PDF resuelto y vigencia, y excluyen `drafts.*` y `versions.*`. El editor consulta perspectiva `raw` y agrupa versiones públicas y borradores.
 
 `/catalogos`, `/catalogos/[slug]` y el sitemap son dinámicos. Las lecturas de catálogos usan la API de Sanity sin CDN y `cache: no-store`. Publicar, reemplazar, ocultar o eliminar se refleja en la próxima petición sin depender del webhook; la caducidad se evalúa en cada lectura. Una página ya abierta requiere recarga. Los otros datos del sitemap conservan su caché existente.

@@ -4,6 +4,9 @@ const configuredLimit = Number(process.env.NEXT_PUBLIC_CATALOGO_PDF_MAX_MB || 50
 export const PDF_MAX_MB = Number.isFinite(configuredLimit) && configuredLimit > 0 ? configuredLimit : 50;
 export const PDF_MAX_BYTES = PDF_MAX_MB * 1024 * 1024;
 export interface PdfAsset { _id: string; url: string; originalFilename: string; size: number; mimeType: string }
+// Published documents must live at Sanity's root path to allow anonymous reads.
+export function createCatalogId() { return `catalogoPdf-${crypto.randomUUID()}`; }
+export function hasPrivateCatalogId(id: string) { return id.replace(/^drafts\./, "").includes("."); }
 export interface CatalogoPdf {
   _id: string; _rev?: string; _type: "catalogoPdf"; _createdAt?: string; _updatedAt?: string;
   titulo: string; slug: { _type: "slug"; current: string }; descripcion?: string;

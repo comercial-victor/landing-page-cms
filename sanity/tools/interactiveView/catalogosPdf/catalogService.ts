@@ -1,6 +1,6 @@
 import type { useClient } from "sanity";
 type SanityClient = ReturnType<typeof useClient>;
-import { type CatalogoPdf, type PdfAsset, validCatalogSlug, validatePdfMetadata } from "../../../../src/lib/catalogosPdf";
+import { type CatalogoPdf, type PdfAsset, createCatalogId, hasPrivateCatalogId, validCatalogSlug, validatePdfMetadata } from "../../../../src/lib/catalogosPdf";
 
 export type EditorCatalog = CatalogoPdf & { published?: CatalogoPdf; hasDraft?: boolean };
 export function mergeCatalogs(rows: CatalogoPdf[]): EditorCatalog[] {
@@ -15,6 +15,7 @@ export function mergeCatalogs(rows: CatalogoPdf[]): EditorCatalog[] {
 export async function saveCatalog(client: SanityClient, catalog: CatalogoPdf & { published?: CatalogoPdf }, publish: boolean) {
   const raw = client.withConfig({ perspective: "raw" });
   const id = catalog._id.replace(/^drafts\./, "");
+  if (publish && hasPrivateCatalogId(id)) throw new Error("Pulsa Reparar publicación en la lista antes de publicar este catálogo.");
   const [live, draft] = await raw.getDocuments<CatalogoPdf>([id, `drafts.${id}`]);
   // Optimistic concurrency protects edits from another administrator.
   const current = catalog._id.startsWith("drafts.") ? draft : live;
@@ -51,6 +52,34 @@ export async function saveCatalog(client: SanityClient, catalog: CatalogoPdf & {
   if (target) trx = trx.patch(targetId, p => p.ifRevisionId(target._rev!).set(data));
   else trx = trx.create({ _id: targetId, ...data });
   if (publish && draft) trx = trx.patch(draft._id, p => p.ifRevisionId(draft._rev!).set({ visible: false })).delete(draft._id);
+  await trx.commit();
+}
+// Move both versions in one transaction; never publish pending draft edits.
+export async function repairCatalogPublication(client: SanityClient, catalog: EditorCatalog) {
+  const id = catalog._id.replace(/^drafts\./, "");
+  if (!hasPrivateCatalogId(id)) return;
+  const raw = client.withConfig({ perspective: "raw", useCdn: false });
+  const [live, draft] = await raw.getDocuments<CatalogoPdf>([id, `drafts.${id}`]);
+  const current = catalog.hasDraft ? draft : live;
+  if (!current || current._rev !== catalog._rev || live?._rev !== catalog.published?._rev) throw new Error("Otra persona modificó este catálogo. Actualiza la lista y vuelve a intentarlo.");
+  const newId = createCatalogId();
+  let trx = raw.transaction();
+  for (const doc of [live, draft]) {
+    if (!doc) continue;
+    // Copy stored fields only, excluding Sanity's immutable system metadata.
+    const { _id, _rev, _createdAt, _updatedAt, ...data } = doc;
+    trx = trx.create({ ...data, _id: _id.startsWith("drafts.") ? `drafts.${newId}` : newId });
+    trx = trx.patch(_id, p => p.ifRevisionId(_rev!).set({ visible: false })).delete(_id);
+  }
+  // Retain every slug reservation and transfer ownership to the replacement ID.
+  const slugs = new Set([live?.slug.current, live?.publicadoSlug, draft?.slug.current, draft?.publicadoSlug].filter((s): s is string => Boolean(s)));
+  for (const slug of slugs) {
+    const reservationId = `catalogoPdfSlug.${slug}`;
+    const reservation = await raw.getDocument<{_id: string; _rev: string; catalogId: string}>(reservationId);
+    if (reservation && reservation.catalogId !== id) throw new Error("El enlace pertenece a otro catálogo. No se realizó la reparación.");
+    if (reservation) trx = trx.patch(reservationId, p => p.ifRevisionId(reservation._rev).set({ catalogId: newId }));
+    else trx = trx.create({ _id: reservationId, _type: "catalogoPdfSlug", catalogId: newId });
+  }
   await trx.commit();
 }
 export async function hideCatalog(client: SanityClient, catalog: EditorCatalog) {
