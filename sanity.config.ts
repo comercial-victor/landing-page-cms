@@ -13,6 +13,7 @@ import { schemaTypes } from "./sanity/schemas";
 import { ImportCatalogTool } from "./sanity/tools/importCatalog/ImportCatalogTool";
 import { ExportCatalogTool } from "./sanity/tools/exportCatalog/ExportCatalogTool";
 import { InteractiveViewTool } from "./sanity/tools/interactiveView/InteractiveViewTool";
+import { PublishCatalogAction } from "./sanity/tools/interactiveView/catalogosPdf/PublishCatalogAction";
 
 export default defineConfig({
   name: "comercial-victor",
@@ -62,5 +63,13 @@ export default defineConfig({
           ]),
     }),
   ],
-  schema: { types: schemaTypes },
+  schema: {
+    types: schemaTypes,
+    templates: previous => previous.filter(template => template.schemaType !== "catalogoPdfSlug"),
+  },
+  document: {
+    actions: (previous, context) => context.schemaType === "catalogoPdf"
+      ? previous.filter(action => action.action !== "duplicate").map(action => action.action === "publish" ? PublishCatalogAction : action)
+      : context.schemaType === "catalogoPdfSlug" ? [] : previous,
+  },
 });

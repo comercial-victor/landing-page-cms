@@ -103,6 +103,7 @@ export default function Navbar({
     { href: "/", label: "Inicio", icon: Home },
     { href: "/#novedades", label: "Novedades", icon: Sparkles },
     { href: "/colecciones", label: "Colecciones", icon: Layers3 },
+    { href: "/catalogos", label: "Catálogos PDF", icon: Layers3 },
     { href: "/catalog", label: "Catálogo", icon: ShoppingBag },
     { href: "/#horarios", label: "Horarios", icon: Clock },
     { href: "/#contacto", label: "Ubícanos", icon: MapPin },

@@ -1,7 +1,8 @@
 import type { MetadataRoute } from "next";
 import { sanityClient } from "@/lib/sanity";
+import { getCatalogoPdfSlugs } from "@/lib/catalogosPdfQueries";
 
-export const revalidate = 3600;
+export const dynamic = "force-dynamic";
 
 const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://comercial-victor.com").replace(/\/$/, "");
 
@@ -79,14 +80,17 @@ async function getLastModified(types: string[]): Promise<Date | undefined> {
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const [productos, colecciones, catalogLastModified, collectionsLastModified] = await Promise.all([
+  const [productos, colecciones, catalogLastModified, collectionsLastModified, catalogosPdf] = await Promise.all([
     getProductosParaSitemap(),
     getColeccionesParaSitemap(),
     getLastModified(["producto", "categoria", "subcategoria"]),
     getLastModified(["album", "producto"]),
+    getCatalogoPdfSlugs(),
   ]);
 
   return [
+    { url: `${siteUrl}/catalogos` },
+    ...catalogosPdf.map(catalogo => ({url:`${siteUrl}/catalogos/${catalogo.slug}`,lastModified:toDate(catalogo.updatedAt)})),
     {
       url: `${siteUrl}/`,
       lastModified: catalogLastModified,

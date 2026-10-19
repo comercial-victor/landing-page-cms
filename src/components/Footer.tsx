@@ -49,6 +49,7 @@ export default function Footer({ brand }: { brand: Brand }) {
             <div className="footer-v2-links-col">
               <h4>Productos</h4>
               <a className="footer-link" href="/catalog">Catálogo completo</a>
+              <a className="footer-link" href="/catalogos">Catálogos PDF</a>
               <a className="footer-link" href="/#novedades">Novedades</a>
             </div>
             <div className="footer-v2-links-col">

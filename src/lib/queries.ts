@@ -1,4 +1,5 @@
 import { sanityClient } from "./sanity";
+export { getCatalogosPdf, getCatalogoPdfPorSlug, getCatalogoPdfSlugs } from "./catalogosPdfQueries";
 import type { Collection, Album, SiteSettings, Hero, FeaturedGallery, Categoria, Producto, ProductoFlat, DestacadoUbicacion } from "@/types";
 
 const siteSettingsProjection = `{

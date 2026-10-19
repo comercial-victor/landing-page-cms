@@ -436,3 +436,9 @@ sanity/tools/importCatalog/plantilla-catalogo.csv
 ```
 
 Descargala, completala con tus datos y subila al importador.
+
+## Catálogos PDF
+
+El servidor `npm run dev` guarda sus archivos generados en `.next-dev`. La compilación y el servidor de producción (`npm run build` / `npm start`) usan `.next`. Esto permite compilar mientras desarrollo está activo sin sobrescribir los chunks de Studio ni sus estilos. Tras cambiar esta configuración, reinicia el servidor de desarrollo.
+
+Gestión, configuración del webhook y verificación: [docs/catalogos-pdf.md](docs/catalogos-pdf.md).

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useClient } from "sanity";
+import { CatalogManager } from "./catalogosPdf/CatalogManager";
 import { rankBySearch, searchScore } from "../../../src/lib/search";
 import { CTA_ICON_OPTIONS, isSocialCtaIcon, type CtaIconValue } from "../../../src/lib/ctaIconOptions";
 import {
@@ -384,7 +385,7 @@ export function InteractiveViewTool() {
   const [editing, setEditing] = useState<SProd | null>(null);
   const [editingCollection, setEditingCollection] = useState<SCollection | null>(null);
   const [allTags, setAllTags] = useState<string[]>([]);
-  const [view, setView] = useState<"products" | "categories" | "collections" | "featured">("products");
+  const [view, setView] = useState<"products" | "categories" | "collections" | "featured" | "pdf">("products");
   const [visibilityFilter, setVisibilityFilter] = useState<"all" | "visible" | "hidden" | "duplicates">("all");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const [confirmDelete, setConfirmDelete] = useState<DeleteRequest | null>(null);
@@ -733,7 +734,10 @@ export function InteractiveViewTool() {
         <button onClick={() => setView("featured")} style={viewToggleStyle(view === "featured")}><GalleryHorizontalEnd size={iconSize} /> Novedades</button>
         <button onClick={() => setView("categories")} style={viewToggleStyle(view === "categories")}><FolderTree size={iconSize} /> Categorías</button>
         <button onClick={() => setView("collections")} style={viewToggleStyle(view === "collections")}><Layers size={iconSize} /> Colecciones</button>
+        <button onClick={() => setView("pdf")} style={viewToggleStyle(view === "pdf")}><Layers size={iconSize} /> Catálogos PDF</button>
       </div>
+
+      {view === "pdf" && <CatalogManager client={client} />}
 
       {/* Search + filter */}
       {view === "products" && <div className="iv-filterbar">

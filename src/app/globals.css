@@ -10031,3 +10031,44 @@ h1.display em::after {
     padding-top: 12px;
   }
 }
+
+/* Catálogos PDF: storefront and authenticated interactive manager */
+.pdf-page{position:relative;padding-top:150px;padding-bottom:90px;min-height:70vh}
+.pdf-page-heading{max-width:760px;margin:20px auto 50px;text-align:center}
+.pdf-page h1{font-size:clamp(36px,5vw,64px);line-height:1.08;margin:18px 0 22px;color:var(--plum,#54223d)}
+.pdf-page-heading>p,.pdf-description{font-size:18px;line-height:1.75;color:var(--ink-soft,#62515d)}
+.pdf-eyebrow{font-size:11px;letter-spacing:.2em;font-weight:700;color:#9d3864}
+.pdf-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr));gap:26px}
+.pdf-public-card{background:#fffdf8;border:1px solid #eadfe5;border-radius:24px;overflow:hidden;box-shadow:0 12px 40px #54223d09;display:flex;flex-direction:column}
+.pdf-public-card img,.pdf-admin-card>img{width:100%;aspect-ratio:8/5;object-fit:cover;display:block}
+.pdf-public-card>div{padding:26px;display:flex;flex-direction:column;align-items:flex-start;flex:1}
+.pdf-public-card h2{font-size:28px;margin:14px 0;color:#54223d;overflow-wrap:anywhere}
+.pdf-public-card .pdf-primary{margin-top:auto}
+.pdf-excerpt{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;line-height:1.6;margin:10px 0 24px}
+.pdf-badge{display:inline-block;border-radius:999px;background:#f8e8f0;color:#8b3058;padding:6px 12px;font-size:12px;font-weight:700}
+.pdf-actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:18px 0}
+.pdf-actions a,.pdf-actions button,.pdf-primary,.pdf-toolbar button,.pdf-dialog button{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;border:1px solid #dfd0d9;border-radius:12px;padding:11px 17px;font:inherit;font-size:14px;font-weight:600;background:#fffdf8;color:#54223d;text-decoration:none;cursor:pointer;line-height:1.4}
+.pdf-actions .pdf-primary,.pdf-primary,.pdf-toolbar .pdf-primary,.pdf-dialog .pdf-primary{background:#672746;color:#fff;border-color:#672746}
+.pdf-actions .pdf-whatsapp{background:#e5f5e9;color:#21683c;border-color:#bfe4cb}
+.pdf-actions .pdf-danger,.pdf-dialog .pdf-danger{color:#a32138;background:#fff0f2}
+.pdf-page a:focus-visible,.pdf-admin :focus-visible,.pdf-dialog :focus-visible{outline:3px solid #e895b3;outline-offset:3px}
+.pdf-empty{padding:60px 24px;text-align:center;border:1px dashed #cda4b7;border-radius:24px;background:#fffaf8}
+.pdf-empty h2{font-size:32px}.pdf-empty p{margin:20px auto 28px;max-width:570px}
+.pdf-back{display:inline-block;margin:0 0 30px;color:#672746}
+.pdf-detail-heading{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:45px;align-items:center}
+.pdf-detail-cover{width:100%;aspect-ratio:1.2;object-fit:cover;border-radius:24px;box-shadow:0 16px 55px #54223d19}
+.pdf-file-info{font-size:13px;opacity:.7;margin:22px 0}.pdf-share-status{font-size:13px;overflow-wrap:anywhere;min-height:20px}
+.pdf-viewer-section{margin-top:60px}.pdf-viewer-section h2{font-size:34px;margin-bottom:16px}.pdf-viewer-section p{line-height:1.7;margin:12px 0 22px}.pdf-viewer-section a{text-decoration:underline}
+.pdf-viewer{display:block;width:100%;height:80vh;min-height:420px;border:1px solid #dfd0d9;border-radius:16px;background:#f4edf1}
+.pdf-admin{color:#f1f5f9;font-family:inherit}.pdf-admin h2{font-size:24px;margin:0 0 8px}.pdf-admin p{line-height:1.6}
+.pdf-toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:12px;margin:0 0 22px}.pdf-toolbar>div:first-child{flex:1;min-width:180px}
+.pdf-toolbar input,.pdf-toolbar select{background:#fff;color:#334155;border:1px solid #d1d5db;padding:12px;border-radius:12px;min-height:44px;max-width:100%;font:inherit}
+.pdf-admin-card{background:#fff;color:#334155;border:1px solid #e2e8f0;border-radius:18px;overflow:hidden}.pdf-admin-card>div{padding:20px}.pdf-admin-card h3{font-size:20px;color:#54223d;margin:14px 0;overflow-wrap:anywhere}.pdf-admin-card small{font-size:12px}.pdf-admin-card .pdf-actions{gap:8px}.pdf-admin-card .pdf-actions>*{font-size:12px;padding:10px}
+.pdf-admin .pdf-empty{background:#182235;color:#e2e8f0}.pdf-error{background:#fff0f2;color:#9f1831;border:1px solid #f5bec9;border-radius:12px;padding:14px;overflow-wrap:anywhere}
+.pdf-dialog{width:min(720px,calc(100% - 24px));max-height:90dvh;overflow:auto;border:1px solid #e2e8f0;border-radius:20px;padding:24px;color:#334155;background:#fff;box-shadow:0 24px 90px #0005;margin:auto;font-family:inherit}
+.pdf-dialog::backdrop{background:#0f172ab3;backdrop-filter:blur(4px)}.pdf-dialog header{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:20px}.pdf-dialog h2{margin:0;font-size:22px;color:#54223d}
+.pdf-dialog fieldset{margin:0 0 22px;padding:18px;border:1px solid #e2e8f0;border-radius:12px;min-width:0}.pdf-dialog legend{font-weight:700;padding:0 8px}.pdf-dialog label{display:block;font-size:14px;font-weight:600;margin:0 0 16px}.pdf-dialog small{display:block;font-size:12px;line-height:1.6}.pdf-dialog p{line-height:1.6}
+.pdf-dialog input,.pdf-dialog select,.pdf-dialog textarea{display:block;width:100%;box-sizing:border-box;margin-top:8px;padding:11px 12px;border:1px solid #cbd5e1;border-radius:9px;background:#fff;color:#1e293b;font:inherit;min-height:44px}.pdf-dialog input[readonly]{background:#f1f5f9}.pdf-dialog input[type=file]{padding:10px;font-size:12px}.pdf-dialog button:disabled,.pdf-admin button:disabled{opacity:.5;cursor:wait}
+.pdf-dialog footer{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:10px;padding-top:10px}.pdf-drop{border:2px dashed #cda4b7;padding:16px;border-radius:12px;margin-bottom:18px;background:#fffafc}.pdf-form-cover{max-width:100%;max-height:180px;border-radius:10px;margin:12px 0;display:block}.pdf-confirm{max-width:480px}
+@media(max-width:700px){.pdf-page{padding-top:110px;padding-bottom:50px}.pdf-detail-heading{grid-template-columns:1fr;gap:28px}.pdf-detail-cover{aspect-ratio:8/5}.pdf-page-heading{margin-bottom:30px}.pdf-viewer{height:65vh}.pdf-dialog{padding:18px}.pdf-dialog fieldset{padding:12px}.pdf-dialog footer button{flex:1}.pdf-actions>*{flex:1;text-align:center}.pdf-grid{gap:18px}}
+@media(min-width:981px) and (max-width:1350px){.nf-links{gap:2px}.nf-link{padding-left:7px;padding-right:7px;font-size:12px}.nf-brand{display:none}}

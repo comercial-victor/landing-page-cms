@@ -1,12 +1,12 @@
 import { revalidatePath, revalidateTag } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
 
-const VALID_TAGS = ["siteSettings", "hero", "featuredGallery", "categoria", "subcategoria", "producto", "album"];
+const VALID_TAGS = ["siteSettings", "hero", "featuredGallery", "categoria", "subcategoria", "producto", "album", "catalogoPdf"];
 
 export async function POST(request: NextRequest) {
   const secret = request.nextUrl.searchParams.get("secret");
 
-  if (secret !== process.env.SANITY_REVALIDATE_SECRET) {
+  if (!process.env.SANITY_REVALIDATE_SECRET || secret !== process.env.SANITY_REVALIDATE_SECRET) {
     return NextResponse.json({ message: "Invalid secret" }, { status: 401 });
   }
 
@@ -26,6 +26,8 @@ export async function POST(request: NextRequest) {
     revalidatePath("/");
     revalidatePath("/catalog");
     revalidatePath("/colecciones");
+    revalidatePath("/catalogos");
+    revalidatePath("/catalogos/[slug]", "page");
     revalidatePath("/sitemap.xml");
 
     return NextResponse.json({ revalidated: true, now: Date.now(), tag: documentType || "all" });
